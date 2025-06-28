@@ -1,8 +1,8 @@
 from ultralytics import YOLO
 
-model = YOLO("D:/Racing/D_Robot/dev_ws/src/model_train/best.pt")
+model = YOLO("D:/Racing/D_Robot/runs/detect/yolo11_train_img_640/weights/best.pt")
 
-results = model("D:/Racing/D_Robot/dataset/obstacle_unlabeled/1840.jpg")
+results = model("E:/Dataset/obstacle_unlabeled/4509.jpg")
 
 # Process results list
 for result in results:
@@ -12,4 +12,3 @@ for result in results:
     probs = result.probs  # Probs object for classification outputs
     obb = result.obb  # Oriented boxes object for OBB outputs
     result.show()  # display to screen
-    result.save(filename="result.jpg")  # save to disk

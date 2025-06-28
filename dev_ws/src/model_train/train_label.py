@@ -21,6 +21,6 @@ def process_directory(directory):
             modify_txt_file(file_path)
 
 if __name__ == "__main__":
-    directory_path = 'E:/Dataset/demo'
+    directory_path = 'E:/Dataset/obstacle/labels/train'
     process_directory(directory_path)
     print("All txt files have been processed.")
