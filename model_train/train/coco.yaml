@@ -1,4 +1,4 @@
-path: E:/Dataset/obstacle
+path: E:/Dataset/obstacle/obstacle_v3.0
 train: images/train
 val: images/val
 
