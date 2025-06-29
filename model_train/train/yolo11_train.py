@@ -5,7 +5,7 @@ if __name__ == '__main__':
     results = model.train(
         data="D:/Racing/D_Robot/model_train/train/coco.yaml",
         epochs=100,
-        imgsz=640,
+        imgsz=320,
         workers=8,
         batch=-1,
         device='cuda:0',
