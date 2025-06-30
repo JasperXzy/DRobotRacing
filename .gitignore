@@ -5,7 +5,7 @@
 *.png
 
 runs
-
+*.pyc
 
 *.bak
 *.ddk
