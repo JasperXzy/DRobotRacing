@@ -1,0 +1,36 @@
+[13.766s] Invoking command in '/root/racing_ws/build/racing_obstacle_detection_yolo': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/root/racing_ws/install/qwen_pic_to_text:/root/racing_ws/install/qr_detector:/root/dev_ws/install/tf2_tools:/opt/ros/foxy /usr/bin/cmake --build /root/racing_ws/build/racing_obstacle_detection_yolo -- -j4 -l4
+[14.945s] [100%] Built target racing_obstacle_detection_yolo
+[15.082s] Invoked command in '/root/racing_ws/build/racing_obstacle_detection_yolo' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/root/racing_ws/install/qwen_pic_to_text:/root/racing_ws/install/qr_detector:/root/dev_ws/install/tf2_tools:/opt/ros/foxy /usr/bin/cmake --build /root/racing_ws/build/racing_obstacle_detection_yolo -- -j4 -l4
+[18.704s] Invoking command in '/root/racing_ws/build/racing_obstacle_detection_yolo': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/root/racing_ws/install/qwen_pic_to_text:/root/racing_ws/install/qr_detector:/root/dev_ws/install/tf2_tools:/opt/ros/foxy /usr/bin/cmake --install /root/racing_ws/build/racing_obstacle_detection_yolo
+[18.878s] -- Install configuration: ""
+[18.899s] -- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/lib/racing_obstacle_detection_yolo/racing_obstacle_detection_yolo
+[18.902s] -- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/lib/racing_obstacle_detection_yolo/config/
+[18.908s] -- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/lib/racing_obstacle_detection_yolo/config//obstacles_simulation.list
+[18.910s] -- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/lib/racing_obstacle_detection_yolo/config//yolov5sconfig_simulation.json
+[18.911s] -- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/lib/racing_obstacle_detection_yolo/config//yolov5sconfig.json
+[18.921s] -- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/lib/racing_obstacle_detection_yolo/config//race_obstacle_detection_simulation.bin
+[18.922s] -- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/lib/racing_obstacle_detection_yolo/config//obstacles.list
+[18.923s] -- Installing: /root/racing_ws/install/racing_obstacle_detection_yolo/lib/racing_obstacle_detection_yolo/config//race_obstacle_detection.bin
+[19.085s] -- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/launch
+[19.086s] -- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/launch/__pycache__
+[19.096s] -- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/launch/__pycache__/line_follower_detection.cpython-38.pyc
+[19.098s] -- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/launch/__pycache__/line_follower_detection.launch.cpython-38.pyc
+[19.105s] -- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/launch/__pycache__/racing_obstacle_detection.launch.cpython-38.pyc
+[19.117s] -- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/launch/racing_obstacle_detection_yolo_simulation.launch.py
+[19.119s] -- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/launch/racing_obstacle_detection_yolo.launch.py
+[19.141s] -- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/ament_index/resource_index/package_run_dependencies/racing_obstacle_detection_yolo
+[19.142s] -- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/ament_index/resource_index/parent_prefix_path/racing_obstacle_detection_yolo
+[19.158s] -- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/environment/ament_prefix_path.sh
+[19.181s] -- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/environment/ament_prefix_path.dsv
+[19.182s] -- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/environment/path.sh
+[19.198s] -- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/environment/path.dsv
+[19.200s] -- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/local_setup.bash
+[19.203s] -- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/local_setup.sh
+[19.207s] -- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/local_setup.zsh
+[19.223s] -- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/local_setup.dsv
+[19.231s] -- Installing: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/package.dsv
+[19.236s] -- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/ament_index/resource_index/packages/racing_obstacle_detection_yolo
+[19.245s] -- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/cmake/racing_obstacle_detection_yoloConfig.cmake
+[19.260s] -- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/cmake/racing_obstacle_detection_yoloConfig-version.cmake
+[19.270s] -- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/package.xml
+[19.274s] Invoked command in '/root/racing_ws/build/racing_obstacle_detection_yolo' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/root/racing_ws/install/qwen_pic_to_text:/root/racing_ws/install/qr_detector:/root/dev_ws/install/tf2_tools:/opt/ros/foxy /usr/bin/cmake --install /root/racing_ws/build/racing_obstacle_detection_yolo

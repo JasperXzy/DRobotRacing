@@ -1,0 +1,2 @@
+[10.932s] Invoking command in '/root/racing_ws/build/racing_control': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/root/dev_ws/install/tf2_tools:/opt/ros/foxy /usr/bin/cmake --build /root/racing_ws/build/racing_control -- -j4 -l4
+[11.637s] [100%] Built target racing_control

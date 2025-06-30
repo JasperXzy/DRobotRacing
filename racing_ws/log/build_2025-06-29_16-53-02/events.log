@@ -1,0 +1,616 @@
+[0.000000] (-) TimerEvent: {}
+[0.002958] (qr_detector) JobQueued: {'identifier': 'qr_detector', 'dependencies': OrderedDict()}
+[0.005072] (qwen_pic_to_text) JobQueued: {'identifier': 'qwen_pic_to_text', 'dependencies': OrderedDict()}
+[0.006370] (racing_control) JobQueued: {'identifier': 'racing_control', 'dependencies': OrderedDict()}
+[0.006999] (racing_obstacle_detection_yolo) JobQueued: {'identifier': 'racing_obstacle_detection_yolo', 'dependencies': OrderedDict()}
+[0.007284] (racing_track_detection_resnet) JobQueued: {'identifier': 'racing_track_detection_resnet', 'dependencies': OrderedDict()}
+[0.007488] (qr_detector) JobStarted: {'identifier': 'qr_detector'}
+[0.099070] (-) TimerEvent: {}
+[0.201649] (-) TimerEvent: {}
+[0.306474] (-) TimerEvent: {}
+[0.407619] (-) TimerEvent: {}
+[0.513049] (-) TimerEvent: {}
+[0.618170] (-) TimerEvent: {}
+[0.722336] (-) TimerEvent: {}
+[0.824316] (-) TimerEvent: {}
+[0.927980] (-) TimerEvent: {}
+[1.033829] (-) TimerEvent: {}
+[1.137615] (-) TimerEvent: {}
+[1.244009] (-) TimerEvent: {}
+[1.348302] (-) TimerEvent: {}
+[1.457253] (-) TimerEvent: {}
+[1.559733] (-) TimerEvent: {}
+[1.663120] (-) TimerEvent: {}
+[1.767877] (-) TimerEvent: {}
+[1.875330] (-) TimerEvent: {}
+[1.978811] (-) TimerEvent: {}
+[2.086766] (-) TimerEvent: {}
+[2.190368] (-) TimerEvent: {}
+[2.296959] (-) TimerEvent: {}
+[2.398777] (-) TimerEvent: {}
+[2.502668] (-) TimerEvent: {}
+[2.607185] (-) TimerEvent: {}
+[2.713177] (-) TimerEvent: {}
+[2.818688] (-) TimerEvent: {}
+[2.920854] (-) TimerEvent: {}
+[3.025964] (-) TimerEvent: {}
+[3.130093] (-) TimerEvent: {}
+[3.235412] (-) TimerEvent: {}
+[3.341039] (-) TimerEvent: {}
+[3.364636] (qwen_pic_to_text) JobStarted: {'identifier': 'qwen_pic_to_text'}
+[3.442171] (-) TimerEvent: {}
+[3.543394] (-) TimerEvent: {}
+[3.647947] (-) TimerEvent: {}
+[3.751407] (-) TimerEvent: {}
+[3.856166] (-) TimerEvent: {}
+[3.961748] (-) TimerEvent: {}
+[4.067052] (-) TimerEvent: {}
+[4.169735] (-) TimerEvent: {}
+[4.274474] (-) TimerEvent: {}
+[4.381298] (-) TimerEvent: {}
+[4.484196] (-) TimerEvent: {}
+[4.590099] (-) TimerEvent: {}
+[4.697500] (-) TimerEvent: {}
+[4.801670] (-) TimerEvent: {}
+[4.903697] (-) TimerEvent: {}
+[5.006768] (-) TimerEvent: {}
+[5.118978] (-) TimerEvent: {}
+[5.221213] (-) TimerEvent: {}
+[5.325783] (-) TimerEvent: {}
+[5.430738] (-) TimerEvent: {}
+[5.536816] (-) TimerEvent: {}
+[5.647021] (-) TimerEvent: {}
+[5.751972] (-) TimerEvent: {}
+[5.856551] (-) TimerEvent: {}
+[5.960912] (-) TimerEvent: {}
+[6.068048] (-) TimerEvent: {}
+[6.170187] (-) TimerEvent: {}
+[6.279041] (-) TimerEvent: {}
+[6.383570] (-) TimerEvent: {}
+[6.485140] (-) TimerEvent: {}
+[6.588821] (-) TimerEvent: {}
+[6.694028] (-) TimerEvent: {}
+[6.796300] (-) TimerEvent: {}
+[6.815183] (racing_control) JobStarted: {'identifier': 'racing_control'}
+[6.896947] (-) TimerEvent: {}
+[7.001847] (-) TimerEvent: {}
+[7.106405] (-) TimerEvent: {}
+[7.212923] (-) TimerEvent: {}
+[7.317968] (-) TimerEvent: {}
+[7.420970] (-) TimerEvent: {}
+[7.529363] (-) TimerEvent: {}
+[7.631979] (-) TimerEvent: {}
+[7.737574] (-) TimerEvent: {}
+[7.841828] (-) TimerEvent: {}
+[7.945190] (-) TimerEvent: {}
+[8.050086] (-) TimerEvent: {}
+[8.158645] (-) TimerEvent: {}
+[8.264070] (-) TimerEvent: {}
+[8.368821] (-) TimerEvent: {}
+[8.478175] (-) TimerEvent: {}
+[8.587807] (-) TimerEvent: {}
+[8.694155] (-) TimerEvent: {}
+[8.802118] (-) TimerEvent: {}
+[8.905716] (-) TimerEvent: {}
+[9.008795] (-) TimerEvent: {}
+[9.112729] (-) TimerEvent: {}
+[9.215502] (-) TimerEvent: {}
+[9.318097] (-) TimerEvent: {}
+[9.425487] (-) TimerEvent: {}
+[9.529486] (-) TimerEvent: {}
+[9.634104] (-) TimerEvent: {}
+[9.693850] (racing_obstacle_detection_yolo) JobStarted: {'identifier': 'racing_obstacle_detection_yolo'}
+[9.734860] (-) TimerEvent: {}
+[9.838938] (-) TimerEvent: {}
+[9.946114] (-) TimerEvent: {}
+[10.053604] (-) TimerEvent: {}
+[10.162343] (-) TimerEvent: {}
+[10.265239] (-) TimerEvent: {}
+[10.371988] (-) TimerEvent: {}
+[10.473857] (-) TimerEvent: {}
+[10.582723] (-) TimerEvent: {}
+[10.686153] (-) TimerEvent: {}
+[10.792015] (-) TimerEvent: {}
+[10.900590] (-) TimerEvent: {}
+[11.010146] (-) TimerEvent: {}
+[11.116338] (-) TimerEvent: {}
+[11.220917] (-) TimerEvent: {}
+[11.325170] (-) TimerEvent: {}
+[11.427048] (-) TimerEvent: {}
+[11.532690] (-) TimerEvent: {}
+[11.643748] (-) TimerEvent: {}
+[11.755653] (-) TimerEvent: {}
+[11.858881] (-) TimerEvent: {}
+[11.965229] (-) TimerEvent: {}
+[12.070620] (-) TimerEvent: {}
+[12.177246] (-) TimerEvent: {}
+[12.286333] (-) TimerEvent: {}
+[12.391162] (-) TimerEvent: {}
+[12.497268] (-) TimerEvent: {}
+[12.601304] (-) TimerEvent: {}
+[12.713092] (-) TimerEvent: {}
+[12.814608] (-) TimerEvent: {}
+[12.915749] (-) TimerEvent: {}
+[13.016994] (-) TimerEvent: {}
+[13.118270] (-) TimerEvent: {}
+[13.219671] (-) TimerEvent: {}
+[13.321037] (-) TimerEvent: {}
+[13.422541] (-) TimerEvent: {}
+[13.523786] (-) TimerEvent: {}
+[13.625010] (-) TimerEvent: {}
+[13.726099] (-) TimerEvent: {}
+[13.827995] (-) TimerEvent: {}
+[13.929425] (-) TimerEvent: {}
+[14.030563] (-) TimerEvent: {}
+[14.131707] (-) TimerEvent: {}
+[14.232872] (-) TimerEvent: {}
+[14.334006] (-) TimerEvent: {}
+[14.435126] (-) TimerEvent: {}
+[14.536311] (-) TimerEvent: {}
+[14.637587] (-) TimerEvent: {}
+[14.739677] (-) TimerEvent: {}
+[14.841900] (-) TimerEvent: {}
+[14.943945] (-) TimerEvent: {}
+[15.045589] (-) TimerEvent: {}
+[15.150754] (-) TimerEvent: {}
+[15.254607] (-) TimerEvent: {}
+[15.360481] (-) TimerEvent: {}
+[15.464801] (-) TimerEvent: {}
+[15.651345] (-) TimerEvent: {}
+[15.756077] (-) TimerEvent: {}
+[15.861287] (-) TimerEvent: {}
+[15.962812] (-) TimerEvent: {}
+[16.067462] (-) TimerEvent: {}
+[16.175357] (-) TimerEvent: {}
+[16.279111] (-) TimerEvent: {}
+[16.382556] (-) TimerEvent: {}
+[16.488537] (-) TimerEvent: {}
+[16.592767] (-) TimerEvent: {}
+[16.694756] (-) TimerEvent: {}
+[16.798955] (-) TimerEvent: {}
+[16.901557] (-) TimerEvent: {}
+[17.004094] (-) TimerEvent: {}
+[17.108885] (-) TimerEvent: {}
+[17.214426] (-) TimerEvent: {}
+[17.319619] (-) TimerEvent: {}
+[17.437031] (-) TimerEvent: {}
+[17.546322] (-) TimerEvent: {}
+[17.651810] (-) TimerEvent: {}
+[17.754254] (-) TimerEvent: {}
+[17.865761] (-) TimerEvent: {}
+[17.971014] (-) TimerEvent: {}
+[18.074430] (-) TimerEvent: {}
+[18.182771] (-) TimerEvent: {}
+[18.295632] (-) TimerEvent: {}
+[18.398004] (-) TimerEvent: {}
+[18.499380] (-) TimerEvent: {}
+[18.601503] (-) TimerEvent: {}
+[18.704312] (-) TimerEvent: {}
+[18.805723] (-) TimerEvent: {}
+[18.906855] (-) TimerEvent: {}
+[19.008041] (-) TimerEvent: {}
+[19.109389] (-) TimerEvent: {}
+[19.210580] (-) TimerEvent: {}
+[19.311780] (-) TimerEvent: {}
+[19.413026] (-) TimerEvent: {}
+[19.514846] (-) TimerEvent: {}
+[19.616804] (-) TimerEvent: {}
+[19.718048] (-) TimerEvent: {}
+[19.820489] (-) TimerEvent: {}
+[19.923012] (-) TimerEvent: {}
+[20.024344] (-) TimerEvent: {}
+[20.125664] (-) TimerEvent: {}
+[20.226832] (-) TimerEvent: {}
+[20.327980] (-) TimerEvent: {}
+[20.429869] (-) TimerEvent: {}
+[20.532607] (-) TimerEvent: {}
+[20.634621] (-) TimerEvent: {}
+[20.738491] (-) TimerEvent: {}
+[20.841788] (-) TimerEvent: {}
+[20.948019] (-) TimerEvent: {}
+[21.050353] (-) TimerEvent: {}
+[21.157804] (-) TimerEvent: {}
+[21.259741] (-) TimerEvent: {}
+[21.362970] (-) TimerEvent: {}
+[21.469084] (-) TimerEvent: {}
+[21.573035] (-) TimerEvent: {}
+[21.675447] (-) TimerEvent: {}
+[21.778841] (-) TimerEvent: {}
+[21.882092] (-) TimerEvent: {}
+[21.986083] (-) TimerEvent: {}
+[22.090595] (-) TimerEvent: {}
+[22.196105] (-) TimerEvent: {}
+[22.298338] (-) TimerEvent: {}
+[22.399605] (-) TimerEvent: {}
+[22.509257] (-) TimerEvent: {}
+[22.614737] (-) TimerEvent: {}
+[22.718609] (-) TimerEvent: {}
+[22.822513] (-) TimerEvent: {}
+[22.927119] (-) TimerEvent: {}
+[23.030873] (-) TimerEvent: {}
+[23.132247] (-) TimerEvent: {}
+[23.236827] (-) TimerEvent: {}
+[23.344814] (-) TimerEvent: {}
+[23.447796] (-) TimerEvent: {}
+[23.513368] (racing_control) JobProgress: {'identifier': 'racing_control', 'progress': 'cmake'}
+[23.529602] (racing_control) JobProgress: {'identifier': 'racing_control', 'progress': 'build'}
+[23.538902] (racing_control) Command: {'cmd': ['/usr/bin/cmake', '--build', '/root/racing_ws/build/racing_control', '--', '-j4', '-l4'], 'cwd': '/root/racing_ws/build/racing_control', 'env': OrderedDict([('LESSOPEN', '| /usr/bin/lesspipe %s'), ('LANGUAGE', 'en_US.UTF-8'), ('WEB_SHOW', 'TRUE'), ('USER', 'root'), ('SSH_CLIENT', '172.20.10.2 50174 22'), ('XDG_SESSION_TYPE', 'tty'), ('GIT_ASKPASS', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/extensions/git/dist/askpass.sh'), ('SHLVL', '1'), ('LD_LIBRARY_PATH', '/root/dev_ws/install/origincar_base/lib:/root/dev_ws/install/serial/lib:/root/dev_ws/install/origincar_msg/lib:/root/dev_ws/install/ackermann_msgs/lib:/opt/tros/opt/yaml_cpp_vendor/lib:/opt/tros/lib:/opt/ros/foxy/opt/yaml_cpp_vendor/lib:/opt/ros/foxy/opt/rviz_ogre_vendor/lib:/opt/ros/foxy/lib/aarch64-linux-gnu:/opt/ros/foxy/lib'), ('BROWSER', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/bin/helpers/browser.sh'), ('MOTD_SHOWN', 'pam'), ('HOME', '/root'), ('OLDPWD', '/root'), ('TERM_PROGRAM_VERSION', '1.101.2'), ('VSCODE_IPC_HOOK_CLI', '/run/user/0/vscode-ipc-6f8a37e2-2c5a-4ea8-b1b7-7134c1a5694e.sock'), ('ROS_PYTHON_VERSION', '3'), ('VSCODE_GIT_ASKPASS_MAIN', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/extensions/git/dist/askpass-main.js'), ('VSCODE_GIT_ASKPASS_NODE', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/node'), ('SSL_CERT_FILE', '/usr/lib/ssl/certs/ca-certificates.crt'), ('PYDEVD_DISABLE_FILE_VALIDATION', '1'), ('BUNDLED_DEBUGPY_PATH', '/root/.vscode-server/extensions/ms-python.debugpy-2025.8.0-linux-arm64/bundled/libs/debugpy'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/0/bus'), ('COLORTERM', 'truecolor'), ('COLCON_PREFIX_PATH', '/root/racing_ws/install:/root/dev_ws/install:/opt/tros'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'root'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('PKG_CONFIG_PATH', '/opt/tros/lib/x86_64-linux-gnu/pkgconfig:/opt/tros/lib/pkgconfig'), ('XDG_SESSION_CLASS', 'user'), ('TERM', 'xterm-256color'), ('XDG_SESSION_ID', '1'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/bin/remote-cli:/opt/tros/bin:/opt/ros/foxy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/root/.vscode-server/data/User/globalStorage/github.copilot-chat/debugCommand:/root/.vscode-server/extensions/ms-python.debugpy-2025.8.0-linux-arm64/bundled/scripts/noConfigScripts'), ('XDG_RUNTIME_DIR', '/run/user/0'), ('SSL_CERT_DIR', '/usr/lib/ssl/certs'), ('VSCODE_DEBUGPY_ADAPTER_ENDPOINTS', '/root/.vscode-server/extensions/ms-python.debugpy-2025.8.0-linux-arm64/.noConfigDebugAdapterEndpoints/endpoint-94a6b447580330f9.txt'), ('LANG', 'en_US.UTF-8'), ('LS_COLORS', 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:'), ('VSCODE_GIT_IPC_HANDLE', '/run/user/0/vscode-git-7217b0ac38.sock'), ('TERM_PROGRAM', 'vscode'), ('AMENT_PREFIX_PATH', '/root/racing_ws/install/racing_track_detection_resnet:/root/racing_ws/install/racing_obstacle_detection_yolo:/root/racing_ws/install/racing_control:/root/racing_ws/install/qwen_pic_to_text:/root/racing_ws/install/qr_detector:/root/dev_ws/install/tf2_tools:/root/dev_ws/install/origincar_base:/root/dev_ws/install/serial:/root/dev_ws/install/origincar_msg:/root/dev_ws/install/origincar_description:/root/dev_ws/install/origincar_bringup:/root/dev_ws/install/ackermann_msgs:/opt/tros:/opt/ros/foxy'), ('SHELL', '/bin/bash'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('VSCODE_GIT_ASKPASS_EXTRA_ARGS', ''), ('PWD', '/root/racing_ws/build/racing_control'), ('SSH_CONNECTION', '172.20.10.2 50174 172.20.10.13 22'), ('PYTHONPATH', '/root/racing_ws/install/qwen_pic_to_text/lib/python3.8/site-packages:/root/racing_ws/install/qr_detector/lib/python3.8/site-packages:/root/dev_ws/install/tf2_tools/lib/python3.8/site-packages:/root/dev_ws/install/origincar_base/lib/python3.8/site-packages:/root/dev_ws/install/origincar_msg/lib/python3.8/site-packages:/root/dev_ws/install/ackermann_msgs/lib/python3.8/site-packages:/opt/tros/lib/python3.8/site-packages:/opt/ros/foxy/lib/python3.8/site-packages'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/root/racing_ws/install/racing_track_detection_resnet:/root/racing_ws/install/racing_obstacle_detection_yolo:/root/racing_ws/install/racing_control:/root/dev_ws/install/origincar_base:/root/dev_ws/install/serial:/root/dev_ws/install/origincar_msg:/root/dev_ws/install/origincar_description:/root/dev_ws/install/origincar_bringup:/root/dev_ws/install/ackermann_msgs:/opt/tros:/root/racing_ws/install/qwen_pic_to_text:/root/racing_ws/install/qr_detector:/root/dev_ws/install/tf2_tools:/opt/ros/foxy')]), 'shell': False}
+[23.554452] (-) TimerEvent: {}
+[23.597772] (racing_obstacle_detection_yolo) JobProgress: {'identifier': 'racing_obstacle_detection_yolo', 'progress': 'cmake'}
+[23.613608] (racing_obstacle_detection_yolo) JobProgress: {'identifier': 'racing_obstacle_detection_yolo', 'progress': 'build'}
+[23.633657] (racing_obstacle_detection_yolo) Command: {'cmd': ['/usr/bin/cmake', '--build', '/root/racing_ws/build/racing_obstacle_detection_yolo', '--', '-j4', '-l4'], 'cwd': '/root/racing_ws/build/racing_obstacle_detection_yolo', 'env': OrderedDict([('LESSOPEN', '| /usr/bin/lesspipe %s'), ('LANGUAGE', 'en_US.UTF-8'), ('WEB_SHOW', 'TRUE'), ('USER', 'root'), ('SSH_CLIENT', '172.20.10.2 50174 22'), ('XDG_SESSION_TYPE', 'tty'), ('GIT_ASKPASS', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/extensions/git/dist/askpass.sh'), ('SHLVL', '1'), ('LD_LIBRARY_PATH', '/root/dev_ws/install/origincar_base/lib:/root/dev_ws/install/serial/lib:/root/dev_ws/install/origincar_msg/lib:/root/dev_ws/install/ackermann_msgs/lib:/opt/tros/opt/yaml_cpp_vendor/lib:/opt/tros/lib:/opt/ros/foxy/opt/yaml_cpp_vendor/lib:/opt/ros/foxy/opt/rviz_ogre_vendor/lib:/opt/ros/foxy/lib/aarch64-linux-gnu:/opt/ros/foxy/lib'), ('BROWSER', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/bin/helpers/browser.sh'), ('MOTD_SHOWN', 'pam'), ('HOME', '/root'), ('OLDPWD', '/root'), ('TERM_PROGRAM_VERSION', '1.101.2'), ('VSCODE_IPC_HOOK_CLI', '/run/user/0/vscode-ipc-6f8a37e2-2c5a-4ea8-b1b7-7134c1a5694e.sock'), ('ROS_PYTHON_VERSION', '3'), ('VSCODE_GIT_ASKPASS_MAIN', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/extensions/git/dist/askpass-main.js'), ('VSCODE_GIT_ASKPASS_NODE', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/node'), ('SSL_CERT_FILE', '/usr/lib/ssl/certs/ca-certificates.crt'), ('PYDEVD_DISABLE_FILE_VALIDATION', '1'), ('BUNDLED_DEBUGPY_PATH', '/root/.vscode-server/extensions/ms-python.debugpy-2025.8.0-linux-arm64/bundled/libs/debugpy'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/0/bus'), ('COLORTERM', 'truecolor'), ('COLCON_PREFIX_PATH', '/root/racing_ws/install:/root/dev_ws/install:/opt/tros'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'root'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('PKG_CONFIG_PATH', '/opt/tros/lib/x86_64-linux-gnu/pkgconfig:/opt/tros/lib/pkgconfig'), ('XDG_SESSION_CLASS', 'user'), ('TERM', 'xterm-256color'), ('XDG_SESSION_ID', '1'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/bin/remote-cli:/opt/tros/bin:/opt/ros/foxy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/root/.vscode-server/data/User/globalStorage/github.copilot-chat/debugCommand:/root/.vscode-server/extensions/ms-python.debugpy-2025.8.0-linux-arm64/bundled/scripts/noConfigScripts'), ('XDG_RUNTIME_DIR', '/run/user/0'), ('SSL_CERT_DIR', '/usr/lib/ssl/certs'), ('VSCODE_DEBUGPY_ADAPTER_ENDPOINTS', '/root/.vscode-server/extensions/ms-python.debugpy-2025.8.0-linux-arm64/.noConfigDebugAdapterEndpoints/endpoint-94a6b447580330f9.txt'), ('LANG', 'en_US.UTF-8'), ('LS_COLORS', 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:'), ('VSCODE_GIT_IPC_HANDLE', '/run/user/0/vscode-git-7217b0ac38.sock'), ('TERM_PROGRAM', 'vscode'), ('AMENT_PREFIX_PATH', '/root/racing_ws/install/racing_track_detection_resnet:/root/racing_ws/install/racing_obstacle_detection_yolo:/root/racing_ws/install/racing_control:/root/racing_ws/install/qwen_pic_to_text:/root/racing_ws/install/qr_detector:/root/dev_ws/install/tf2_tools:/root/dev_ws/install/origincar_base:/root/dev_ws/install/serial:/root/dev_ws/install/origincar_msg:/root/dev_ws/install/origincar_description:/root/dev_ws/install/origincar_bringup:/root/dev_ws/install/ackermann_msgs:/opt/tros:/opt/ros/foxy'), ('SHELL', '/bin/bash'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('VSCODE_GIT_ASKPASS_EXTRA_ARGS', ''), ('PWD', '/root/racing_ws/build/racing_obstacle_detection_yolo'), ('SSH_CONNECTION', '172.20.10.2 50174 172.20.10.13 22'), ('PYTHONPATH', '/root/racing_ws/install/qwen_pic_to_text/lib/python3.8/site-packages:/root/racing_ws/install/qr_detector/lib/python3.8/site-packages:/root/dev_ws/install/tf2_tools/lib/python3.8/site-packages:/root/dev_ws/install/origincar_base/lib/python3.8/site-packages:/root/dev_ws/install/origincar_msg/lib/python3.8/site-packages:/root/dev_ws/install/ackermann_msgs/lib/python3.8/site-packages:/opt/tros/lib/python3.8/site-packages:/opt/ros/foxy/lib/python3.8/site-packages'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/root/racing_ws/install/racing_track_detection_resnet:/root/racing_ws/install/racing_obstacle_detection_yolo:/root/racing_ws/install/racing_control:/root/dev_ws/install/origincar_base:/root/dev_ws/install/serial:/root/dev_ws/install/origincar_msg:/root/dev_ws/install/origincar_description:/root/dev_ws/install/origincar_bringup:/root/dev_ws/install/ackermann_msgs:/opt/tros:/root/racing_ws/install/qwen_pic_to_text:/root/racing_ws/install/qr_detector:/root/dev_ws/install/tf2_tools:/opt/ros/foxy')]), 'shell': False}
+[23.677000] (-) TimerEvent: {}
+[23.790908] (-) TimerEvent: {}
+[23.896157] (-) TimerEvent: {}
+[23.998893] (-) TimerEvent: {}
+[24.103727] (-) TimerEvent: {}
+[24.206651] (-) TimerEvent: {}
+[24.309251] (-) TimerEvent: {}
+[24.411008] (-) TimerEvent: {}
+[24.517996] (-) TimerEvent: {}
+[24.625423] (-) TimerEvent: {}
+[24.731795] (-) TimerEvent: {}
+[24.836708] (-) TimerEvent: {}
+[24.941149] (-) TimerEvent: {}
+[25.044365] (-) TimerEvent: {}
+[25.149399] (-) TimerEvent: {}
+[25.215328] (racing_control) StdoutLine: {'line': b'[100%] Built target racing_control\n'}
+[25.227146] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'[100%] Built target racing_obstacle_detection_yolo\n'}
+[25.250085] (-) TimerEvent: {}
+[25.362329] (-) TimerEvent: {}
+[25.382155] (racing_control) CommandEnded: {'returncode': 0}
+[25.463868] (-) TimerEvent: {}
+[25.469253] (racing_obstacle_detection_yolo) CommandEnded: {'returncode': 0}
+[25.564195] (-) TimerEvent: {}
+[25.666946] (-) TimerEvent: {}
+[25.751282] (racing_control) JobProgress: {'identifier': 'racing_control', 'progress': 'install'}
+[25.767827] (-) TimerEvent: {}
+[25.877099] (-) TimerEvent: {}
+[25.980218] (-) TimerEvent: {}
+[25.998137] (racing_control) Command: {'cmd': ['/usr/bin/cmake', '--install', '/root/racing_ws/build/racing_control'], 'cwd': '/root/racing_ws/build/racing_control', 'env': OrderedDict([('LESSOPEN', '| /usr/bin/lesspipe %s'), ('LANGUAGE', 'en_US.UTF-8'), ('WEB_SHOW', 'TRUE'), ('USER', 'root'), ('SSH_CLIENT', '172.20.10.2 50174 22'), ('XDG_SESSION_TYPE', 'tty'), ('GIT_ASKPASS', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/extensions/git/dist/askpass.sh'), ('SHLVL', '1'), ('LD_LIBRARY_PATH', '/root/dev_ws/install/origincar_base/lib:/root/dev_ws/install/serial/lib:/root/dev_ws/install/origincar_msg/lib:/root/dev_ws/install/ackermann_msgs/lib:/opt/tros/opt/yaml_cpp_vendor/lib:/opt/tros/lib:/opt/ros/foxy/opt/yaml_cpp_vendor/lib:/opt/ros/foxy/opt/rviz_ogre_vendor/lib:/opt/ros/foxy/lib/aarch64-linux-gnu:/opt/ros/foxy/lib'), ('BROWSER', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/bin/helpers/browser.sh'), ('MOTD_SHOWN', 'pam'), ('HOME', '/root'), ('OLDPWD', '/root'), ('TERM_PROGRAM_VERSION', '1.101.2'), ('VSCODE_IPC_HOOK_CLI', '/run/user/0/vscode-ipc-6f8a37e2-2c5a-4ea8-b1b7-7134c1a5694e.sock'), ('ROS_PYTHON_VERSION', '3'), ('VSCODE_GIT_ASKPASS_MAIN', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/extensions/git/dist/askpass-main.js'), ('VSCODE_GIT_ASKPASS_NODE', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/node'), ('SSL_CERT_FILE', '/usr/lib/ssl/certs/ca-certificates.crt'), ('PYDEVD_DISABLE_FILE_VALIDATION', '1'), ('BUNDLED_DEBUGPY_PATH', '/root/.vscode-server/extensions/ms-python.debugpy-2025.8.0-linux-arm64/bundled/libs/debugpy'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/0/bus'), ('COLORTERM', 'truecolor'), ('COLCON_PREFIX_PATH', '/root/racing_ws/install:/root/dev_ws/install:/opt/tros'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'root'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('PKG_CONFIG_PATH', '/opt/tros/lib/x86_64-linux-gnu/pkgconfig:/opt/tros/lib/pkgconfig'), ('XDG_SESSION_CLASS', 'user'), ('TERM', 'xterm-256color'), ('XDG_SESSION_ID', '1'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/bin/remote-cli:/opt/tros/bin:/opt/ros/foxy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/root/.vscode-server/data/User/globalStorage/github.copilot-chat/debugCommand:/root/.vscode-server/extensions/ms-python.debugpy-2025.8.0-linux-arm64/bundled/scripts/noConfigScripts'), ('XDG_RUNTIME_DIR', '/run/user/0'), ('SSL_CERT_DIR', '/usr/lib/ssl/certs'), ('VSCODE_DEBUGPY_ADAPTER_ENDPOINTS', '/root/.vscode-server/extensions/ms-python.debugpy-2025.8.0-linux-arm64/.noConfigDebugAdapterEndpoints/endpoint-94a6b447580330f9.txt'), ('LANG', 'en_US.UTF-8'), ('LS_COLORS', 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:'), ('VSCODE_GIT_IPC_HANDLE', '/run/user/0/vscode-git-7217b0ac38.sock'), ('TERM_PROGRAM', 'vscode'), ('AMENT_PREFIX_PATH', '/root/racing_ws/install/racing_track_detection_resnet:/root/racing_ws/install/racing_obstacle_detection_yolo:/root/racing_ws/install/racing_control:/root/racing_ws/install/qwen_pic_to_text:/root/racing_ws/install/qr_detector:/root/dev_ws/install/tf2_tools:/root/dev_ws/install/origincar_base:/root/dev_ws/install/serial:/root/dev_ws/install/origincar_msg:/root/dev_ws/install/origincar_description:/root/dev_ws/install/origincar_bringup:/root/dev_ws/install/ackermann_msgs:/opt/tros:/opt/ros/foxy'), ('SHELL', '/bin/bash'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('VSCODE_GIT_ASKPASS_EXTRA_ARGS', ''), ('PWD', '/root/racing_ws/build/racing_control'), ('SSH_CONNECTION', '172.20.10.2 50174 172.20.10.13 22'), ('PYTHONPATH', '/root/racing_ws/install/qwen_pic_to_text/lib/python3.8/site-packages:/root/racing_ws/install/qr_detector/lib/python3.8/site-packages:/root/dev_ws/install/tf2_tools/lib/python3.8/site-packages:/root/dev_ws/install/origincar_base/lib/python3.8/site-packages:/root/dev_ws/install/origincar_msg/lib/python3.8/site-packages:/root/dev_ws/install/ackermann_msgs/lib/python3.8/site-packages:/opt/tros/lib/python3.8/site-packages:/opt/ros/foxy/lib/python3.8/site-packages'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/root/racing_ws/install/racing_track_detection_resnet:/root/racing_ws/install/racing_obstacle_detection_yolo:/root/racing_ws/install/racing_control:/root/dev_ws/install/origincar_base:/root/dev_ws/install/serial:/root/dev_ws/install/origincar_msg:/root/dev_ws/install/origincar_description:/root/dev_ws/install/origincar_bringup:/root/dev_ws/install/ackermann_msgs:/opt/tros:/root/racing_ws/install/qwen_pic_to_text:/root/racing_ws/install/qr_detector:/root/dev_ws/install/tf2_tools:/opt/ros/foxy')]), 'shell': False}
+[26.081571] (-) TimerEvent: {}
+[26.098213] (racing_obstacle_detection_yolo) JobProgress: {'identifier': 'racing_obstacle_detection_yolo', 'progress': 'install'}
+[26.112984] (racing_obstacle_detection_yolo) Command: {'cmd': ['/usr/bin/cmake', '--install', '/root/racing_ws/build/racing_obstacle_detection_yolo'], 'cwd': '/root/racing_ws/build/racing_obstacle_detection_yolo', 'env': OrderedDict([('LESSOPEN', '| /usr/bin/lesspipe %s'), ('LANGUAGE', 'en_US.UTF-8'), ('WEB_SHOW', 'TRUE'), ('USER', 'root'), ('SSH_CLIENT', '172.20.10.2 50174 22'), ('XDG_SESSION_TYPE', 'tty'), ('GIT_ASKPASS', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/extensions/git/dist/askpass.sh'), ('SHLVL', '1'), ('LD_LIBRARY_PATH', '/root/dev_ws/install/origincar_base/lib:/root/dev_ws/install/serial/lib:/root/dev_ws/install/origincar_msg/lib:/root/dev_ws/install/ackermann_msgs/lib:/opt/tros/opt/yaml_cpp_vendor/lib:/opt/tros/lib:/opt/ros/foxy/opt/yaml_cpp_vendor/lib:/opt/ros/foxy/opt/rviz_ogre_vendor/lib:/opt/ros/foxy/lib/aarch64-linux-gnu:/opt/ros/foxy/lib'), ('BROWSER', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/bin/helpers/browser.sh'), ('MOTD_SHOWN', 'pam'), ('HOME', '/root'), ('OLDPWD', '/root'), ('TERM_PROGRAM_VERSION', '1.101.2'), ('VSCODE_IPC_HOOK_CLI', '/run/user/0/vscode-ipc-6f8a37e2-2c5a-4ea8-b1b7-7134c1a5694e.sock'), ('ROS_PYTHON_VERSION', '3'), ('VSCODE_GIT_ASKPASS_MAIN', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/extensions/git/dist/askpass-main.js'), ('VSCODE_GIT_ASKPASS_NODE', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/node'), ('SSL_CERT_FILE', '/usr/lib/ssl/certs/ca-certificates.crt'), ('PYDEVD_DISABLE_FILE_VALIDATION', '1'), ('BUNDLED_DEBUGPY_PATH', '/root/.vscode-server/extensions/ms-python.debugpy-2025.8.0-linux-arm64/bundled/libs/debugpy'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/0/bus'), ('COLORTERM', 'truecolor'), ('COLCON_PREFIX_PATH', '/root/racing_ws/install:/root/dev_ws/install:/opt/tros'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'root'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('PKG_CONFIG_PATH', '/opt/tros/lib/x86_64-linux-gnu/pkgconfig:/opt/tros/lib/pkgconfig'), ('XDG_SESSION_CLASS', 'user'), ('TERM', 'xterm-256color'), ('XDG_SESSION_ID', '1'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/bin/remote-cli:/opt/tros/bin:/opt/ros/foxy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/root/.vscode-server/data/User/globalStorage/github.copilot-chat/debugCommand:/root/.vscode-server/extensions/ms-python.debugpy-2025.8.0-linux-arm64/bundled/scripts/noConfigScripts'), ('XDG_RUNTIME_DIR', '/run/user/0'), ('SSL_CERT_DIR', '/usr/lib/ssl/certs'), ('VSCODE_DEBUGPY_ADAPTER_ENDPOINTS', '/root/.vscode-server/extensions/ms-python.debugpy-2025.8.0-linux-arm64/.noConfigDebugAdapterEndpoints/endpoint-94a6b447580330f9.txt'), ('LANG', 'en_US.UTF-8'), ('LS_COLORS', 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:'), ('VSCODE_GIT_IPC_HANDLE', '/run/user/0/vscode-git-7217b0ac38.sock'), ('TERM_PROGRAM', 'vscode'), ('AMENT_PREFIX_PATH', '/root/racing_ws/install/racing_track_detection_resnet:/root/racing_ws/install/racing_obstacle_detection_yolo:/root/racing_ws/install/racing_control:/root/racing_ws/install/qwen_pic_to_text:/root/racing_ws/install/qr_detector:/root/dev_ws/install/tf2_tools:/root/dev_ws/install/origincar_base:/root/dev_ws/install/serial:/root/dev_ws/install/origincar_msg:/root/dev_ws/install/origincar_description:/root/dev_ws/install/origincar_bringup:/root/dev_ws/install/ackermann_msgs:/opt/tros:/opt/ros/foxy'), ('SHELL', '/bin/bash'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('VSCODE_GIT_ASKPASS_EXTRA_ARGS', ''), ('PWD', '/root/racing_ws/build/racing_obstacle_detection_yolo'), ('SSH_CONNECTION', '172.20.10.2 50174 172.20.10.13 22'), ('PYTHONPATH', '/root/racing_ws/install/qwen_pic_to_text/lib/python3.8/site-packages:/root/racing_ws/install/qr_detector/lib/python3.8/site-packages:/root/dev_ws/install/tf2_tools/lib/python3.8/site-packages:/root/dev_ws/install/origincar_base/lib/python3.8/site-packages:/root/dev_ws/install/origincar_msg/lib/python3.8/site-packages:/root/dev_ws/install/ackermann_msgs/lib/python3.8/site-packages:/opt/tros/lib/python3.8/site-packages:/opt/ros/foxy/lib/python3.8/site-packages'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/root/racing_ws/install/racing_track_detection_resnet:/root/racing_ws/install/racing_obstacle_detection_yolo:/root/racing_ws/install/racing_control:/root/dev_ws/install/origincar_base:/root/dev_ws/install/serial:/root/dev_ws/install/origincar_msg:/root/dev_ws/install/origincar_description:/root/dev_ws/install/origincar_bringup:/root/dev_ws/install/ackermann_msgs:/opt/tros:/root/racing_ws/install/qwen_pic_to_text:/root/racing_ws/install/qr_detector:/root/dev_ws/install/tf2_tools:/opt/ros/foxy')]), 'shell': False}
+[26.188741] (-) TimerEvent: {}
+[26.262141] (racing_control) StdoutLine: {'line': b'-- Install configuration: ""\n'}
+[26.268865] (racing_control) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_control/lib/racing_control/racing_control\n'}
+[26.270579] (racing_control) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_control/share/racing_control/launch\n'}
+[26.271726] (racing_control) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_control/share/racing_control/launch/racing_control.launch.py\n'}
+[26.277817] (racing_control) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_control/share/racing_control/launch/racing_control_simulation.launch.py\n'}
+[26.278787] (racing_control) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_control/share/ament_index/resource_index/package_run_dependencies/racing_control\n'}
+[26.279736] (racing_control) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_control/share/ament_index/resource_index/parent_prefix_path/racing_control\n'}
+[26.280767] (racing_control) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_control/share/racing_control/environment/ament_prefix_path.sh\n'}
+[26.281774] (racing_control) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_control/share/racing_control/environment/ament_prefix_path.dsv\n'}
+[26.292659] (racing_control) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_control/share/racing_control/environment/path.sh\n'}
+[26.293819] (-) TimerEvent: {}
+[26.294687] (racing_control) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_control/share/racing_control/environment/path.dsv\n'}
+[26.295698] (racing_control) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_control/share/racing_control/local_setup.bash\n'}
+[26.326330] (racing_control) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_control/share/racing_control/local_setup.sh\n'}
+[26.328251] (racing_control) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_control/share/racing_control/local_setup.zsh\n'}
+[26.329139] (racing_control) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_control/share/racing_control/local_setup.dsv\n'}
+[26.330125] (racing_control) StdoutLine: {'line': b'-- Installing: /root/racing_ws/install/racing_control/share/racing_control/package.dsv\n'}
+[26.355286] (racing_control) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_control/share/ament_index/resource_index/packages/racing_control\n'}
+[26.356381] (racing_control) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_control/share/racing_control/cmake/racing_controlConfig.cmake\n'}
+[26.357868] (racing_control) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_control/share/racing_control/cmake/racing_controlConfig-version.cmake\n'}
+[26.358793] (racing_control) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_control/share/racing_control/package.xml\n'}
+[26.359699] (racing_control) CommandEnded: {'returncode': 0}
+[26.387568] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Install configuration: ""\n'}
+[26.388787] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/lib/racing_obstacle_detection_yolo/racing_obstacle_detection_yolo\n'}
+[26.406704] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/lib/racing_obstacle_detection_yolo/config/\n'}
+[26.409592] (-) TimerEvent: {}
+[26.413689] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/lib/racing_obstacle_detection_yolo/config//obstacles_simulation.list\n'}
+[26.419509] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/lib/racing_obstacle_detection_yolo/config//yolov5sconfig_simulation.json\n'}
+[26.424619] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/lib/racing_obstacle_detection_yolo/config//yolov5sconfig.json\n'}
+[26.425822] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/lib/racing_obstacle_detection_yolo/config//obstacles.list\n'}
+[26.426836] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/lib/racing_obstacle_detection_yolo/config//race_obstacle_detection.bin\n'}
+[26.427805] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/launch\n'}
+[26.474204] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/launch/__pycache__\n'}
+[26.477119] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/launch/__pycache__/line_follower_detection.cpython-38.pyc\n'}
+[26.479472] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/launch/__pycache__/line_follower_detection.launch.cpython-38.pyc\n'}
+[26.480605] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/launch/__pycache__/racing_obstacle_detection.launch.cpython-38.pyc\n'}
+[26.481641] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/launch/racing_obstacle_detection_yolo_simulation.launch.py\n'}
+[26.482540] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/launch/racing_obstacle_detection_yolo.launch.py\n'}
+[26.483695] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/ament_index/resource_index/package_run_dependencies/racing_obstacle_detection_yolo\n'}
+[26.487905] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/ament_index/resource_index/parent_prefix_path/racing_obstacle_detection_yolo\n'}
+[26.489416] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/environment/ament_prefix_path.sh\n'}
+[26.510801] (-) TimerEvent: {}
+[26.511918] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/environment/ament_prefix_path.dsv\n'}
+[26.513374] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/environment/path.sh\n'}
+[26.514481] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/environment/path.dsv\n'}
+[26.515787] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/local_setup.bash\n'}
+[26.523516] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/local_setup.sh\n'}
+[26.525208] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/local_setup.zsh\n'}
+[26.526550] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/local_setup.dsv\n'}
+[26.527912] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Installing: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/package.dsv\n'}
+[26.529440] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/ament_index/resource_index/packages/racing_obstacle_detection_yolo\n'}
+[26.530745] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/cmake/racing_obstacle_detection_yoloConfig.cmake\n'}
+[26.532010] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/cmake/racing_obstacle_detection_yoloConfig-version.cmake\n'}
+[26.550719] (racing_obstacle_detection_yolo) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/package.xml\n'}
+[26.613428] (-) TimerEvent: {}
+[26.714849] (-) TimerEvent: {}
+[26.820142] (-) TimerEvent: {}
+[26.921799] (-) TimerEvent: {}
+[27.027864] (-) TimerEvent: {}
+[27.131540] (-) TimerEvent: {}
+[27.237060] (-) TimerEvent: {}
+[27.339829] (-) TimerEvent: {}
+[27.442247] (-) TimerEvent: {}
+[27.545122] (-) TimerEvent: {}
+[27.651908] (-) TimerEvent: {}
+[27.756509] (-) TimerEvent: {}
+[27.860902] (-) TimerEvent: {}
+[27.964554] (-) TimerEvent: {}
+[28.071908] (-) TimerEvent: {}
+[28.175771] (-) TimerEvent: {}
+[28.280856] (-) TimerEvent: {}
+[28.389439] (-) TimerEvent: {}
+[28.493865] (-) TimerEvent: {}
+[28.601616] (-) TimerEvent: {}
+[28.708586] (-) TimerEvent: {}
+[28.829145] (-) TimerEvent: {}
+[28.940653] (-) TimerEvent: {}
+[29.060699] (-) TimerEvent: {}
+[29.173108] (-) TimerEvent: {}
+[29.275300] (-) TimerEvent: {}
+[29.388639] (-) TimerEvent: {}
+[29.492756] (-) TimerEvent: {}
+[29.510806] (racing_obstacle_detection_yolo) CommandEnded: {'returncode': 0}
+[29.598113] (-) TimerEvent: {}
+[29.701820] (-) TimerEvent: {}
+[29.809023] (-) TimerEvent: {}
+[29.912207] (-) TimerEvent: {}
+[30.017258] (-) TimerEvent: {}
+[30.121056] (-) TimerEvent: {}
+[30.222759] (-) TimerEvent: {}
+[30.326668] (-) TimerEvent: {}
+[30.433749] (-) TimerEvent: {}
+[30.543294] (-) TimerEvent: {}
+[30.646341] (-) TimerEvent: {}
+[30.756824] (-) TimerEvent: {}
+[30.862874] (-) TimerEvent: {}
+[30.965294] (-) TimerEvent: {}
+[31.074356] (-) TimerEvent: {}
+[31.182354] (-) TimerEvent: {}
+[31.287003] (-) TimerEvent: {}
+[31.391642] (-) TimerEvent: {}
+[31.499932] (-) TimerEvent: {}
+[31.612999] (-) TimerEvent: {}
+[31.716228] (-) TimerEvent: {}
+[31.825195] (-) TimerEvent: {}
+[31.929158] (-) TimerEvent: {}
+[32.036670] (-) TimerEvent: {}
+[32.160823] (-) TimerEvent: {}
+[32.269810] (-) TimerEvent: {}
+[32.380518] (-) TimerEvent: {}
+[32.497168] (-) TimerEvent: {}
+[32.599131] (-) TimerEvent: {}
+[32.704735] (-) TimerEvent: {}
+[32.808486] (-) TimerEvent: {}
+[32.911741] (-) TimerEvent: {}
+[33.018560] (-) TimerEvent: {}
+[33.124560] (-) TimerEvent: {}
+[33.227798] (-) TimerEvent: {}
+[33.331477] (-) TimerEvent: {}
+[33.436293] (-) TimerEvent: {}
+[33.541664] (-) TimerEvent: {}
+[33.647983] (-) TimerEvent: {}
+[33.751140] (-) TimerEvent: {}
+[33.854085] (-) TimerEvent: {}
+[33.959525] (-) TimerEvent: {}
+[34.065593] (-) TimerEvent: {}
+[34.105319] (racing_control) JobEnded: {'identifier': 'racing_control', 'rc': 0}
+[34.119359] (qwen_pic_to_text) Command: {'cmd': ['/usr/bin/python3', 'setup.py', 'egg_info', '--egg-base', '../../build/qwen_pic_to_text', 'build', '--build-base', '/root/racing_ws/build/qwen_pic_to_text/build', 'install', '--record', '/root/racing_ws/build/qwen_pic_to_text/install.log', '--install-scripts', '$base/lib/qwen_pic_to_text', '--single-version-externally-managed'], 'cwd': '/root/racing_ws/src/qwen_pic_to_text', 'env': {'LESSOPEN': '| /usr/bin/lesspipe %s', 'LANGUAGE': 'en_US.UTF-8', 'WEB_SHOW': 'TRUE', 'USER': 'root', 'SSH_CLIENT': '172.20.10.2 50174 22', 'XDG_SESSION_TYPE': 'tty', 'GIT_ASKPASS': '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/extensions/git/dist/askpass.sh', 'SHLVL': '1', 'LD_LIBRARY_PATH': '/root/dev_ws/install/origincar_base/lib:/root/dev_ws/install/serial/lib:/root/dev_ws/install/origincar_msg/lib:/root/dev_ws/install/ackermann_msgs/lib:/opt/tros/opt/yaml_cpp_vendor/lib:/opt/tros/lib:/opt/ros/foxy/opt/yaml_cpp_vendor/lib:/opt/ros/foxy/opt/rviz_ogre_vendor/lib:/opt/ros/foxy/lib/aarch64-linux-gnu:/opt/ros/foxy/lib', 'BROWSER': '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/bin/helpers/browser.sh', 'MOTD_SHOWN': 'pam', 'HOME': '/root', 'OLDPWD': '/root', 'TERM_PROGRAM_VERSION': '1.101.2', 'VSCODE_IPC_HOOK_CLI': '/run/user/0/vscode-ipc-6f8a37e2-2c5a-4ea8-b1b7-7134c1a5694e.sock', 'ROS_PYTHON_VERSION': '3', 'VSCODE_GIT_ASKPASS_MAIN': '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/extensions/git/dist/askpass-main.js', 'VSCODE_GIT_ASKPASS_NODE': '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/node', 'SSL_CERT_FILE': '/usr/lib/ssl/certs/ca-certificates.crt', 'PYDEVD_DISABLE_FILE_VALIDATION': '1', 'BUNDLED_DEBUGPY_PATH': '/root/.vscode-server/extensions/ms-python.debugpy-2025.8.0-linux-arm64/bundled/libs/debugpy', 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/0/bus', 'COLORTERM': 'truecolor', 'COLCON_PREFIX_PATH': '/root/racing_ws/install:/root/dev_ws/install:/opt/tros', 'ROS_DISTRO': 'foxy', 'LOGNAME': 'root', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'PKG_CONFIG_PATH': '/opt/tros/lib/x86_64-linux-gnu/pkgconfig:/opt/tros/lib/pkgconfig', 'XDG_SESSION_CLASS': 'user', 'TERM': 'xterm-256color', 'XDG_SESSION_ID': '1', 'ROS_LOCALHOST_ONLY': '0', 'PATH': '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/bin/remote-cli:/opt/tros/bin:/opt/ros/foxy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/root/.vscode-server/data/User/globalStorage/github.copilot-chat/debugCommand:/root/.vscode-server/extensions/ms-python.debugpy-2025.8.0-linux-arm64/bundled/scripts/noConfigScripts', 'XDG_RUNTIME_DIR': '/run/user/0', 'SSL_CERT_DIR': '/usr/lib/ssl/certs', 'VSCODE_DEBUGPY_ADAPTER_ENDPOINTS': '/root/.vscode-server/extensions/ms-python.debugpy-2025.8.0-linux-arm64/.noConfigDebugAdapterEndpoints/endpoint-94a6b447580330f9.txt', 'LANG': 'en_US.UTF-8', 'LS_COLORS': 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:', 'VSCODE_GIT_IPC_HANDLE': '/run/user/0/vscode-git-7217b0ac38.sock', 'TERM_PROGRAM': 'vscode', 'AMENT_PREFIX_PATH': '/root/racing_ws/install/racing_track_detection_resnet:/root/racing_ws/install/racing_obstacle_detection_yolo:/root/racing_ws/install/racing_control:/root/racing_ws/install/qwen_pic_to_text:/root/racing_ws/install/qr_detector:/root/dev_ws/install/tf2_tools:/root/dev_ws/install/origincar_base:/root/dev_ws/install/serial:/root/dev_ws/install/origincar_msg:/root/dev_ws/install/origincar_description:/root/dev_ws/install/origincar_bringup:/root/dev_ws/install/ackermann_msgs:/opt/tros:/opt/ros/foxy', 'SHELL': '/bin/bash', 'LESSCLOSE': '/usr/bin/lesspipe %s %s', 'VSCODE_GIT_ASKPASS_EXTRA_ARGS': '', 'PWD': '/root/racing_ws/build/qwen_pic_to_text', 'SSH_CONNECTION': '172.20.10.2 50174 172.20.10.13 22', 'PYTHONPATH': '/root/racing_ws/build/qwen_pic_to_text/prefix_override:/root/racing_ws/install/qwen_pic_to_text/lib/python3.8/site-packages:/root/racing_ws/install/qwen_pic_to_text/lib/python3.8/site-packages:/root/racing_ws/install/qr_detector/lib/python3.8/site-packages:/root/dev_ws/install/tf2_tools/lib/python3.8/site-packages:/root/dev_ws/install/origincar_base/lib/python3.8/site-packages:/root/dev_ws/install/origincar_msg/lib/python3.8/site-packages:/root/dev_ws/install/ackermann_msgs/lib/python3.8/site-packages:/opt/tros/lib/python3.8/site-packages:/opt/ros/foxy/lib/python3.8/site-packages', 'COLCON': '1', 'CMAKE_PREFIX_PATH': '/root/racing_ws/install/racing_track_detection_resnet:/root/racing_ws/install/racing_obstacle_detection_yolo:/root/racing_ws/install/racing_control:/root/dev_ws/install/origincar_base:/root/dev_ws/install/serial:/root/dev_ws/install/origincar_msg:/root/dev_ws/install/origincar_description:/root/dev_ws/install/origincar_bringup:/root/dev_ws/install/ackermann_msgs:/opt/tros'}, 'shell': False}
+[34.146939] (qr_detector) Command: {'cmd': ['/usr/bin/python3', 'setup.py', 'egg_info', '--egg-base', '../../build/qr_detector', 'build', '--build-base', '/root/racing_ws/build/qr_detector/build', 'install', '--record', '/root/racing_ws/build/qr_detector/install.log', '--install-scripts', '$base/lib/qr_detector', '--single-version-externally-managed'], 'cwd': '/root/racing_ws/src/qr_detector', 'env': {'LESSOPEN': '| /usr/bin/lesspipe %s', 'LANGUAGE': 'en_US.UTF-8', 'WEB_SHOW': 'TRUE', 'USER': 'root', 'SSH_CLIENT': '172.20.10.2 50174 22', 'XDG_SESSION_TYPE': 'tty', 'GIT_ASKPASS': '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/extensions/git/dist/askpass.sh', 'SHLVL': '1', 'LD_LIBRARY_PATH': '/root/dev_ws/install/origincar_base/lib:/root/dev_ws/install/serial/lib:/root/dev_ws/install/origincar_msg/lib:/root/dev_ws/install/ackermann_msgs/lib:/opt/tros/opt/yaml_cpp_vendor/lib:/opt/tros/lib:/opt/ros/foxy/opt/yaml_cpp_vendor/lib:/opt/ros/foxy/opt/rviz_ogre_vendor/lib:/opt/ros/foxy/lib/aarch64-linux-gnu:/opt/ros/foxy/lib', 'BROWSER': '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/bin/helpers/browser.sh', 'MOTD_SHOWN': 'pam', 'HOME': '/root', 'OLDPWD': '/root', 'TERM_PROGRAM_VERSION': '1.101.2', 'VSCODE_IPC_HOOK_CLI': '/run/user/0/vscode-ipc-6f8a37e2-2c5a-4ea8-b1b7-7134c1a5694e.sock', 'ROS_PYTHON_VERSION': '3', 'VSCODE_GIT_ASKPASS_MAIN': '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/extensions/git/dist/askpass-main.js', 'VSCODE_GIT_ASKPASS_NODE': '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/node', 'SSL_CERT_FILE': '/usr/lib/ssl/certs/ca-certificates.crt', 'PYDEVD_DISABLE_FILE_VALIDATION': '1', 'BUNDLED_DEBUGPY_PATH': '/root/.vscode-server/extensions/ms-python.debugpy-2025.8.0-linux-arm64/bundled/libs/debugpy', 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/0/bus', 'COLORTERM': 'truecolor', 'COLCON_PREFIX_PATH': '/root/racing_ws/install:/root/dev_ws/install:/opt/tros', 'ROS_DISTRO': 'foxy', 'LOGNAME': 'root', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'PKG_CONFIG_PATH': '/opt/tros/lib/x86_64-linux-gnu/pkgconfig:/opt/tros/lib/pkgconfig', 'XDG_SESSION_CLASS': 'user', 'TERM': 'xterm-256color', 'XDG_SESSION_ID': '1', 'ROS_LOCALHOST_ONLY': '0', 'PATH': '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/bin/remote-cli:/opt/tros/bin:/opt/ros/foxy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/root/.vscode-server/data/User/globalStorage/github.copilot-chat/debugCommand:/root/.vscode-server/extensions/ms-python.debugpy-2025.8.0-linux-arm64/bundled/scripts/noConfigScripts', 'XDG_RUNTIME_DIR': '/run/user/0', 'SSL_CERT_DIR': '/usr/lib/ssl/certs', 'VSCODE_DEBUGPY_ADAPTER_ENDPOINTS': '/root/.vscode-server/extensions/ms-python.debugpy-2025.8.0-linux-arm64/.noConfigDebugAdapterEndpoints/endpoint-94a6b447580330f9.txt', 'LANG': 'en_US.UTF-8', 'LS_COLORS': 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:', 'VSCODE_GIT_IPC_HANDLE': '/run/user/0/vscode-git-7217b0ac38.sock', 'TERM_PROGRAM': 'vscode', 'AMENT_PREFIX_PATH': '/root/racing_ws/install/racing_track_detection_resnet:/root/racing_ws/install/racing_obstacle_detection_yolo:/root/racing_ws/install/racing_control:/root/racing_ws/install/qwen_pic_to_text:/root/racing_ws/install/qr_detector:/root/dev_ws/install/tf2_tools:/root/dev_ws/install/origincar_base:/root/dev_ws/install/serial:/root/dev_ws/install/origincar_msg:/root/dev_ws/install/origincar_description:/root/dev_ws/install/origincar_bringup:/root/dev_ws/install/ackermann_msgs:/opt/tros:/opt/ros/foxy', 'SHELL': '/bin/bash', 'LESSCLOSE': '/usr/bin/lesspipe %s %s', 'VSCODE_GIT_ASKPASS_EXTRA_ARGS': '', 'PWD': '/root/racing_ws/build/qr_detector', 'SSH_CONNECTION': '172.20.10.2 50174 172.20.10.13 22', 'PYTHONPATH': '/root/racing_ws/build/qr_detector/prefix_override:/root/racing_ws/install/qr_detector/lib/python3.8/site-packages:/root/racing_ws/install/qwen_pic_to_text/lib/python3.8/site-packages:/root/racing_ws/install/qr_detector/lib/python3.8/site-packages:/root/dev_ws/install/tf2_tools/lib/python3.8/site-packages:/root/dev_ws/install/origincar_base/lib/python3.8/site-packages:/root/dev_ws/install/origincar_msg/lib/python3.8/site-packages:/root/dev_ws/install/ackermann_msgs/lib/python3.8/site-packages:/opt/tros/lib/python3.8/site-packages:/opt/ros/foxy/lib/python3.8/site-packages', 'COLCON': '1', 'CMAKE_PREFIX_PATH': '/root/racing_ws/install/racing_track_detection_resnet:/root/racing_ws/install/racing_obstacle_detection_yolo:/root/racing_ws/install/racing_control:/root/dev_ws/install/origincar_base:/root/dev_ws/install/serial:/root/dev_ws/install/origincar_msg:/root/dev_ws/install/origincar_description:/root/dev_ws/install/origincar_bringup:/root/dev_ws/install/ackermann_msgs:/opt/tros'}, 'shell': False}
+[34.168668] (-) TimerEvent: {}
+[34.182764] (racing_track_detection_resnet) JobStarted: {'identifier': 'racing_track_detection_resnet'}
+[34.282612] (-) TimerEvent: {}
+[34.385164] (-) TimerEvent: {}
+[34.492134] (-) TimerEvent: {}
+[34.596942] (-) TimerEvent: {}
+[34.700022] (-) TimerEvent: {}
+[34.809693] (-) TimerEvent: {}
+[34.920182] (-) TimerEvent: {}
+[35.039378] (-) TimerEvent: {}
+[35.144375] (-) TimerEvent: {}
+[35.250054] (-) TimerEvent: {}
+[35.357692] (-) TimerEvent: {}
+[35.461684] (-) TimerEvent: {}
+[35.567990] (-) TimerEvent: {}
+[35.677775] (-) TimerEvent: {}
+[35.780949] (-) TimerEvent: {}
+[35.883805] (-) TimerEvent: {}
+[35.987425] (-) TimerEvent: {}
+[36.097907] (-) TimerEvent: {}
+[36.204244] (-) TimerEvent: {}
+[36.306659] (-) TimerEvent: {}
+[36.410357] (-) TimerEvent: {}
+[36.522319] (-) TimerEvent: {}
+[36.627993] (-) TimerEvent: {}
+[36.733763] (-) TimerEvent: {}
+[36.837079] (-) TimerEvent: {}
+[36.944640] (-) TimerEvent: {}
+[37.048036] (-) TimerEvent: {}
+[37.150405] (-) TimerEvent: {}
+[37.254648] (-) TimerEvent: {}
+[37.357866] (-) TimerEvent: {}
+[37.464162] (-) TimerEvent: {}
+[37.567593] (-) TimerEvent: {}
+[37.670663] (-) TimerEvent: {}
+[37.774134] (-) TimerEvent: {}
+[37.877278] (-) TimerEvent: {}
+[37.981878] (-) TimerEvent: {}
+[38.096682] (-) TimerEvent: {}
+[38.199670] (-) TimerEvent: {}
+[38.303751] (-) TimerEvent: {}
+[38.405781] (-) TimerEvent: {}
+[38.510811] (-) TimerEvent: {}
+[38.613765] (-) TimerEvent: {}
+[38.716000] (-) TimerEvent: {}
+[38.820264] (-) TimerEvent: {}
+[38.925856] (-) TimerEvent: {}
+[39.029886] (-) TimerEvent: {}
+[39.134276] (-) TimerEvent: {}
+[39.238909] (-) TimerEvent: {}
+[39.260850] (qwen_pic_to_text) StdoutLine: {'line': b'running egg_info\n'}
+[39.269040] (qwen_pic_to_text) StdoutLine: {'line': b'writing ../../build/qwen_pic_to_text/qwen_pic_to_text.egg-info/PKG-INFO\n'}
+[39.276001] (qwen_pic_to_text) StdoutLine: {'line': b'writing dependency_links to ../../build/qwen_pic_to_text/qwen_pic_to_text.egg-info/dependency_links.txt\n'}
+[39.281291] (qwen_pic_to_text) StdoutLine: {'line': b'writing entry points to ../../build/qwen_pic_to_text/qwen_pic_to_text.egg-info/entry_points.txt\n'}
+[39.289422] (qwen_pic_to_text) StdoutLine: {'line': b'writing requirements to ../../build/qwen_pic_to_text/qwen_pic_to_text.egg-info/requires.txt\n'}
+[39.290573] (qwen_pic_to_text) StdoutLine: {'line': b'writing top-level names to ../../build/qwen_pic_to_text/qwen_pic_to_text.egg-info/top_level.txt\n'}
+[39.291828] (qwen_pic_to_text) StdoutLine: {'line': b"reading manifest file '../../build/qwen_pic_to_text/qwen_pic_to_text.egg-info/SOURCES.txt'\n"}
+[39.313421] (qwen_pic_to_text) StdoutLine: {'line': b"writing manifest file '../../build/qwen_pic_to_text/qwen_pic_to_text.egg-info/SOURCES.txt'\n"}
+[39.314620] (qwen_pic_to_text) StdoutLine: {'line': b'running build\n'}
+[39.315682] (qwen_pic_to_text) StdoutLine: {'line': b'running build_py\n'}
+[39.316896] (qwen_pic_to_text) StdoutLine: {'line': b'running install\n'}
+[39.318270] (qwen_pic_to_text) StdoutLine: {'line': b'running install_lib\n'}
+[39.319758] (qwen_pic_to_text) StdoutLine: {'line': b'running install_data\n'}
+[39.334469] (qwen_pic_to_text) StdoutLine: {'line': b'running install_egg_info\n'}
+[39.336586] (qwen_pic_to_text) StdoutLine: {'line': b"removing '/root/racing_ws/install/qwen_pic_to_text/lib/python3.8/site-packages/qwen_pic_to_text-0.0.0-py3.8.egg-info' (and everything under it)\n"}
+[39.337878] (qwen_pic_to_text) StdoutLine: {'line': b'Copying ../../build/qwen_pic_to_text/qwen_pic_to_text.egg-info to /root/racing_ws/install/qwen_pic_to_text/lib/python3.8/site-packages/qwen_pic_to_text-0.0.0-py3.8.egg-info\n'}
+[39.339069] (-) TimerEvent: {}
+[39.357808] (qwen_pic_to_text) StdoutLine: {'line': b'running install_scripts\n'}
+[39.359137] (qwen_pic_to_text) StdoutLine: {'line': b'Installing qwen_pic_to_text script to /root/racing_ws/install/qwen_pic_to_text/lib/qwen_pic_to_text\n'}
+[39.360192] (qwen_pic_to_text) StdoutLine: {'line': b"writing list of installed files to '/root/racing_ws/build/qwen_pic_to_text/install.log'\n"}
+[39.361842] (qr_detector) StdoutLine: {'line': b'running egg_info\n'}
+[39.363076] (qr_detector) StdoutLine: {'line': b'writing ../../build/qr_detector/qr_detector.egg-info/PKG-INFO\n'}
+[39.364133] (qr_detector) StdoutLine: {'line': b'writing dependency_links to ../../build/qr_detector/qr_detector.egg-info/dependency_links.txt\n'}
+[39.365420] (qr_detector) StdoutLine: {'line': b'writing entry points to ../../build/qr_detector/qr_detector.egg-info/entry_points.txt\n'}
+[39.366502] (qr_detector) StdoutLine: {'line': b'writing requirements to ../../build/qr_detector/qr_detector.egg-info/requires.txt\n'}
+[39.367571] (qr_detector) StdoutLine: {'line': b'writing top-level names to ../../build/qr_detector/qr_detector.egg-info/top_level.txt\n'}
+[39.452149] (-) TimerEvent: {}
+[39.553920] (-) TimerEvent: {}
+[39.670838] (-) TimerEvent: {}
+[39.773743] (-) TimerEvent: {}
+[39.868329] (qr_detector) StdoutLine: {'line': b"reading manifest file '../../build/qr_detector/qr_detector.egg-info/SOURCES.txt'\n"}
+[39.875491] (-) TimerEvent: {}
+[39.877846] (qr_detector) StdoutLine: {'line': b"writing manifest file '../../build/qr_detector/qr_detector.egg-info/SOURCES.txt'\n"}
+[39.879515] (qr_detector) StdoutLine: {'line': b'running build\n'}
+[39.880819] (qr_detector) StdoutLine: {'line': b'running build_py\n'}
+[39.883857] (qr_detector) StdoutLine: {'line': b'running install\n'}
+[39.899701] (qr_detector) StdoutLine: {'line': b'running install_lib\n'}
+[39.925933] (qr_detector) StdoutLine: {'line': b'running install_data\n'}
+[39.929865] (qr_detector) StdoutLine: {'line': b'running install_egg_info\n'}
+[39.954674] (qr_detector) StdoutLine: {'line': b"removing '/root/racing_ws/install/qr_detector/lib/python3.8/site-packages/qr_detector-0.0.0-py3.8.egg-info' (and everything under it)\n"}
+[39.961495] (qr_detector) StdoutLine: {'line': b'Copying ../../build/qr_detector/qr_detector.egg-info to /root/racing_ws/install/qr_detector/lib/python3.8/site-packages/qr_detector-0.0.0-py3.8.egg-info\n'}
+[39.976152] (-) TimerEvent: {}
+[39.978648] (qr_detector) StdoutLine: {'line': b'running install_scripts\n'}
+[40.081468] (-) TimerEvent: {}
+[40.182794] (-) TimerEvent: {}
+[40.269784] (qr_detector) StdoutLine: {'line': b'Installing qr_detector_node script to /root/racing_ws/install/qr_detector/lib/qr_detector\n'}
+[40.273609] (qr_detector) StdoutLine: {'line': b"writing list of installed files to '/root/racing_ws/build/qr_detector/install.log'\n"}
+[40.285303] (-) TimerEvent: {}
+[40.393162] (-) TimerEvent: {}
+[40.495912] (-) TimerEvent: {}
+[40.598659] (-) TimerEvent: {}
+[40.701383] (-) TimerEvent: {}
+[40.804982] (-) TimerEvent: {}
+[40.907163] (-) TimerEvent: {}
+[41.015034] (-) TimerEvent: {}
+[41.118068] (-) TimerEvent: {}
+[41.221731] (-) TimerEvent: {}
+[41.325632] (-) TimerEvent: {}
+[41.429602] (-) TimerEvent: {}
+[41.554096] (-) TimerEvent: {}
+[41.661725] (-) TimerEvent: {}
+[41.674107] (racing_obstacle_detection_yolo) JobEnded: {'identifier': 'racing_obstacle_detection_yolo', 'rc': 0}
+[41.687585] (qwen_pic_to_text) CommandEnded: {'returncode': 0}
+[41.763094] (-) TimerEvent: {}
+[41.869500] (-) TimerEvent: {}
+[41.972441] (-) TimerEvent: {}
+[42.084651] (-) TimerEvent: {}
+[42.195408] (-) TimerEvent: {}
+[42.303930] (-) TimerEvent: {}
+[42.427670] (-) TimerEvent: {}
+[42.535625] (-) TimerEvent: {}
+[42.640343] (-) TimerEvent: {}
+[42.741686] (-) TimerEvent: {}
+[42.847167] (-) TimerEvent: {}
+[42.951204] (-) TimerEvent: {}
+[43.054353] (-) TimerEvent: {}
+[43.161105] (-) TimerEvent: {}
+[43.263513] (qwen_pic_to_text) JobEnded: {'identifier': 'qwen_pic_to_text', 'rc': 0}
+[43.270930] (-) TimerEvent: {}
+[43.272751] (racing_track_detection_resnet) JobProgress: {'identifier': 'racing_track_detection_resnet', 'progress': 'cmake'}
+[43.275746] (racing_track_detection_resnet) JobProgress: {'identifier': 'racing_track_detection_resnet', 'progress': 'build'}
+[43.278499] (racing_track_detection_resnet) Command: {'cmd': ['/usr/bin/cmake', '--build', '/root/racing_ws/build/racing_track_detection_resnet', '--', '-j4', '-l4'], 'cwd': '/root/racing_ws/build/racing_track_detection_resnet', 'env': OrderedDict([('LESSOPEN', '| /usr/bin/lesspipe %s'), ('LANGUAGE', 'en_US.UTF-8'), ('WEB_SHOW', 'TRUE'), ('USER', 'root'), ('SSH_CLIENT', '172.20.10.2 50174 22'), ('XDG_SESSION_TYPE', 'tty'), ('GIT_ASKPASS', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/extensions/git/dist/askpass.sh'), ('SHLVL', '1'), ('LD_LIBRARY_PATH', '/root/dev_ws/install/origincar_base/lib:/root/dev_ws/install/serial/lib:/root/dev_ws/install/origincar_msg/lib:/root/dev_ws/install/ackermann_msgs/lib:/opt/tros/opt/yaml_cpp_vendor/lib:/opt/tros/lib:/opt/ros/foxy/opt/yaml_cpp_vendor/lib:/opt/ros/foxy/opt/rviz_ogre_vendor/lib:/opt/ros/foxy/lib/aarch64-linux-gnu:/opt/ros/foxy/lib'), ('BROWSER', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/bin/helpers/browser.sh'), ('MOTD_SHOWN', 'pam'), ('HOME', '/root'), ('OLDPWD', '/root'), ('TERM_PROGRAM_VERSION', '1.101.2'), ('VSCODE_IPC_HOOK_CLI', '/run/user/0/vscode-ipc-6f8a37e2-2c5a-4ea8-b1b7-7134c1a5694e.sock'), ('ROS_PYTHON_VERSION', '3'), ('VSCODE_GIT_ASKPASS_MAIN', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/extensions/git/dist/askpass-main.js'), ('VSCODE_GIT_ASKPASS_NODE', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/node'), ('SSL_CERT_FILE', '/usr/lib/ssl/certs/ca-certificates.crt'), ('PYDEVD_DISABLE_FILE_VALIDATION', '1'), ('BUNDLED_DEBUGPY_PATH', '/root/.vscode-server/extensions/ms-python.debugpy-2025.8.0-linux-arm64/bundled/libs/debugpy'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/0/bus'), ('COLORTERM', 'truecolor'), ('COLCON_PREFIX_PATH', '/root/racing_ws/install:/root/dev_ws/install:/opt/tros'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'root'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('PKG_CONFIG_PATH', '/opt/tros/lib/x86_64-linux-gnu/pkgconfig:/opt/tros/lib/pkgconfig'), ('XDG_SESSION_CLASS', 'user'), ('TERM', 'xterm-256color'), ('XDG_SESSION_ID', '1'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/bin/remote-cli:/opt/tros/bin:/opt/ros/foxy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/root/.vscode-server/data/User/globalStorage/github.copilot-chat/debugCommand:/root/.vscode-server/extensions/ms-python.debugpy-2025.8.0-linux-arm64/bundled/scripts/noConfigScripts'), ('XDG_RUNTIME_DIR', '/run/user/0'), ('SSL_CERT_DIR', '/usr/lib/ssl/certs'), ('VSCODE_DEBUGPY_ADAPTER_ENDPOINTS', '/root/.vscode-server/extensions/ms-python.debugpy-2025.8.0-linux-arm64/.noConfigDebugAdapterEndpoints/endpoint-94a6b447580330f9.txt'), ('LANG', 'en_US.UTF-8'), ('LS_COLORS', 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:'), ('VSCODE_GIT_IPC_HANDLE', '/run/user/0/vscode-git-7217b0ac38.sock'), ('TERM_PROGRAM', 'vscode'), ('AMENT_PREFIX_PATH', '/root/racing_ws/install/racing_track_detection_resnet:/root/racing_ws/install/racing_obstacle_detection_yolo:/root/racing_ws/install/racing_control:/root/racing_ws/install/qwen_pic_to_text:/root/racing_ws/install/qr_detector:/root/dev_ws/install/tf2_tools:/root/dev_ws/install/origincar_base:/root/dev_ws/install/serial:/root/dev_ws/install/origincar_msg:/root/dev_ws/install/origincar_description:/root/dev_ws/install/origincar_bringup:/root/dev_ws/install/ackermann_msgs:/opt/tros:/opt/ros/foxy'), ('SHELL', '/bin/bash'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('VSCODE_GIT_ASKPASS_EXTRA_ARGS', ''), ('PWD', '/root/racing_ws/build/racing_track_detection_resnet'), ('SSH_CONNECTION', '172.20.10.2 50174 172.20.10.13 22'), ('PYTHONPATH', '/root/racing_ws/install/qwen_pic_to_text/lib/python3.8/site-packages:/root/racing_ws/install/qr_detector/lib/python3.8/site-packages:/root/dev_ws/install/tf2_tools/lib/python3.8/site-packages:/root/dev_ws/install/origincar_base/lib/python3.8/site-packages:/root/dev_ws/install/origincar_msg/lib/python3.8/site-packages:/root/dev_ws/install/ackermann_msgs/lib/python3.8/site-packages:/opt/tros/lib/python3.8/site-packages:/opt/ros/foxy/lib/python3.8/site-packages'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/root/racing_ws/install/racing_track_detection_resnet:/root/racing_ws/install/racing_obstacle_detection_yolo:/root/racing_ws/install/racing_control:/root/dev_ws/install/origincar_base:/root/dev_ws/install/serial:/root/dev_ws/install/origincar_msg:/root/dev_ws/install/origincar_description:/root/dev_ws/install/origincar_bringup:/root/dev_ws/install/ackermann_msgs:/opt/tros:/root/racing_ws/install/qwen_pic_to_text:/root/racing_ws/install/qr_detector:/root/dev_ws/install/tf2_tools:/opt/ros/foxy')]), 'shell': False}
+[43.296560] (qr_detector) CommandEnded: {'returncode': 0}
+[43.373182] (-) TimerEvent: {}
+[43.475959] (-) TimerEvent: {}
+[43.578689] (-) TimerEvent: {}
+[43.679979] (-) TimerEvent: {}
+[43.785220] (-) TimerEvent: {}
+[43.887659] (-) TimerEvent: {}
+[43.989425] (-) TimerEvent: {}
+[44.095707] (-) TimerEvent: {}
+[44.199584] (-) TimerEvent: {}
+[44.305025] (-) TimerEvent: {}
+[44.411938] (-) TimerEvent: {}
+[44.515331] (-) TimerEvent: {}
+[44.620910] (-) TimerEvent: {}
+[44.730665] (-) TimerEvent: {}
+[44.838842] (-) TimerEvent: {}
+[44.897413] (qr_detector) JobEnded: {'identifier': 'qr_detector', 'rc': 0}
+[44.905174] (racing_track_detection_resnet) StdoutLine: {'line': b'[100%] Built target racing_track_detection_resnet\n'}
+[44.910348] (racing_track_detection_resnet) CommandEnded: {'returncode': 0}
+[44.941178] (-) TimerEvent: {}
+[45.044667] (-) TimerEvent: {}
+[45.071898] (racing_track_detection_resnet) JobProgress: {'identifier': 'racing_track_detection_resnet', 'progress': 'install'}
+[45.075345] (racing_track_detection_resnet) Command: {'cmd': ['/usr/bin/cmake', '--install', '/root/racing_ws/build/racing_track_detection_resnet'], 'cwd': '/root/racing_ws/build/racing_track_detection_resnet', 'env': OrderedDict([('LESSOPEN', '| /usr/bin/lesspipe %s'), ('LANGUAGE', 'en_US.UTF-8'), ('WEB_SHOW', 'TRUE'), ('USER', 'root'), ('SSH_CLIENT', '172.20.10.2 50174 22'), ('XDG_SESSION_TYPE', 'tty'), ('GIT_ASKPASS', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/extensions/git/dist/askpass.sh'), ('SHLVL', '1'), ('LD_LIBRARY_PATH', '/root/dev_ws/install/origincar_base/lib:/root/dev_ws/install/serial/lib:/root/dev_ws/install/origincar_msg/lib:/root/dev_ws/install/ackermann_msgs/lib:/opt/tros/opt/yaml_cpp_vendor/lib:/opt/tros/lib:/opt/ros/foxy/opt/yaml_cpp_vendor/lib:/opt/ros/foxy/opt/rviz_ogre_vendor/lib:/opt/ros/foxy/lib/aarch64-linux-gnu:/opt/ros/foxy/lib'), ('BROWSER', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/bin/helpers/browser.sh'), ('MOTD_SHOWN', 'pam'), ('HOME', '/root'), ('OLDPWD', '/root'), ('TERM_PROGRAM_VERSION', '1.101.2'), ('VSCODE_IPC_HOOK_CLI', '/run/user/0/vscode-ipc-6f8a37e2-2c5a-4ea8-b1b7-7134c1a5694e.sock'), ('ROS_PYTHON_VERSION', '3'), ('VSCODE_GIT_ASKPASS_MAIN', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/extensions/git/dist/askpass-main.js'), ('VSCODE_GIT_ASKPASS_NODE', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/node'), ('SSL_CERT_FILE', '/usr/lib/ssl/certs/ca-certificates.crt'), ('PYDEVD_DISABLE_FILE_VALIDATION', '1'), ('BUNDLED_DEBUGPY_PATH', '/root/.vscode-server/extensions/ms-python.debugpy-2025.8.0-linux-arm64/bundled/libs/debugpy'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/0/bus'), ('COLORTERM', 'truecolor'), ('COLCON_PREFIX_PATH', '/root/racing_ws/install:/root/dev_ws/install:/opt/tros'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'root'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('PKG_CONFIG_PATH', '/opt/tros/lib/x86_64-linux-gnu/pkgconfig:/opt/tros/lib/pkgconfig'), ('XDG_SESSION_CLASS', 'user'), ('TERM', 'xterm-256color'), ('XDG_SESSION_ID', '1'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/root/.vscode-server/cli/servers/Stable-2901c5ac6db8a986a5666c3af51ff804d05af0d4/server/bin/remote-cli:/opt/tros/bin:/opt/ros/foxy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/root/.vscode-server/data/User/globalStorage/github.copilot-chat/debugCommand:/root/.vscode-server/extensions/ms-python.debugpy-2025.8.0-linux-arm64/bundled/scripts/noConfigScripts'), ('XDG_RUNTIME_DIR', '/run/user/0'), ('SSL_CERT_DIR', '/usr/lib/ssl/certs'), ('VSCODE_DEBUGPY_ADAPTER_ENDPOINTS', '/root/.vscode-server/extensions/ms-python.debugpy-2025.8.0-linux-arm64/.noConfigDebugAdapterEndpoints/endpoint-94a6b447580330f9.txt'), ('LANG', 'en_US.UTF-8'), ('LS_COLORS', 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:'), ('VSCODE_GIT_IPC_HANDLE', '/run/user/0/vscode-git-7217b0ac38.sock'), ('TERM_PROGRAM', 'vscode'), ('AMENT_PREFIX_PATH', '/root/racing_ws/install/racing_track_detection_resnet:/root/racing_ws/install/racing_obstacle_detection_yolo:/root/racing_ws/install/racing_control:/root/racing_ws/install/qwen_pic_to_text:/root/racing_ws/install/qr_detector:/root/dev_ws/install/tf2_tools:/root/dev_ws/install/origincar_base:/root/dev_ws/install/serial:/root/dev_ws/install/origincar_msg:/root/dev_ws/install/origincar_description:/root/dev_ws/install/origincar_bringup:/root/dev_ws/install/ackermann_msgs:/opt/tros:/opt/ros/foxy'), ('SHELL', '/bin/bash'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('VSCODE_GIT_ASKPASS_EXTRA_ARGS', ''), ('PWD', '/root/racing_ws/build/racing_track_detection_resnet'), ('SSH_CONNECTION', '172.20.10.2 50174 172.20.10.13 22'), ('PYTHONPATH', '/root/racing_ws/install/qwen_pic_to_text/lib/python3.8/site-packages:/root/racing_ws/install/qr_detector/lib/python3.8/site-packages:/root/dev_ws/install/tf2_tools/lib/python3.8/site-packages:/root/dev_ws/install/origincar_base/lib/python3.8/site-packages:/root/dev_ws/install/origincar_msg/lib/python3.8/site-packages:/root/dev_ws/install/ackermann_msgs/lib/python3.8/site-packages:/opt/tros/lib/python3.8/site-packages:/opt/ros/foxy/lib/python3.8/site-packages'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/root/racing_ws/install/racing_track_detection_resnet:/root/racing_ws/install/racing_obstacle_detection_yolo:/root/racing_ws/install/racing_control:/root/dev_ws/install/origincar_base:/root/dev_ws/install/serial:/root/dev_ws/install/origincar_msg:/root/dev_ws/install/origincar_description:/root/dev_ws/install/origincar_bringup:/root/dev_ws/install/ackermann_msgs:/opt/tros:/root/racing_ws/install/qwen_pic_to_text:/root/racing_ws/install/qr_detector:/root/dev_ws/install/tf2_tools:/opt/ros/foxy')]), 'shell': False}
+[45.145099] (-) TimerEvent: {}
+[45.156211] (racing_track_detection_resnet) StdoutLine: {'line': b'-- Install configuration: ""\n'}
+[45.158475] (racing_track_detection_resnet) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/lib/racing_track_detection_resnet/racing_track_detection_resnet\n'}
+[45.160294] (racing_track_detection_resnet) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/launch\n'}
+[45.176876] (racing_track_detection_resnet) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/launch/racing_track_detection_resnet.launch.py\n'}
+[45.187437] (racing_track_detection_resnet) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/launch/racing_track_detection_resnet_simulation.launch.py\n'}
+[45.188760] (racing_track_detection_resnet) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/ament_index/resource_index/package_run_dependencies/racing_track_detection_resnet\n'}
+[45.189769] (racing_track_detection_resnet) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/ament_index/resource_index/parent_prefix_path/racing_track_detection_resnet\n'}
+[45.190650] (racing_track_detection_resnet) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/environment/ament_prefix_path.sh\n'}
+[45.203574] (racing_track_detection_resnet) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/environment/ament_prefix_path.dsv\n'}
+[45.205195] (racing_track_detection_resnet) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/environment/path.sh\n'}
+[45.211787] (racing_track_detection_resnet) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/environment/path.dsv\n'}
+[45.214095] (racing_track_detection_resnet) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/local_setup.bash\n'}
+[45.215394] (racing_track_detection_resnet) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/local_setup.sh\n'}
+[45.217266] (racing_track_detection_resnet) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/local_setup.zsh\n'}
+[45.218838] (racing_track_detection_resnet) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/local_setup.dsv\n'}
+[45.223750] (racing_track_detection_resnet) StdoutLine: {'line': b'-- Installing: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/package.dsv\n'}
+[45.225025] (racing_track_detection_resnet) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/ament_index/resource_index/packages/racing_track_detection_resnet\n'}
+[45.226037] (racing_track_detection_resnet) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/cmake/racing_track_detection_resnetConfig.cmake\n'}
+[45.244126] (racing_track_detection_resnet) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/cmake/racing_track_detection_resnetConfig-version.cmake\n'}
+[45.247910] (-) TimerEvent: {}
+[45.257205] (racing_track_detection_resnet) StdoutLine: {'line': b'-- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/package.xml\n'}
+[45.263765] (racing_track_detection_resnet) CommandEnded: {'returncode': 0}
+[45.348503] (-) TimerEvent: {}
+[45.454939] (-) TimerEvent: {}
+[45.563292] (-) TimerEvent: {}
+[45.667215] (-) TimerEvent: {}
+[45.770978] (-) TimerEvent: {}
+[45.874861] (-) TimerEvent: {}
+[45.978719] (-) TimerEvent: {}
+[46.083818] (-) TimerEvent: {}
+[46.191831] (-) TimerEvent: {}
+[46.296902] (-) TimerEvent: {}
+[46.399086] (-) TimerEvent: {}
+[46.505854] (-) TimerEvent: {}
+[46.607286] (-) TimerEvent: {}
+[46.711428] (-) TimerEvent: {}
+[46.815748] (-) TimerEvent: {}
+[46.919684] (-) TimerEvent: {}
+[47.021830] (-) TimerEvent: {}
+[47.125190] (-) TimerEvent: {}
+[47.229388] (-) TimerEvent: {}
+[47.336505] (-) TimerEvent: {}
+[47.440665] (-) TimerEvent: {}
+[47.542768] (-) TimerEvent: {}
+[47.646266] (-) TimerEvent: {}
+[47.750788] (-) TimerEvent: {}
+[47.854506] (-) TimerEvent: {}
+[47.960059] (-) TimerEvent: {}
+[48.063350] (-) TimerEvent: {}
+[48.168105] (-) TimerEvent: {}
+[48.274915] (-) TimerEvent: {}
+[48.378917] (-) TimerEvent: {}
+[48.492445] (-) TimerEvent: {}
+[48.596174] (-) TimerEvent: {}
+[48.701946] (-) TimerEvent: {}
+[48.790963] (racing_track_detection_resnet) JobEnded: {'identifier': 'racing_track_detection_resnet', 'rc': 0}
+[48.796525] (-) EventReactorShutdown: {}

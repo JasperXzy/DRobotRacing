@@ -1,0 +1,202 @@
+[19.194s] DEBUG:colcon:Command line arguments: ['/usr/bin/colcon', 'build', '--packages-select', 'racing_obstacle_detection_yolo']
+[19.195s] DEBUG:colcon:Parsed command line arguments: Namespace(allow_overriding=[], ament_cmake_args=None, base_paths=['.'], build_base='build', catkin_cmake_args=None, catkin_skip_building_tests=False, cmake_args=None, cmake_clean_cache=False, cmake_clean_first=False, cmake_force_configure=False, cmake_target=None, cmake_target_skip_unavailable=False, continue_on_error=False, event_handlers=None, executor='parallel', ignore_user_meta=False, install_base='install', log_base=None, log_level=None, main=<bound method BuildVerb.main of <colcon_core.verb.build.BuildVerb object at 0x7f9d10c1c0>>, merge_install=False, metas=['./colcon.meta'], packages_above=None, packages_above_and_dependencies=None, packages_above_depth=None, packages_end=None, packages_ignore=None, packages_ignore_regex=None, packages_select=['racing_obstacle_detection_yolo'], packages_select_build_failed=False, packages_select_by_dep=None, packages_select_regex=None, packages_select_test_failures=False, packages_skip=None, packages_skip_build_finished=False, packages_skip_by_dep=None, packages_skip_regex=None, packages_skip_test_passed=False, packages_skip_up_to=None, packages_start=None, packages_up_to=None, packages_up_to_regex=None, parallel_workers=4, paths=None, symlink_install=False, test_result_base=None, verb_extension=<colcon_core.verb.build.BuildVerb object at 0x7f9d10c1c0>, verb_name='build', verb_parser=<colcon_defaults.argument_parser.defaults.DefaultArgumentsDecorator object at 0x7f9cd3ec10>)
+[19.945s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) check parameters
+[19.946s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) check parameters
+[19.946s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) check parameters
+[19.946s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) check parameters
+[19.946s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) discover
+[19.947s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) discover
+[19.947s] INFO:colcon.colcon_core.package_discovery:Crawling recursively for packages in '/root/racing_ws'
+[19.948s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ignore', 'ignore_ament_install']
+[19.948s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore'
+[19.949s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore_ament_install'
+[19.949s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_pkg']
+[19.949s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_pkg'
+[19.950s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_meta']
+[19.950s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_meta'
+[19.950s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ros']
+[19.951s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ros'
+[20.102s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['cmake', 'python']
+[20.103s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'cmake'
+[20.103s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python'
+[20.103s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['python_setup_py']
+[20.104s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python_setup_py'
+[20.104s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extensions ['ignore', 'ignore_ament_install']
+[20.105s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extension 'ignore'
+[20.105s] Level 1:colcon.colcon_core.package_identification:_identify(build) ignored
+[20.106s] Level 1:colcon.colcon_core.package_identification:_identify(config) by extensions ['ignore', 'ignore_ament_install']
+[20.107s] Level 1:colcon.colcon_core.package_identification:_identify(config) by extension 'ignore'
+[20.107s] Level 1:colcon.colcon_core.package_identification:_identify(config) by extension 'ignore_ament_install'
+[20.108s] Level 1:colcon.colcon_core.package_identification:_identify(config) by extensions ['colcon_pkg']
+[20.108s] Level 1:colcon.colcon_core.package_identification:_identify(config) by extension 'colcon_pkg'
+[20.108s] Level 1:colcon.colcon_core.package_identification:_identify(config) by extensions ['colcon_meta']
+[20.109s] Level 1:colcon.colcon_core.package_identification:_identify(config) by extension 'colcon_meta'
+[20.109s] Level 1:colcon.colcon_core.package_identification:_identify(config) by extensions ['ros']
+[20.109s] Level 1:colcon.colcon_core.package_identification:_identify(config) by extension 'ros'
+[20.110s] Level 1:colcon.colcon_core.package_identification:_identify(config) by extensions ['cmake', 'python']
+[20.110s] Level 1:colcon.colcon_core.package_identification:_identify(config) by extension 'cmake'
+[20.110s] Level 1:colcon.colcon_core.package_identification:_identify(config) by extension 'python'
+[20.111s] Level 1:colcon.colcon_core.package_identification:_identify(config) by extensions ['python_setup_py']
+[20.111s] Level 1:colcon.colcon_core.package_identification:_identify(config) by extension 'python_setup_py'
+[20.112s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extensions ['ignore', 'ignore_ament_install']
+[20.112s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extension 'ignore'
+[20.113s] Level 1:colcon.colcon_core.package_identification:_identify(install) ignored
+[20.113s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extensions ['ignore', 'ignore_ament_install']
+[20.114s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extension 'ignore'
+[20.114s] Level 1:colcon.colcon_core.package_identification:_identify(log) ignored
+[20.115s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['ignore', 'ignore_ament_install']
+[20.116s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ignore'
+[20.116s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ignore_ament_install'
+[20.116s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['colcon_pkg']
+[20.117s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'colcon_pkg'
+[20.117s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['colcon_meta']
+[20.117s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'colcon_meta'
+[20.118s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['ros']
+[20.118s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ros'
+[20.118s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['cmake', 'python']
+[20.119s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'cmake'
+[20.119s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'python'
+[20.119s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['python_setup_py']
+[20.120s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'python_setup_py'
+[20.120s] Level 1:colcon.colcon_core.package_identification:_identify(src/qr_detector) by extensions ['ignore', 'ignore_ament_install']
+[20.121s] Level 1:colcon.colcon_core.package_identification:_identify(src/qr_detector) by extension 'ignore'
+[20.121s] Level 1:colcon.colcon_core.package_identification:_identify(src/qr_detector) by extension 'ignore_ament_install'
+[20.122s] Level 1:colcon.colcon_core.package_identification:_identify(src/qr_detector) by extensions ['colcon_pkg']
+[20.122s] Level 1:colcon.colcon_core.package_identification:_identify(src/qr_detector) by extension 'colcon_pkg'
+[20.122s] Level 1:colcon.colcon_core.package_identification:_identify(src/qr_detector) by extensions ['colcon_meta']
+[20.123s] Level 1:colcon.colcon_core.package_identification:_identify(src/qr_detector) by extension 'colcon_meta'
+[20.123s] Level 1:colcon.colcon_core.package_identification:_identify(src/qr_detector) by extensions ['ros']
+[20.123s] Level 1:colcon.colcon_core.package_identification:_identify(src/qr_detector) by extension 'ros'
+[20.151s] DEBUG:colcon.colcon_core.package_identification:Package 'src/qr_detector' with type 'ros.ament_python' and name 'qr_detector'
+[20.152s] Level 1:colcon.colcon_core.package_identification:_identify(src/qwen_pic_to_text) by extensions ['ignore', 'ignore_ament_install']
+[20.152s] Level 1:colcon.colcon_core.package_identification:_identify(src/qwen_pic_to_text) by extension 'ignore'
+[20.153s] Level 1:colcon.colcon_core.package_identification:_identify(src/qwen_pic_to_text) by extension 'ignore_ament_install'
+[20.153s] Level 1:colcon.colcon_core.package_identification:_identify(src/qwen_pic_to_text) by extensions ['colcon_pkg']
+[20.154s] Level 1:colcon.colcon_core.package_identification:_identify(src/qwen_pic_to_text) by extension 'colcon_pkg'
+[20.154s] Level 1:colcon.colcon_core.package_identification:_identify(src/qwen_pic_to_text) by extensions ['colcon_meta']
+[20.154s] Level 1:colcon.colcon_core.package_identification:_identify(src/qwen_pic_to_text) by extension 'colcon_meta'
+[20.155s] Level 1:colcon.colcon_core.package_identification:_identify(src/qwen_pic_to_text) by extensions ['ros']
+[20.155s] Level 1:colcon.colcon_core.package_identification:_identify(src/qwen_pic_to_text) by extension 'ros'
+[20.163s] DEBUG:colcon.colcon_core.package_identification:Package 'src/qwen_pic_to_text' with type 'ros.ament_python' and name 'qwen_pic_to_text'
+[20.164s] Level 1:colcon.colcon_core.package_identification:_identify(src/racing_control-develop) by extensions ['ignore', 'ignore_ament_install']
+[20.164s] Level 1:colcon.colcon_core.package_identification:_identify(src/racing_control-develop) by extension 'ignore'
+[20.165s] Level 1:colcon.colcon_core.package_identification:_identify(src/racing_control-develop) by extension 'ignore_ament_install'
+[20.165s] Level 1:colcon.colcon_core.package_identification:_identify(src/racing_control-develop) by extensions ['colcon_pkg']
+[20.165s] Level 1:colcon.colcon_core.package_identification:_identify(src/racing_control-develop) by extension 'colcon_pkg'
+[20.166s] Level 1:colcon.colcon_core.package_identification:_identify(src/racing_control-develop) by extensions ['colcon_meta']
+[20.166s] Level 1:colcon.colcon_core.package_identification:_identify(src/racing_control-develop) by extension 'colcon_meta'
+[20.166s] Level 1:colcon.colcon_core.package_identification:_identify(src/racing_control-develop) by extensions ['ros']
+[20.167s] Level 1:colcon.colcon_core.package_identification:_identify(src/racing_control-develop) by extension 'ros'
+[20.175s] DEBUG:colcon.colcon_core.package_identification:Package 'src/racing_control-develop' with type 'ros.ament_cmake' and name 'racing_control'
+[20.176s] Level 1:colcon.colcon_core.package_identification:_identify(src/racing_obstacle_detection_yolo-develop) by extensions ['ignore', 'ignore_ament_install']
+[20.177s] Level 1:colcon.colcon_core.package_identification:_identify(src/racing_obstacle_detection_yolo-develop) by extension 'ignore'
+[20.177s] Level 1:colcon.colcon_core.package_identification:_identify(src/racing_obstacle_detection_yolo-develop) by extension 'ignore_ament_install'
+[20.178s] Level 1:colcon.colcon_core.package_identification:_identify(src/racing_obstacle_detection_yolo-develop) by extensions ['colcon_pkg']
+[20.178s] Level 1:colcon.colcon_core.package_identification:_identify(src/racing_obstacle_detection_yolo-develop) by extension 'colcon_pkg'
+[20.178s] Level 1:colcon.colcon_core.package_identification:_identify(src/racing_obstacle_detection_yolo-develop) by extensions ['colcon_meta']
+[20.179s] Level 1:colcon.colcon_core.package_identification:_identify(src/racing_obstacle_detection_yolo-develop) by extension 'colcon_meta'
+[20.179s] Level 1:colcon.colcon_core.package_identification:_identify(src/racing_obstacle_detection_yolo-develop) by extensions ['ros']
+[20.180s] Level 1:colcon.colcon_core.package_identification:_identify(src/racing_obstacle_detection_yolo-develop) by extension 'ros'
+[20.188s] DEBUG:colcon.colcon_core.package_identification:Package 'src/racing_obstacle_detection_yolo-develop' with type 'ros.ament_cmake' and name 'racing_obstacle_detection_yolo'
+[20.188s] Level 1:colcon.colcon_core.package_identification:_identify(src/racing_track_detection_resnet-develop) by extensions ['ignore', 'ignore_ament_install']
+[20.189s] Level 1:colcon.colcon_core.package_identification:_identify(src/racing_track_detection_resnet-develop) by extension 'ignore'
+[20.189s] Level 1:colcon.colcon_core.package_identification:_identify(src/racing_track_detection_resnet-develop) by extension 'ignore_ament_install'
+[20.190s] Level 1:colcon.colcon_core.package_identification:_identify(src/racing_track_detection_resnet-develop) by extensions ['colcon_pkg']
+[20.190s] Level 1:colcon.colcon_core.package_identification:_identify(src/racing_track_detection_resnet-develop) by extension 'colcon_pkg'
+[20.190s] Level 1:colcon.colcon_core.package_identification:_identify(src/racing_track_detection_resnet-develop) by extensions ['colcon_meta']
+[20.191s] Level 1:colcon.colcon_core.package_identification:_identify(src/racing_track_detection_resnet-develop) by extension 'colcon_meta'
+[20.191s] Level 1:colcon.colcon_core.package_identification:_identify(src/racing_track_detection_resnet-develop) by extensions ['ros']
+[20.191s] Level 1:colcon.colcon_core.package_identification:_identify(src/racing_track_detection_resnet-develop) by extension 'ros'
+[20.200s] DEBUG:colcon.colcon_core.package_identification:Package 'src/racing_track_detection_resnet-develop' with type 'ros.ament_cmake' and name 'racing_track_detection_resnet'
+[20.201s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) using defaults
+[20.201s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) discover
+[20.201s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) using defaults
+[20.202s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) discover
+[20.202s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) using defaults
+[21.316s] INFO:colcon.colcon_core.package_selection:Skipping not selected package 'qr_detector' in 'src/qr_detector'
+[21.316s] INFO:colcon.colcon_core.package_selection:Skipping not selected package 'qwen_pic_to_text' in 'src/qwen_pic_to_text'
+[21.316s] INFO:colcon.colcon_core.package_selection:Skipping not selected package 'racing_control' in 'src/racing_control-develop'
+[21.316s] INFO:colcon.colcon_core.package_selection:Skipping not selected package 'racing_track_detection_resnet' in 'src/racing_track_detection_resnet-develop'
+[21.995s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) check parameters
+[21.995s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) discover
+[22.622s] DEBUG:colcon.colcon_installed_package_information.package_discovery:Found 7 installed packages in /root/dev_ws/install
+[22.974s] DEBUG:colcon.colcon_installed_package_information.package_discovery:Found 390 installed packages in /opt/tros
+[23.310s] DEBUG:colcon.colcon_installed_package_information.package_discovery:Found 182 installed packages in /opt/ros/foxy
+[23.363s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) using defaults
+[24.834s] Level 5:colcon.colcon_core.verb:set package 'racing_obstacle_detection_yolo' build argument 'cmake_args' from command line to 'None'
+[24.835s] Level 5:colcon.colcon_core.verb:set package 'racing_obstacle_detection_yolo' build argument 'cmake_target' from command line to 'None'
+[24.835s] Level 5:colcon.colcon_core.verb:set package 'racing_obstacle_detection_yolo' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[24.835s] Level 5:colcon.colcon_core.verb:set package 'racing_obstacle_detection_yolo' build argument 'cmake_clean_cache' from command line to 'False'
+[24.835s] Level 5:colcon.colcon_core.verb:set package 'racing_obstacle_detection_yolo' build argument 'cmake_clean_first' from command line to 'False'
+[24.836s] Level 5:colcon.colcon_core.verb:set package 'racing_obstacle_detection_yolo' build argument 'cmake_force_configure' from command line to 'False'
+[24.836s] Level 5:colcon.colcon_core.verb:set package 'racing_obstacle_detection_yolo' build argument 'ament_cmake_args' from command line to 'None'
+[24.836s] Level 5:colcon.colcon_core.verb:set package 'racing_obstacle_detection_yolo' build argument 'catkin_cmake_args' from command line to 'None'
+[24.836s] Level 5:colcon.colcon_core.verb:set package 'racing_obstacle_detection_yolo' build argument 'catkin_skip_building_tests' from command line to 'False'
+[24.836s] DEBUG:colcon.colcon_core.verb:Building package 'racing_obstacle_detection_yolo' with the following arguments: {'ament_cmake_args': None, 'build_base': '/root/racing_ws/build/racing_obstacle_detection_yolo', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/root/racing_ws/install/racing_obstacle_detection_yolo', 'merge_install': False, 'path': '/root/racing_ws/src/racing_obstacle_detection_yolo-develop', 'symlink_install': False, 'test_result_base': None}
+[25.138s] INFO:colcon.colcon_core.executor:Executing jobs using 'parallel' executor
+[25.446s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete
+[25.448s] INFO:colcon.colcon_ros.task.ament_cmake.build:Building ROS package in '/root/racing_ws/src/racing_obstacle_detection_yolo-develop' with build type 'ament_cmake'
+[25.449s] INFO:colcon.colcon_cmake.task.cmake.build:Building CMake package in '/root/racing_ws/src/racing_obstacle_detection_yolo-develop'
+[25.789s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_core.shell.bat': Not used on non-Windows systems
+[25.790s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[25.790s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[27.366s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/root/racing_ws/build/racing_obstacle_detection_yolo': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/root/dev_ws/install/tf2_tools:/opt/ros/foxy /usr/bin/cmake --build /root/racing_ws/build/racing_obstacle_detection_yolo -- -j4 -l4
+[107.814s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/root/racing_ws/build/racing_obstacle_detection_yolo' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/root/dev_ws/install/tf2_tools:/opt/ros/foxy /usr/bin/cmake --build /root/racing_ws/build/racing_obstacle_detection_yolo -- -j4 -l4
+[107.991s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/root/racing_ws/build/racing_obstacle_detection_yolo': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/root/dev_ws/install/tf2_tools:/opt/ros/foxy /usr/bin/cmake --install /root/racing_ws/build/racing_obstacle_detection_yolo
+[108.357s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(racing_obstacle_detection_yolo)
+[108.360s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/root/racing_ws/build/racing_obstacle_detection_yolo' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/root/dev_ws/install/tf2_tools:/opt/ros/foxy /usr/bin/cmake --install /root/racing_ws/build/racing_obstacle_detection_yolo
+[108.799s] Level 1:colcon.colcon_core.environment:checking '/root/racing_ws/install/racing_obstacle_detection_yolo' for CMake module files
+[108.803s] Level 1:colcon.colcon_core.environment:checking '/root/racing_ws/install/racing_obstacle_detection_yolo' for CMake config files
+[108.805s] Level 1:colcon.colcon_core.shell:create_environment_hook('racing_obstacle_detection_yolo', 'cmake_prefix_path')
+[109.133s] INFO:colcon.colcon_core.shell:Creating environment hook '/root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/hook/cmake_prefix_path.ps1'
+[109.139s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/hook/cmake_prefix_path.dsv'
+[109.142s] INFO:colcon.colcon_core.shell:Creating environment hook '/root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/hook/cmake_prefix_path.sh'
+[109.149s] Level 1:colcon.colcon_core.environment:checking '/root/racing_ws/install/racing_obstacle_detection_yolo/lib'
+[109.150s] Level 1:colcon.colcon_core.environment:checking '/root/racing_ws/install/racing_obstacle_detection_yolo/bin'
+[109.151s] Level 1:colcon.colcon_core.environment:checking '/root/racing_ws/install/racing_obstacle_detection_yolo/lib/pkgconfig/racing_obstacle_detection_yolo.pc'
+[109.153s] Level 1:colcon.colcon_core.environment:checking '/root/racing_ws/install/racing_obstacle_detection_yolo/lib/python3.8/site-packages'
+[109.154s] Level 1:colcon.colcon_core.environment:checking '/root/racing_ws/install/racing_obstacle_detection_yolo/bin'
+[109.482s] INFO:colcon.colcon_core.shell:Creating package script '/root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/package.ps1'
+[109.488s] INFO:colcon.colcon_core.shell:Creating package descriptor '/root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/package.dsv'
+[109.493s] INFO:colcon.colcon_core.shell:Creating package script '/root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/package.sh'
+[109.499s] INFO:colcon.colcon_core.shell:Creating package script '/root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/package.bash'
+[109.507s] INFO:colcon.colcon_core.shell:Creating package script '/root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/package.zsh'
+[109.513s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/root/racing_ws/install/racing_obstacle_detection_yolo/share/colcon-core/packages/racing_obstacle_detection_yolo)
+[110.092s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(racing_obstacle_detection_yolo)
+[110.419s] Level 1:colcon.colcon_core.environment:checking '/root/racing_ws/install/racing_obstacle_detection_yolo' for CMake module files
+[110.423s] Level 1:colcon.colcon_core.environment:checking '/root/racing_ws/install/racing_obstacle_detection_yolo' for CMake config files
+[110.425s] Level 1:colcon.colcon_core.shell:create_environment_hook('racing_obstacle_detection_yolo', 'cmake_prefix_path')
+[110.752s] INFO:colcon.colcon_core.shell:Creating environment hook '/root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/hook/cmake_prefix_path.ps1'
+[110.755s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/hook/cmake_prefix_path.dsv'
+[110.758s] INFO:colcon.colcon_core.shell:Creating environment hook '/root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/hook/cmake_prefix_path.sh'
+[110.762s] Level 1:colcon.colcon_core.environment:checking '/root/racing_ws/install/racing_obstacle_detection_yolo/lib'
+[110.762s] Level 1:colcon.colcon_core.environment:checking '/root/racing_ws/install/racing_obstacle_detection_yolo/bin'
+[110.763s] Level 1:colcon.colcon_core.environment:checking '/root/racing_ws/install/racing_obstacle_detection_yolo/lib/pkgconfig/racing_obstacle_detection_yolo.pc'
+[110.764s] Level 1:colcon.colcon_core.environment:checking '/root/racing_ws/install/racing_obstacle_detection_yolo/lib/python3.8/site-packages'
+[110.766s] Level 1:colcon.colcon_core.environment:checking '/root/racing_ws/install/racing_obstacle_detection_yolo/bin'
+[111.096s] INFO:colcon.colcon_core.shell:Creating package script '/root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/package.ps1'
+[111.100s] INFO:colcon.colcon_core.shell:Creating package descriptor '/root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/package.dsv'
+[111.104s] INFO:colcon.colcon_core.shell:Creating package script '/root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/package.sh'
+[111.107s] INFO:colcon.colcon_core.shell:Creating package script '/root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/package.bash'
+[111.110s] INFO:colcon.colcon_core.shell:Creating package script '/root/racing_ws/install/racing_obstacle_detection_yolo/share/racing_obstacle_detection_yolo/package.zsh'
+[111.113s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/root/racing_ws/install/racing_obstacle_detection_yolo/share/colcon-core/packages/racing_obstacle_detection_yolo)
+[111.116s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:closing loop
+[111.117s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:loop closed
+[111.118s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete finished with '0'
+[111.119s] DEBUG:colcon.colcon_core.event_reactor:joining thread
+[111.486s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.notify_send': Could not find 'notify-send'
+[111.487s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.terminal_notifier': Not used on non-Darwin systems
+[111.488s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.win32': Not used on non-Windows systems
+[111.488s] INFO:colcon.colcon_notification.desktop_notification:Sending desktop notification using 'notify2'
+[111.492s] DEBUG:colcon.colcon_notification.desktop_notification.notify2:Failed to initialize notify2: org.freedesktop.DBus.Error.ServiceUnknown: The name org.freedesktop.Notifications was not provided by any .service files
+[111.493s] DEBUG:colcon.colcon_core.event_reactor:joined thread
+[111.813s] INFO:colcon.colcon_core.shell:Creating prefix script '/root/racing_ws/install/local_setup.ps1'
+[111.821s] INFO:colcon.colcon_core.shell:Creating prefix util module '/root/racing_ws/install/_local_setup_util_ps1.py'
+[111.833s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/root/racing_ws/install/setup.ps1'
+[112.153s] INFO:colcon.colcon_core.shell:Creating prefix script '/root/racing_ws/install/local_setup.sh'
+[112.158s] INFO:colcon.colcon_core.shell:Creating prefix util module '/root/racing_ws/install/_local_setup_util_sh.py'
+[112.161s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/root/racing_ws/install/setup.sh'
+[112.480s] INFO:colcon.colcon_core.shell:Creating prefix script '/root/racing_ws/install/local_setup.bash'
+[112.484s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/root/racing_ws/install/setup.bash'
+[112.892s] INFO:colcon.colcon_core.shell:Creating prefix script '/root/racing_ws/install/local_setup.zsh'
+[112.898s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/root/racing_ws/install/setup.zsh'

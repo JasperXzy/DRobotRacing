@@ -1,0 +1,21 @@
+[45.046s] Invoking command in '/root/racing_ws/src/qr_detector': PYTHONPATH=/root/racing_ws/build/qr_detector/prefix_override:/root/racing_ws/install/qr_detector/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/python3 setup.py egg_info --egg-base ../../build/qr_detector build --build-base /root/racing_ws/build/qr_detector/build install --record /root/racing_ws/build/qr_detector/install.log --install-scripts $base/lib/qr_detector --single-version-externally-managed
+[51.335s] running egg_info
+[51.337s] writing ../../build/qr_detector/qr_detector.egg-info/PKG-INFO
+[51.340s] writing dependency_links to ../../build/qr_detector/qr_detector.egg-info/dependency_links.txt
+[51.341s] writing entry points to ../../build/qr_detector/qr_detector.egg-info/entry_points.txt
+[51.342s] writing requirements to ../../build/qr_detector/qr_detector.egg-info/requires.txt
+[51.347s] writing top-level names to ../../build/qr_detector/qr_detector.egg-info/top_level.txt
+[51.348s] reading manifest file '../../build/qr_detector/qr_detector.egg-info/SOURCES.txt'
+[51.349s] writing manifest file '../../build/qr_detector/qr_detector.egg-info/SOURCES.txt'
+[51.350s] running build
+[51.350s] running build_py
+[51.379s] running install
+[51.380s] running install_lib
+[51.381s] running install_data
+[51.381s] running install_egg_info
+[51.383s] removing '/root/racing_ws/install/qr_detector/lib/python3.8/site-packages/qr_detector-0.0.0-py3.8.egg-info' (and everything under it)
+[51.384s] Copying ../../build/qr_detector/qr_detector.egg-info to /root/racing_ws/install/qr_detector/lib/python3.8/site-packages/qr_detector-0.0.0-py3.8.egg-info
+[51.385s] running install_scripts
+[51.412s] Installing qr_detector_node script to /root/racing_ws/install/qr_detector/lib/qr_detector
+[51.414s] writing list of installed files to '/root/racing_ws/build/qr_detector/install.log'
+[55.818s] Invoked command in '/root/racing_ws/src/qr_detector' returned '0': PYTHONPATH=/root/racing_ws/build/qr_detector/prefix_override:/root/racing_ws/install/qr_detector/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/python3 setup.py egg_info --egg-base ../../build/qr_detector build --build-base /root/racing_ws/build/qr_detector/build install --record /root/racing_ws/build/qr_detector/install.log --install-scripts $base/lib/qr_detector --single-version-externally-managed

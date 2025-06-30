@@ -1,0 +1,25 @@
+[16.581s] Invoking command in '/root/racing_ws/build/racing_control': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/root/racing_ws/install/qwen_pic_to_text:/root/racing_ws/install/qr_detector:/root/dev_ws/install/tf2_tools:/opt/ros/foxy /usr/bin/cmake --build /root/racing_ws/build/racing_control -- -j4 -l4
+[17.254s] [100%] Built target racing_control
+[17.355s] Invoked command in '/root/racing_ws/build/racing_control' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/root/racing_ws/install/qwen_pic_to_text:/root/racing_ws/install/qr_detector:/root/dev_ws/install/tf2_tools:/opt/ros/foxy /usr/bin/cmake --build /root/racing_ws/build/racing_control -- -j4 -l4
+[17.863s] Invoking command in '/root/racing_ws/build/racing_control': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/root/racing_ws/install/qwen_pic_to_text:/root/racing_ws/install/qr_detector:/root/dev_ws/install/tf2_tools:/opt/ros/foxy /usr/bin/cmake --install /root/racing_ws/build/racing_control
+[18.038s] -- Install configuration: ""
+[18.063s] -- Up-to-date: /root/racing_ws/install/racing_control/lib/racing_control/racing_control
+[18.090s] -- Up-to-date: /root/racing_ws/install/racing_control/share/racing_control/launch
+[18.106s] -- Up-to-date: /root/racing_ws/install/racing_control/share/racing_control/launch/racing_control.launch.py
+[18.116s] -- Up-to-date: /root/racing_ws/install/racing_control/share/racing_control/launch/racing_control_simulation.launch.py
+[18.124s] -- Up-to-date: /root/racing_ws/install/racing_control/share/ament_index/resource_index/package_run_dependencies/racing_control
+[18.135s] -- Up-to-date: /root/racing_ws/install/racing_control/share/ament_index/resource_index/parent_prefix_path/racing_control
+[18.140s] -- Up-to-date: /root/racing_ws/install/racing_control/share/racing_control/environment/ament_prefix_path.sh
+[18.166s] -- Up-to-date: /root/racing_ws/install/racing_control/share/racing_control/environment/ament_prefix_path.dsv
+[18.181s] -- Up-to-date: /root/racing_ws/install/racing_control/share/racing_control/environment/path.sh
+[18.200s] -- Up-to-date: /root/racing_ws/install/racing_control/share/racing_control/environment/path.dsv
+[18.212s] -- Up-to-date: /root/racing_ws/install/racing_control/share/racing_control/local_setup.bash
+[18.268s] -- Up-to-date: /root/racing_ws/install/racing_control/share/racing_control/local_setup.sh
+[18.276s] -- Up-to-date: /root/racing_ws/install/racing_control/share/racing_control/local_setup.zsh
+[18.280s] -- Up-to-date: /root/racing_ws/install/racing_control/share/racing_control/local_setup.dsv
+[18.301s] -- Installing: /root/racing_ws/install/racing_control/share/racing_control/package.dsv
+[18.315s] -- Up-to-date: /root/racing_ws/install/racing_control/share/ament_index/resource_index/packages/racing_control
+[18.320s] -- Up-to-date: /root/racing_ws/install/racing_control/share/racing_control/cmake/racing_controlConfig.cmake
+[18.335s] -- Up-to-date: /root/racing_ws/install/racing_control/share/racing_control/cmake/racing_controlConfig-version.cmake
+[18.348s] -- Up-to-date: /root/racing_ws/install/racing_control/share/racing_control/package.xml
+[18.355s] Invoked command in '/root/racing_ws/build/racing_control' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/root/racing_ws/install/qwen_pic_to_text:/root/racing_ws/install/qr_detector:/root/dev_ws/install/tf2_tools:/opt/ros/foxy /usr/bin/cmake --install /root/racing_ws/build/racing_control

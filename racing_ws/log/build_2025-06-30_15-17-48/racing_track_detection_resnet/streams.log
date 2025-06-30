@@ -1,0 +1,25 @@
+[12.973s] Invoking command in '/root/racing_ws/build/racing_track_detection_resnet': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/root/racing_ws/install/qwen_pic_to_text:/root/racing_ws/install/qr_detector:/root/dev_ws/install/tf2_tools:/opt/ros/foxy /usr/bin/cmake --build /root/racing_ws/build/racing_track_detection_resnet -- -j4 -l4
+[15.486s] [100%] Built target racing_track_detection_resnet
+[15.492s] Invoked command in '/root/racing_ws/build/racing_track_detection_resnet' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/root/racing_ws/install/qwen_pic_to_text:/root/racing_ws/install/qr_detector:/root/dev_ws/install/tf2_tools:/opt/ros/foxy /usr/bin/cmake --build /root/racing_ws/build/racing_track_detection_resnet -- -j4 -l4
+[15.625s] Invoking command in '/root/racing_ws/build/racing_track_detection_resnet': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/root/racing_ws/install/qwen_pic_to_text:/root/racing_ws/install/qr_detector:/root/dev_ws/install/tf2_tools:/opt/ros/foxy /usr/bin/cmake --install /root/racing_ws/build/racing_track_detection_resnet
+[15.676s] -- Install configuration: ""
+[15.684s] -- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/lib/racing_track_detection_resnet/racing_track_detection_resnet
+[15.689s] -- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/launch
+[15.693s] -- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/launch/racing_track_detection_resnet.launch.py
+[15.706s] -- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/launch/racing_track_detection_resnet_simulation.launch.py
+[15.707s] -- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/ament_index/resource_index/package_run_dependencies/racing_track_detection_resnet
+[15.708s] -- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/ament_index/resource_index/parent_prefix_path/racing_track_detection_resnet
+[15.709s] -- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/environment/ament_prefix_path.sh
+[15.710s] -- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/environment/ament_prefix_path.dsv
+[15.712s] -- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/environment/path.sh
+[15.714s] -- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/environment/path.dsv
+[15.716s] -- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/local_setup.bash
+[15.717s] -- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/local_setup.sh
+[15.718s] -- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/local_setup.zsh
+[15.719s] -- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/local_setup.dsv
+[15.721s] -- Installing: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/package.dsv
+[15.721s] -- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/ament_index/resource_index/packages/racing_track_detection_resnet
+[15.723s] -- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/cmake/racing_track_detection_resnetConfig.cmake
+[15.724s] -- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/cmake/racing_track_detection_resnetConfig-version.cmake
+[15.725s] -- Up-to-date: /root/racing_ws/install/racing_track_detection_resnet/share/racing_track_detection_resnet/package.xml
+[15.726s] Invoked command in '/root/racing_ws/build/racing_track_detection_resnet' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/root/racing_ws/install/qwen_pic_to_text:/root/racing_ws/install/qr_detector:/root/dev_ws/install/tf2_tools:/opt/ros/foxy /usr/bin/cmake --install /root/racing_ws/build/racing_track_detection_resnet

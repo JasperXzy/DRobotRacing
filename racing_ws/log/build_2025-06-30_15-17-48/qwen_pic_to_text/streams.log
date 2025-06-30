@@ -1,0 +1,21 @@
+[46.906s] Invoking command in '/root/racing_ws/src/qwen_pic_to_text': PYTHONPATH=/root/racing_ws/build/qwen_pic_to_text/prefix_override:/root/racing_ws/install/qwen_pic_to_text/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/python3 setup.py egg_info --egg-base ../../build/qwen_pic_to_text build --build-base /root/racing_ws/build/qwen_pic_to_text/build install --record /root/racing_ws/build/qwen_pic_to_text/install.log --install-scripts $base/lib/qwen_pic_to_text --single-version-externally-managed
+[51.391s] running egg_info
+[51.394s] writing ../../build/qwen_pic_to_text/qwen_pic_to_text.egg-info/PKG-INFO
+[51.395s] writing dependency_links to ../../build/qwen_pic_to_text/qwen_pic_to_text.egg-info/dependency_links.txt
+[51.396s] writing entry points to ../../build/qwen_pic_to_text/qwen_pic_to_text.egg-info/entry_points.txt
+[51.397s] writing requirements to ../../build/qwen_pic_to_text/qwen_pic_to_text.egg-info/requires.txt
+[51.398s] writing top-level names to ../../build/qwen_pic_to_text/qwen_pic_to_text.egg-info/top_level.txt
+[51.756s] reading manifest file '../../build/qwen_pic_to_text/qwen_pic_to_text.egg-info/SOURCES.txt'
+[51.771s] writing manifest file '../../build/qwen_pic_to_text/qwen_pic_to_text.egg-info/SOURCES.txt'
+[51.773s] running build
+[51.786s] running build_py
+[51.791s] running install
+[51.800s] running install_lib
+[51.824s] running install_data
+[51.838s] running install_egg_info
+[51.866s] removing '/root/racing_ws/install/qwen_pic_to_text/lib/python3.8/site-packages/qwen_pic_to_text-0.0.0-py3.8.egg-info' (and everything under it)
+[51.869s] Copying ../../build/qwen_pic_to_text/qwen_pic_to_text.egg-info to /root/racing_ws/install/qwen_pic_to_text/lib/python3.8/site-packages/qwen_pic_to_text-0.0.0-py3.8.egg-info
+[51.901s] running install_scripts
+[52.176s] Installing qwen_pic_to_text script to /root/racing_ws/install/qwen_pic_to_text/lib/qwen_pic_to_text
+[52.180s] writing list of installed files to '/root/racing_ws/build/qwen_pic_to_text/install.log'
+[53.676s] Invoked command in '/root/racing_ws/src/qwen_pic_to_text' returned '0': PYTHONPATH=/root/racing_ws/build/qwen_pic_to_text/prefix_override:/root/racing_ws/install/qwen_pic_to_text/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/python3 setup.py egg_info --egg-base ../../build/qwen_pic_to_text build --build-base /root/racing_ws/build/qwen_pic_to_text/build install --record /root/racing_ws/build/qwen_pic_to_text/install.log --install-scripts $base/lib/qwen_pic_to_text --single-version-externally-managed

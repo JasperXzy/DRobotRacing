@@ -1,0 +1,83 @@
+[0.000000] (-) TimerEvent: {}
+[0.001467] (-) JobUnselected: {'identifier': 'ackermann_msgs'}
+[0.001982] (-) JobUnselected: {'identifier': 'origincar_base'}
+[0.003151] (-) JobUnselected: {'identifier': 'origincar_description'}
+[0.004264] (-) JobUnselected: {'identifier': 'origincar_msg'}
+[0.004765] (-) JobUnselected: {'identifier': 'serial'}
+[0.004950] (-) JobUnselected: {'identifier': 'tf2_tools'}
+[0.005114] (origincar_bringup) JobQueued: {'identifier': 'origincar_bringup', 'dependencies': OrderedDict()}
+[0.005276] (origincar_bringup) JobStarted: {'identifier': 'origincar_bringup'}
+[0.098881] (-) TimerEvent: {}
+[0.200252] (-) TimerEvent: {}
+[0.303842] (-) TimerEvent: {}
+[0.405704] (-) TimerEvent: {}
+[0.507871] (-) TimerEvent: {}
+[0.608781] (-) TimerEvent: {}
+[0.709672] (-) TimerEvent: {}
+[0.813299] (-) TimerEvent: {}
+[0.915037] (-) TimerEvent: {}
+[1.016083] (-) TimerEvent: {}
+[1.118874] (-) TimerEvent: {}
+[1.222269] (-) TimerEvent: {}
+[1.323471] (-) TimerEvent: {}
+[1.426047] (-) TimerEvent: {}
+[1.531375] (-) TimerEvent: {}
+[1.633383] (-) TimerEvent: {}
+[1.726057] (origincar_bringup) JobProgress: {'identifier': 'origincar_bringup', 'progress': 'cmake'}
+[1.731689] (origincar_bringup) JobProgress: {'identifier': 'origincar_bringup', 'progress': 'build'}
+[1.736466] (origincar_bringup) Command: {'cmd': ['/usr/bin/cmake', '--build', '/root/dev_ws/build/origincar_bringup', '--', '-j4', '-l4'], 'cwd': '/root/dev_ws/build/origincar_bringup', 'env': OrderedDict([('LESSOPEN', '| /usr/bin/lesspipe %s'), ('LANGUAGE', 'en_US.UTF-8'), ('USER', 'root'), ('SSH_CLIENT', '172.20.10.14 60761 22'), ('XDG_SESSION_TYPE', 'tty'), ('SHLVL', '1'), ('LD_LIBRARY_PATH', '/root/dev_ws/install/origincar_base/lib:/root/dev_ws/install/serial/lib:/root/dev_ws/install/origincar_msg/lib:/root/dev_ws/install/ackermann_msgs/lib:/opt/tros/opt/yaml_cpp_vendor/lib:/opt/tros/lib:/opt/ros/foxy/opt/yaml_cpp_vendor/lib:/opt/ros/foxy/opt/rviz_ogre_vendor/lib:/opt/ros/foxy/lib/aarch64-linux-gnu:/opt/ros/foxy/lib'), ('MOTD_SHOWN', 'pam'), ('HOME', '/root'), ('OLDPWD', '/root/dev_ws/src'), ('SSH_TTY', '/dev/pts/8'), ('ROS_PYTHON_VERSION', '3'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/0/bus'), ('COLCON_PREFIX_PATH', '/root/dev_ws/install:/opt/tros'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'root'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('PKG_CONFIG_PATH', '/opt/tros/lib/x86_64-linux-gnu/pkgconfig:/opt/tros/lib/pkgconfig'), ('XDG_SESSION_CLASS', 'user'), ('TERM', 'xterm'), ('XDG_SESSION_ID', '9'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/opt/tros/bin:/opt/ros/foxy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin'), ('XDG_RUNTIME_DIR', '/run/user/0'), ('LANG', 'en_US.UTF-8'), ('LS_COLORS', 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:'), ('AMENT_PREFIX_PATH', '/root/dev_ws/install/tf2_tools:/root/dev_ws/install/origincar_base:/root/dev_ws/install/serial:/root/dev_ws/install/origincar_msg:/root/dev_ws/install/origincar_description:/root/dev_ws/install/origincar_bringup:/root/dev_ws/install/ackermann_msgs:/opt/tros:/opt/ros/foxy'), ('SHELL', '/bin/bash'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('PWD', '/root/dev_ws/build/origincar_bringup'), ('SSH_CONNECTION', '172.20.10.14 60761 172.20.10.13 22'), ('PYTHONPATH', '/root/dev_ws/install/tf2_tools/lib/python3.8/site-packages:/root/dev_ws/install/origincar_base/lib/python3.8/site-packages:/root/dev_ws/install/origincar_msg/lib/python3.8/site-packages:/root/dev_ws/install/ackermann_msgs/lib/python3.8/site-packages:/opt/tros/lib/python3.8/site-packages:/opt/ros/foxy/lib/python3.8/site-packages'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/root/dev_ws/install/origincar_base:/root/dev_ws/install/serial:/root/dev_ws/install/origincar_msg:/root/dev_ws/install/origincar_description:/root/dev_ws/install/origincar_bringup:/root/dev_ws/install/ackermann_msgs:/opt/tros:/root/dev_ws/install/tf2_tools:/opt/ros/foxy')]), 'shell': False}
+[1.742430] (-) TimerEvent: {}
+[1.843729] (-) TimerEvent: {}
+[1.944899] (-) TimerEvent: {}
+[1.977802] (origincar_bringup) CommandEnded: {'returncode': 0}
+[2.045251] (-) TimerEvent: {}
+[2.068764] (origincar_bringup) JobProgress: {'identifier': 'origincar_bringup', 'progress': 'install'}
+[2.122167] (origincar_bringup) Command: {'cmd': ['/usr/bin/cmake', '--install', '/root/dev_ws/build/origincar_bringup'], 'cwd': '/root/dev_ws/build/origincar_bringup', 'env': OrderedDict([('LESSOPEN', '| /usr/bin/lesspipe %s'), ('LANGUAGE', 'en_US.UTF-8'), ('USER', 'root'), ('SSH_CLIENT', '172.20.10.14 60761 22'), ('XDG_SESSION_TYPE', 'tty'), ('SHLVL', '1'), ('LD_LIBRARY_PATH', '/root/dev_ws/install/origincar_base/lib:/root/dev_ws/install/serial/lib:/root/dev_ws/install/origincar_msg/lib:/root/dev_ws/install/ackermann_msgs/lib:/opt/tros/opt/yaml_cpp_vendor/lib:/opt/tros/lib:/opt/ros/foxy/opt/yaml_cpp_vendor/lib:/opt/ros/foxy/opt/rviz_ogre_vendor/lib:/opt/ros/foxy/lib/aarch64-linux-gnu:/opt/ros/foxy/lib'), ('MOTD_SHOWN', 'pam'), ('HOME', '/root'), ('OLDPWD', '/root/dev_ws/src'), ('SSH_TTY', '/dev/pts/8'), ('ROS_PYTHON_VERSION', '3'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/0/bus'), ('COLCON_PREFIX_PATH', '/root/dev_ws/install:/opt/tros'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'root'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('PKG_CONFIG_PATH', '/opt/tros/lib/x86_64-linux-gnu/pkgconfig:/opt/tros/lib/pkgconfig'), ('XDG_SESSION_CLASS', 'user'), ('TERM', 'xterm'), ('XDG_SESSION_ID', '9'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/opt/tros/bin:/opt/ros/foxy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin'), ('XDG_RUNTIME_DIR', '/run/user/0'), ('LANG', 'en_US.UTF-8'), ('LS_COLORS', 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:'), ('AMENT_PREFIX_PATH', '/root/dev_ws/install/tf2_tools:/root/dev_ws/install/origincar_base:/root/dev_ws/install/serial:/root/dev_ws/install/origincar_msg:/root/dev_ws/install/origincar_description:/root/dev_ws/install/origincar_bringup:/root/dev_ws/install/ackermann_msgs:/opt/tros:/opt/ros/foxy'), ('SHELL', '/bin/bash'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('PWD', '/root/dev_ws/build/origincar_bringup'), ('SSH_CONNECTION', '172.20.10.14 60761 172.20.10.13 22'), ('PYTHONPATH', '/root/dev_ws/install/tf2_tools/lib/python3.8/site-packages:/root/dev_ws/install/origincar_base/lib/python3.8/site-packages:/root/dev_ws/install/origincar_msg/lib/python3.8/site-packages:/root/dev_ws/install/ackermann_msgs/lib/python3.8/site-packages:/opt/tros/lib/python3.8/site-packages:/opt/ros/foxy/lib/python3.8/site-packages'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/root/dev_ws/install/origincar_base:/root/dev_ws/install/serial:/root/dev_ws/install/origincar_msg:/root/dev_ws/install/origincar_description:/root/dev_ws/install/origincar_bringup:/root/dev_ws/install/ackermann_msgs:/opt/tros:/root/dev_ws/install/tf2_tools:/opt/ros/foxy')]), 'shell': False}
+[2.145479] (-) TimerEvent: {}
+[2.174937] (origincar_bringup) StdoutLine: {'line': b'-- Install configuration: ""\n'}
+[2.176420] (origincar_bringup) StdoutLine: {'line': b'-- Up-to-date: /root/dev_ws/install/origincar_bringup/share/origincar_bringup/launch\n'}
+[2.177530] (origincar_bringup) StdoutLine: {'line': b'-- Installing: /root/dev_ws/install/origincar_bringup/share/origincar_bringup/launch/camera.launch_backup.py\n'}
+[2.178656] (origincar_bringup) StdoutLine: {'line': b'-- Installing: /root/dev_ws/install/origincar_bringup/share/origincar_bringup/launch/camera.launch.py\n'}
+[2.179874] (origincar_bringup) StdoutLine: {'line': b'-- Up-to-date: /root/dev_ws/install/origincar_bringup/share/origincar_bringup/launch/usb_websocket_display.launch.py\n'}
+[2.181127] (origincar_bringup) StdoutLine: {'line': b'-- Up-to-date: /root/dev_ws/install/origincar_bringup/share/ament_index/resource_index/package_run_dependencies/origincar_bringup\n'}
+[2.181976] (origincar_bringup) StdoutLine: {'line': b'-- Up-to-date: /root/dev_ws/install/origincar_bringup/share/ament_index/resource_index/parent_prefix_path/origincar_bringup\n'}
+[2.183068] (origincar_bringup) StdoutLine: {'line': b'-- Up-to-date: /root/dev_ws/install/origincar_bringup/share/origincar_bringup/environment/ament_prefix_path.sh\n'}
+[2.184108] (origincar_bringup) StdoutLine: {'line': b'-- Up-to-date: /root/dev_ws/install/origincar_bringup/share/origincar_bringup/environment/ament_prefix_path.dsv\n'}
+[2.184902] (origincar_bringup) StdoutLine: {'line': b'-- Up-to-date: /root/dev_ws/install/origincar_bringup/share/origincar_bringup/environment/path.sh\n'}
+[2.185647] (origincar_bringup) StdoutLine: {'line': b'-- Up-to-date: /root/dev_ws/install/origincar_bringup/share/origincar_bringup/environment/path.dsv\n'}
+[2.186327] (origincar_bringup) StdoutLine: {'line': b'-- Up-to-date: /root/dev_ws/install/origincar_bringup/share/origincar_bringup/local_setup.bash\n'}
+[2.186969] (origincar_bringup) StdoutLine: {'line': b'-- Up-to-date: /root/dev_ws/install/origincar_bringup/share/origincar_bringup/local_setup.sh\n'}
+[2.187774] (origincar_bringup) StdoutLine: {'line': b'-- Up-to-date: /root/dev_ws/install/origincar_bringup/share/origincar_bringup/local_setup.zsh\n'}
+[2.188577] (origincar_bringup) StdoutLine: {'line': b'-- Up-to-date: /root/dev_ws/install/origincar_bringup/share/origincar_bringup/local_setup.dsv\n'}
+[2.189781] (origincar_bringup) StdoutLine: {'line': b'-- Installing: /root/dev_ws/install/origincar_bringup/share/origincar_bringup/package.dsv\n'}
+[2.191161] (origincar_bringup) StdoutLine: {'line': b'-- Up-to-date: /root/dev_ws/install/origincar_bringup/share/ament_index/resource_index/packages/origincar_bringup\n'}
+[2.192974] (origincar_bringup) StdoutLine: {'line': b'-- Up-to-date: /root/dev_ws/install/origincar_bringup/share/origincar_bringup/cmake/origincar_bringupConfig.cmake\n'}
+[2.195461] (origincar_bringup) StdoutLine: {'line': b'-- Up-to-date: /root/dev_ws/install/origincar_bringup/share/origincar_bringup/cmake/origincar_bringupConfig-version.cmake\n'}
+[2.196188] (origincar_bringup) StdoutLine: {'line': b'-- Up-to-date: /root/dev_ws/install/origincar_bringup/share/origincar_bringup/package.xml\n'}
+[2.196863] (origincar_bringup) CommandEnded: {'returncode': 0}
+[2.245996] (-) TimerEvent: {}
+[2.348794] (-) TimerEvent: {}
+[2.452440] (-) TimerEvent: {}
+[2.557201] (-) TimerEvent: {}
+[2.659227] (-) TimerEvent: {}
+[2.762968] (-) TimerEvent: {}
+[2.864405] (-) TimerEvent: {}
+[2.966972] (-) TimerEvent: {}
+[3.068570] (-) TimerEvent: {}
+[3.170499] (-) TimerEvent: {}
+[3.278096] (-) TimerEvent: {}
+[3.379248] (-) TimerEvent: {}
+[3.480476] (-) TimerEvent: {}
+[3.583350] (-) TimerEvent: {}
+[3.689808] (-) TimerEvent: {}
+[3.791350] (-) TimerEvent: {}
+[3.896433] (-) TimerEvent: {}
+[3.998859] (-) TimerEvent: {}
+[4.101732] (-) TimerEvent: {}
+[4.208232] (-) TimerEvent: {}
+[4.310818] (-) TimerEvent: {}
+[4.413522] (-) TimerEvent: {}
+[4.516218] (-) TimerEvent: {}
+[4.618234] (-) TimerEvent: {}
+[4.655156] (origincar_bringup) JobEnded: {'identifier': 'origincar_bringup', 'rc': 0}
+[4.659372] (-) EventReactorShutdown: {}
