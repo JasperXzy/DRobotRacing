@@ -33,7 +33,6 @@ JLinkLog.txt
 *.sct
 *.map
 
-models
 
 # Prerequisites
 *.d
