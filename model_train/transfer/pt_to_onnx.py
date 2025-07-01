@@ -1,4 +1,4 @@
 from ultralytics import YOLO
 
-model = YOLO('/home/jasperxzy/dataset/yolo11n.pt')
-model.export(format="onnx", dynamic=True)
+model = YOLO('D:/Racing/D_Robot/runs/detect/yolov5n_train_img_640_v1/weights/yolov5n.pt')
+model.export(format="onnx", opset=11)

@@ -2,7 +2,9 @@ import cv2
 from ultralytics import YOLO
 
 
-model = YOLO('D:/Racing/D_Robot/models/yolo11_img_640.onnx')
+# model = YOLO('D:/Racing/D_Robot/models/yolo11_img_640.onnx')
+# model = YOLO('D:/Racing/D_Robot/runs/detect/yolov5s_train_img_640_v1/weights/yolov5s.onnx')
+model = YOLO('D:/Racing/D_Robot/models/yolov5s_640x640_nv12_quantized_model.onnx')
 class_names = ['obstacle'] 
 
 video_path = 'E:/Dataset/obstacle/obstacle_raw/output.avi'
