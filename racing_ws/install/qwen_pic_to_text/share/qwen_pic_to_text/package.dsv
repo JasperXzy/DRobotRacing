@@ -1,6 +1,0 @@
-source;share/qwen_pic_to_text/hook/pythonpath.ps1
-source;share/qwen_pic_to_text/hook/pythonpath.dsv
-source;share/qwen_pic_to_text/hook/pythonpath.sh
-source;share/qwen_pic_to_text/hook/ament_prefix_path.ps1
-source;share/qwen_pic_to_text/hook/ament_prefix_path.dsv
-source;share/qwen_pic_to_text/hook/ament_prefix_path.sh

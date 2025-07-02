@@ -1,3 +1,0 @@
-CMake Error: The source directory "/root/racing_ws/src/racing_obstacle_detection_yolo-develop" does not exist.
-Specify --help for usage, or press the help button on the CMake GUI.
-make: *** [Makefile:326: cmake_check_build_system] Error 1

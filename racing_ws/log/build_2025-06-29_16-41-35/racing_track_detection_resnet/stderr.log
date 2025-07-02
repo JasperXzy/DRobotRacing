@@ -1,7 +1,0 @@
-[01m[K/root/racing_ws/src/racing_track_detection_resnet-develop/src/racing_track_detection.cpp:[m[K In member function ‘[01m[Kvirtual int32_t LineCoordinateParser::Parse(std::shared_ptr<LineCoordinateResult>&, std::vector<std::shared_ptr<hobot::easy_dnn::InputDescription> >&, std::shared_ptr<hobot::easy_dnn::OutputDescription>&, std::shared_ptr<hobot::easy_dnn::DNNTensor>&)[m[K’:
-[01m[K/root/racing_ws/src/racing_track_detection_resnet-develop/src/racing_track_detection.cpp:304:53:[m[K [01;35m[Kwarning: [m[Kunused parameter ‘[01m[Kinput_descriptions[m[K’ [[01;35m[K-Wunused-parameter[m[K]
-  304 |     [01;35m[Kstd::vector<std::shared_ptr<InputDescription>> &input_descriptions[m[K,
-      |     [01;35m[K~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~[m[K
-[01m[K/root/racing_ws/src/racing_track_detection_resnet-develop/src/racing_track_detection.cpp:305:41:[m[K [01;35m[Kwarning: [m[Kunused parameter ‘[01m[Koutput_description[m[K’ [[01;35m[K-Wunused-parameter[m[K]
-  305 |     [01;35m[Kstd::shared_ptr<OutputDescription> &output_description[m[K,
-      |     [01;35m[K~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~[m[K

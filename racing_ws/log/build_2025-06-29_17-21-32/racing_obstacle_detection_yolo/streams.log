@@ -1,5 +1,0 @@
-[9.150s] Invoking command in '/root/racing_ws/build/racing_obstacle_detection_yolo': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/root/dev_ws/install/tf2_tools:/opt/ros/foxy /usr/bin/cmake --build /root/racing_ws/build/racing_obstacle_detection_yolo -- -j4 -l4
-[9.506s] CMake Error: The source directory "/root/racing_ws/src/racing_obstacle_detection_yolo-develop" does not exist.
-[9.508s] Specify --help for usage, or press the help button on the CMake GUI.
-[9.524s] make: *** [Makefile:326: cmake_check_build_system] Error 1
-[9.547s] Invoked command in '/root/racing_ws/build/racing_obstacle_detection_yolo' returned '2': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/root/dev_ws/install/tf2_tools:/opt/ros/foxy /usr/bin/cmake --build /root/racing_ws/build/racing_obstacle_detection_yolo -- -j4 -l4
