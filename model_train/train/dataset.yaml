@@ -1,0 +1,10 @@
+path: /home/jasperxzy/dataset/obstacle_v3.0
+
+train: image/train
+val: image/val
+
+nc: 1
+
+names:
+  0: obstacle
+  
