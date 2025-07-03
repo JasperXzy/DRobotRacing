@@ -6,6 +6,7 @@
 
 runs
 
+
 *.bak
 *.ddk
 *.edk
@@ -31,3 +32,6 @@ JLinkLog.txt
 *.htm
 *.sct
 *.map
+
+models
+

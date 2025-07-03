@@ -1,11 +1,12 @@
 import cv2
 from ultralytics import YOLO
 
-model = YOLO("D:/Racing/D_Robot/runs/detect/yolo11_train_img_640_v2/weights/best.pt")
+
+model = YOLO('D:/Racing/D_Robot/models/yolo11_img_640.pt')
+class_names = ['obstacle'] 
 
 video_path = 'E:/Dataset/obstacle/obstacle_raw/output.avi'
 cap = cv2.VideoCapture(video_path)
-
 
 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
 fps = cap.get(cv2.CAP_PROP_FPS)
@@ -20,24 +21,24 @@ while cap.isOpened():
         break
 
     results = model(frame)
-
     for result in results:
-        boxes = result.boxes.xyxy.cpu().numpy()  # [x1, y1, x2, y2]
-        confs = result.boxes.conf.cpu().numpy()  # 置信度
-        clss = result.boxes.cls.cpu().numpy()    # 分类id
+        boxes = result.boxes.xyxy.cpu().numpy()    # [x1, y1, x2, y2]
+        confs = result.boxes.conf.cpu().numpy()    # 置信度
+        clss = result.boxes.cls.cpu().numpy()      # 分类id
 
         for box, conf, cls in zip(boxes, confs, clss):
             x1, y1, x2, y2 = map(int, box)
-            label = f"{model.model.names[int(cls)]}: {conf:.2f}"
+            label = f"{class_names[int(cls)]}: {conf:.2f}"
             color = (0, 255, 0)
             cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
             cv2.putText(frame, label, (x1, y1 - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
-            
     cv2.imshow('YOLO11 Detection', frame)
 
     out.write(frame)
 
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
 
 cap.release()
 out.release()
