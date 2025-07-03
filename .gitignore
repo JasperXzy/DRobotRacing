@@ -1,5 +1,10 @@
 *.pt
 *.onnx
 *.bin
+*.jpg
+*.png
 
 runs
+build
+install
+log
