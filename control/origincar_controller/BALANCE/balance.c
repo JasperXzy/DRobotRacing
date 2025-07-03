@@ -21,7 +21,7 @@ Output  : none
 **************************************************************************/
 void Drive_Motor(float Vx,float Vy,float Vz)
 {
-		float amplitude=3.5; //Wheel target speed limit //车轮目标速度限幅
+		float amplitude=5.0f; //Wheel target speed limit //车轮目标速度限幅
 	
 	  //Speed smoothing is enabled when moving the omnidirectional trolley
 	  //全向移动小车才开启速度平滑处理

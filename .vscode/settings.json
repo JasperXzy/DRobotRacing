@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "DataScope_DP.C": "cpp",
-        "system.h": "c"
+        "system.h": "c",
+        "sys.h": "c"
     }
 }
