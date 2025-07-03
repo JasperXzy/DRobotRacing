@@ -443,8 +443,8 @@ void Get_RC(void)
 	 {	
 		 //If no direction control instruction is available, check the steering control status
 		 //如果无方向控制指令，检查转向控制状态
-		 if     (Flag_Left ==1)  Move_Z= PI/2*(RC_Velocity/500); //left rotation  //左自转  
-		 else if(Flag_Right==1)  Move_Z=-PI/2*(RC_Velocity/500); //right rotation //右自转
+		 if     (Flag_Left ==1)  Move_Z= PI/2; //left rotation  //左自转  
+		 else if(Flag_Right==1)  Move_Z=-PI/2; //right rotation //右自转
 		 else 		               Move_Z=0;                       //stop           //停止
 	 }
 	}	
@@ -476,7 +476,7 @@ void Get_RC(void)
 	else if(Car_Mode==Diff_Car||Car_Mode==Tank_Car||Car_Mode==FourWheel_Car)
 	{
 	  if(Move_X<0) Move_Z=-Move_Z; //The differential control principle series requires this treatment //差速控制原理系列需要此处理
-		Move_Z=Move_Z*RC_Velocity/500;
+		Move_Z=Move_Z;
 	}		
 	
 	//Unit conversion, mm/s -> m/s
@@ -519,14 +519,14 @@ void PS2_control(void)
 	
 	  //Handle PS2 controller control commands
 	  //对PS2手柄控制命令进行处理
-		Move_X=LX*RC_Velocity/128; 
-		Move_Y=LY*RC_Velocity/128; 
+		Move_X=LX*500/128; 
+		Move_Y=LY*500/128; 
 	  Move_Z=RY*(PI/2)/128;      
 	
 	  //Z-axis data conversion //Z轴数据转化
 	  if(Car_Mode==Mec_Car||Car_Mode==Omni_Car)
 		{
-			Move_Z=Move_Z*RC_Velocity/500;
+			Move_Z=Move_Z;
 		}	
 		else if(Car_Mode==Akm_Car)
 		{
@@ -537,7 +537,7 @@ void PS2_control(void)
 		else if(Car_Mode==Diff_Car||Car_Mode==Tank_Car||Car_Mode==FourWheel_Car)
 		{
 			if(Move_X<0) Move_Z=-Move_Z; //The differential control principle series requires this treatment //差速控制原理系列需要此处理
-			Move_Z=Move_Z*RC_Velocity/500;
+			Move_Z=Move_Z;
 		}	
 		 
 	  //Unit conversion, mm/s -> m/s
