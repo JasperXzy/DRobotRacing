@@ -1,8 +1,13 @@
+# model
 *.pt
 *.onnx
 *.bin
+
+# media
 *.jpg
 *.png
+*.avi
+*.mp4
 
 runs
 build
