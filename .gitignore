@@ -35,3 +35,7 @@ JLinkLog.txt
 
 models
 
+*.uvguix.*
+*.uvoptx
+*.hex
+
