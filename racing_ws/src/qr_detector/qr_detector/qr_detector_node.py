@@ -6,6 +6,7 @@ from cv_bridge import CvBridge
 import cv2
 import time
 import sys
+from pyzbar import pyzbar
 
 class QRDetectorNode(Node):
     def __init__(self):
@@ -31,7 +32,7 @@ class QRDetectorNode(Node):
         self.qr_detector = cv2.QRCodeDetector()
         
         # 状态标志
-        self.activated = False  # 是否激活二维码检测
+        self.activated = True  # 是否激活二维码检测（新增：更改为True，默认打开）
         self.should_stop = False  # 是否停止节点
         self.last_sign_time = 0  # 上次接收到信号的时间
         
@@ -74,12 +75,13 @@ class QRDetectorNode(Node):
             return
             
         current_time = time.time()
-        
+        '''
         # 检查信号超时
         if current_time - self.last_sign_time > self.sign_timeout:
             self.get_logger().warn(f'超过 {self.sign_timeout} 秒未收到信号，自动停用二维码检测')
             self.activated = False
             return
+        '''
         
         # 按固定频率处理图像
         if current_time - self.last_process_time < self.process_interval:
@@ -97,36 +99,48 @@ class QRDetectorNode(Node):
                     (int(w * self.scale_factor), int(h * self.scale_factor)),
                     interpolation=cv2.INTER_AREA
                 )
-            
             # 检测二维码
-            retval, decoded_info, points, _ = self.qr_detector.detectAndDecodeMulti(cv_image)
+            #retval, decoded_info, points, _ = self.qr_detector.detectAndDecodeMulti(cv_image)
+            barcodes = pyzbar.decode(cv_image)
+            
             
             # 处理检测结果
-            if retval and len(decoded_info) > 0:
-                for data in decoded_info:
-                    if data:  # 确保数据非空
-                        # 发布结果
-                        qr_msg = String()
-                        qr_msg.data = data
-                        self.publisher_.publish(qr_msg)
+            if len(barcodes) > 0:
+                for barcode in barcodes:
+                    barcodeData = barcode.data.decode("utf-8")
+                    barcodeType = barcode.type
+
+                    # 发布结果
+                    qr_msg = String()
+                    qr_msg.data = barcodeData
+                    self.publisher_.publish(qr_msg)
                         
-                        self.get_logger().info(f'检测到二维码: {data}')
+                    self.get_logger().info(f'检测到二维码: {barcodeData}')
+                    self.send_stop_command() # 发送停下小车命令
+                    # 设置停止标志
+                    self.should_stop = True
                         
-                        # 设置停止标志
-                        self.should_stop = True
+                    # 触发节点停止
+                    self.get_logger().info('二维码已识别，节点即将停止')
                         
-                        # 触发节点停止
-                        self.get_logger().info('二维码已识别，节点即将停止')
-                        
-                        # 创建新线程安全停止节点
-                        self.create_timer(0.1, self.stop_node)  # 0.1秒后停止
-                        break  # 只处理第一个有效二维码
+                    # 创建新线程安全停止节点
+                    self.create_timer(0.1, self.stop_node)  # 0.1秒后停止
+                    break  # 只处理第一个有效二维码
+                
         
         except Exception as e:
             self.get_logger().error(f'处理图像时出错: {str(e)}', throttle_duration_sec=30)
         finally:
             self.last_process_time = current_time
-    
+
+    def send_stop_command(self):
+        """发送停止命令到机器人（新增）"""
+        twist = Twist()
+        twist.linear.x = 0.0  # 线速度为0
+        twist.angular.z = 0.0  # 角速度为0
+        self.vel_pub.publish(twist)
+        self.get_logger().info('发送停止命令')
+
     def stop_node(self):
         """安全停止节点"""
         self.get_logger().info('节点停止中...')
