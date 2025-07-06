@@ -3,5 +3,6 @@
         "DataScope_DP.C": "cpp",
         "system.h": "c",
         "sys.h": "c"
-    }
+    },
+    "cmake.sourceDirectory": "D:/学习/大一/比赛/地瓜/D_Robot/dev_ws/src/origincar_base"
 }

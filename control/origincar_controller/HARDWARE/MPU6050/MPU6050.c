@@ -494,9 +494,9 @@ void MPU_Get_Gyroscope(void)
 			gyro[2]= Original_gyro[2]-Deviation_gyro[2];
 
 			//Õ”¬›“«‘Î…˘¥¶¿Ì
-			if(gyro[0] < 30 && gyro[0] > -30) gyro[0] = 0; 
-			if(gyro[1] < 30 && gyro[1] > -30) gyro[1] = 0;
-			if(gyro[2] < 30 && gyro[2] > -30) gyro[2] = 0; 
+			if(gyro[0] < 40 && gyro[0] > -40) gyro[0] = 0; 
+			if(gyro[1] < 40 && gyro[1] > -40) gyro[1] = 0;
+			if(gyro[2] < 40 && gyro[2] > -40) gyro[2] = 0; 
 		}
 	 	
 }

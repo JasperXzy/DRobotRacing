@@ -21,7 +21,7 @@ Output  : none
 **************************************************************************/
 void Drive_Motor(float Vx,float Vy,float Vz)
 {
-		float amplitude=5.0f; //Wheel target speed limit //车轮目标速度限幅
+		float amplitude=7.0f; //Wheel target speed limit //车轮目标速度限幅
 	
 	  //Speed smoothing is enabled when moving the omnidirectional trolley
 	  //全向移动小车才开启速度平滑处理
@@ -568,10 +568,10 @@ void Remote_Control(void)
 
 	  //limiter //限幅
     int LX,LY,RY,RX,Remote_RCvelocity; 
-		Remoter_Ch1=target_limit_int(Remoter_Ch1,1000,2000);
-		Remoter_Ch2=target_limit_int(Remoter_Ch2,1000,2000);
-		Remoter_Ch3=target_limit_int(Remoter_Ch3,1000,2000);
-		Remoter_Ch4=target_limit_int(Remoter_Ch4,1000,2000);
+		Remoter_Ch1=target_limit_int(Remoter_Ch1,500,2500);
+		Remoter_Ch2=target_limit_int(Remoter_Ch2,500,2500);
+		Remoter_Ch3=target_limit_int(Remoter_Ch3,500,2500);
+		Remoter_Ch4=target_limit_int(Remoter_Ch4,500,2500);
 
 	  // Front and back direction of left rocker. Control forward and backward.
 	  //左摇杆前后方向。控制前进后退。
@@ -601,14 +601,14 @@ void Remote_Control(void)
 		
 		//The remote control command of model aircraft is processed
 		//对航模遥控控制命令进行处理
-    Move_X= LX*Remote_RCvelocity/500; 
-		Move_Y=-LY*Remote_RCvelocity/500;
+    Move_X= LX; 
+		Move_Y=-LY;
 		Move_Z=-RY*(PI/2)/500;      
 			 
 		//Z轴数据转化
 	  if(Car_Mode==Mec_Car||Car_Mode==Omni_Car)
 		{
-			Move_Z=Move_Z*Remote_RCvelocity/500;
+			Move_Z=Move_Z;
 		}	
 		else if(Car_Mode==Akm_Car)
 		{
@@ -619,7 +619,7 @@ void Remote_Control(void)
 		else if(Car_Mode==Diff_Car||Car_Mode==Tank_Car||Car_Mode==FourWheel_Car)
 		{
 			if(Move_X<0) Move_Z=-Move_Z; //The differential control principle series requires this treatment //差速控制原理系列需要此处理
-			Move_Z=Move_Z*Remote_RCvelocity/500;
+			Move_Z=Move_Z;
 		}
 		
 	  //Unit conversion, mm/s -> m/s

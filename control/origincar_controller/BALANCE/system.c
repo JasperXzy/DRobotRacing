@@ -19,7 +19,7 @@ int Servo;
 
 //Default speed of remote control car, unit: mm/s
 //遥控小车的默认速度，单位：mm/s
-float RC_Velocity=500; 
+float RC_Velocity=00; 
 
 //Vehicle three-axis target moving speed, unit: m/s
 //小车三轴目标运动速度，单位：m/s
@@ -27,7 +27,7 @@ float Move_X, Move_Y, Move_Z;
 
 //PID parameters of Speed control
 //速度控制PID参数
-float Velocity_KP=300,Velocity_KI=300; 
+float Velocity_KP=350,Velocity_KI=350; 
 
 //Smooth control of intermediate variables, dedicated to omni-directional moving cars
 //平滑控制中间变量，全向移动小车专用
