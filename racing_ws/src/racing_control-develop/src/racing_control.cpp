@@ -175,12 +175,12 @@ void RacingControlNode::ObstaclesAvoiding(const ai_msgs::msg::Target &target){
   auto twist_msg = geometry_msgs::msg::Twist();
   int center_x = target.rois[0].rect.x_offset + target.rois[0].rect.width / 2;
   float temp = center_x - 320.0;
-  if ((-20 < temp ) && ( temp < 0)) {
+  if ((-20 < center_x ) && ( center_x < 0)) {
     temp = -20;
-  } else if ((temp > 0) && (temp < 20)) {
+  } else if ((center_x > 0) && (center_x < 20)) {
     temp = 20;
   }
-  float angular_z = avoid_angular_ratio_ * 100 / temp;
+  float angular_z = avoid_angular_ratio_ * 700 / temp;
   twist_msg.linear.x = avoid_linear_speed_;
   twist_msg.linear.y = 0.0;
   twist_msg.linear.z = 0.0;

@@ -17,14 +17,31 @@
 
 #include <vector>
 #include <queue>
-#include <mutex>  // 确保包含mutex头文件
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/int16_multi_array.hpp"
 #include "geometry_msgs/msg/point_stamped.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "ai_msgs/msg/perception_targets.hpp"
-#include "std_msgs/msg/string.hpp"  // 添加头文件
+
+
+
+// struct compare_point {
+//   bool operator()(const geometry_msgs::msg::PointStamped::SharedPtr f1,
+//                   const geometry_msgs::msg::PointStamped::SharedPtr f2) {
+//     return ((f1->header.stamp.sec > f2->header.stamp.sec) ||
+//             ((f1->header.stamp.sec == f2->header.stamp.sec) &&
+//              (f1->header.stamp.nanosec > f2->header.stamp.nanosec)));
+//   }
+// };
+// struct compare_target {
+//   bool operator()(const ai_msgs::msg::PerceptionTargets::SharedPtr m1,
+//                   const ai_msgs::msg::PerceptionTargets::SharedPtr m2) {
+//     return ((m1->header.stamp.sec > m2->header.stamp.sec) ||
+//             ((m1->header.stamp.sec == m2->header.stamp.sec) &&
+//              (m1->header.stamp.nanosec > m2->header.stamp.nanosec)));
+//   }
+// };
 
 class RacingControlNode : public rclcpp::Node{
 public:
@@ -33,17 +50,15 @@ public:
   ~RacingControlNode() override;
 private:
     rclcpp::Subscription<ai_msgs::msg::PerceptionTargets>::SharedPtr point_subscriber_;
+
     rclcpp::Subscription<ai_msgs::msg::PerceptionTargets>::SharedPtr target_subscriber_;
-    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr qr_subscriber_;  // 添加二维码订阅
-    
+
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr publisher_;
 
     void subscription_callback_point(const ai_msgs::msg::PerceptionTargets::SharedPtr point_msg);
     void subscription_callback_target(const ai_msgs::msg::PerceptionTargets::SharedPtr targets_msg);
-    void subscription_callback_qr(const std_msgs::msg::String::SharedPtr qr_msg);  // 添加二维码回调
     void LineFollowing(const ai_msgs::msg::Target &point_msg);
     void ObstaclesAvoiding(const ai_msgs::msg::Target &target);
-    void StopCar();  // 添加停车函数
     void MessageProcess(void);
     std::string pub_control_topic_ = "cmd_vel";
 
@@ -55,7 +70,6 @@ private:
     targets_queue_;
 
     std::mutex point_target_mutex_;
-    std::mutex qr_mutex_;  // 添加二维码互斥锁
     bool process_stop_ = false;
     std::shared_ptr<std::thread> msg_process_;
     float avoid_angular_ratio_ = 1.1;
@@ -65,7 +79,6 @@ private:
     bool sub_target_ = false; 
     int bottom_threshold_ = 340;
     float confidence_threshold_ = 0.5;
-    bool qr_detected_ = false;  // 添加二维码检测标志
 };
 
 
