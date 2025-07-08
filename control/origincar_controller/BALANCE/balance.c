@@ -107,7 +107,7 @@ void Drive_Motor(float Vx,float Vy,float Vz)
 			MOTOR_B.Target=target_limit_float(MOTOR_B.Target,-amplitude,amplitude); 
 			MOTOR_C.Target=0; //Out of use //没有使用到
 			MOTOR_D.Target=0; //Out of use //没有使用到
-			Servo=target_limit_int(Servo,800,2200);	//Servo PWM value limit //舵机PWM值限幅
+			Servo=target_limit_int(Servo,1215,1785);	//Servo PWM value limit //舵机PWM值限幅
 		}
 		
 		//Differential car
@@ -116,11 +116,11 @@ void Drive_Motor(float Vx,float Vy,float Vz)
 		{
 			//Inverse kinematics //运动学逆解
 			MOTOR_A.Target  = Vx - Vz * Wheel_spacing / 2.0f; //计算出左轮的目标速度
-		  MOTOR_B.Target =  Vx + Vz * Wheel_spacing / 2.0f; //计算出右轮的目标速度
+		  	MOTOR_B.Target =  Vx + Vz * Wheel_spacing / 2.0f; //计算出右轮的目标速度
 			
 			//Wheel (motor) target speed limit //车轮(电机)目标速度限幅
-		  MOTOR_A.Target=target_limit_float( MOTOR_A.Target,-amplitude,amplitude); 
-	    MOTOR_B.Target=target_limit_float( MOTOR_B.Target,-amplitude,amplitude); 
+		  	MOTOR_A.Target=target_limit_float( MOTOR_A.Target,-amplitude,amplitude); 
+	    	MOTOR_B.Target=target_limit_float( MOTOR_B.Target,-amplitude,amplitude); 
 			MOTOR_C.Target=0; //Out of use //没有使用到
 			MOTOR_D.Target=0; //Out of use //没有使用到
 		}
@@ -148,11 +148,11 @@ void Drive_Motor(float Vx,float Vy,float Vz)
 		{
 			//Inverse kinematics //运动学逆解
 			MOTOR_A.Target  = Vx - Vz * (Wheel_spacing) / 2.0f;    //计算出左轮的目标速度
-		  MOTOR_B.Target =  Vx + Vz * (Wheel_spacing) / 2.0f;    //计算出右轮的目标速度
+		  	MOTOR_B.Target =  Vx + Vz * (Wheel_spacing) / 2.0f;    //计算出右轮的目标速度
 			
 			//Wheel (motor) target speed limit //车轮(电机)目标速度限幅
-		  MOTOR_A.Target=target_limit_float( MOTOR_A.Target,-amplitude,amplitude); 
-	    MOTOR_B.Target=target_limit_float( MOTOR_B.Target,-amplitude,amplitude); 
+		  	MOTOR_A.Target=target_limit_float( MOTOR_A.Target,-amplitude,amplitude); 
+	   		MOTOR_B.Target=target_limit_float( MOTOR_B.Target,-amplitude,amplitude); 
 			MOTOR_C.Target=0; //Out of use //没有使用到
 			MOTOR_D.Target=0; //Out of use //没有使用到
 		}
@@ -284,7 +284,7 @@ void Limit_Pwm(int amplitude)
 {	
 	    MOTOR_A.Motor_Pwm=target_limit_float(MOTOR_A.Motor_Pwm,-amplitude,amplitude);
 	    MOTOR_B.Motor_Pwm=target_limit_float(MOTOR_B.Motor_Pwm,-amplitude,amplitude);
-		  MOTOR_C.Motor_Pwm=target_limit_float(MOTOR_C.Motor_Pwm,-amplitude,amplitude);
+		MOTOR_C.Motor_Pwm=target_limit_float(MOTOR_C.Motor_Pwm,-amplitude,amplitude);
 	    MOTOR_D.Motor_Pwm=target_limit_float(MOTOR_D.Motor_Pwm,-amplitude,amplitude);
 }	    
 /**************************************************************************
@@ -625,7 +625,7 @@ void Remote_Control(void)
 	  //Unit conversion, mm/s -> m/s
     //单位转换，mm/s -> m/s	
 		Move_X=Move_X/1000;       
-    Move_Y=Move_Y/1000;      
+    	Move_Y=Move_Y/1000;      
 		Move_Z=Move_Z;
 		
 	  //Data within 1 second after entering the model control mode will not be processed

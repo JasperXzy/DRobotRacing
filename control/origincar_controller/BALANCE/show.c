@@ -174,24 +174,24 @@ void oled_show(void)
 		 else if(Car_Mode==Akm_Car||Car_Mode==Diff_Car||Car_Mode==Tank_Car)
 		 {
 			 //Akm_Car, Diff_Car and Tank_Car Display the target speed and current actual speed of motor A
-			 //阿克曼、差速、履带车显示电机A的目标速度和当前实际速度
+			 //阿克曼、差速、履带车显示电机A的PWM和当前实际速度
 			 OLED_ShowString(0,20,"L:");
-			 if( MOTOR_A.Target<0)	OLED_ShowString(15,20,"-"),
-															OLED_ShowNumber(20,20,-MOTOR_A.Target*1000,5,12);
+			 if( MOTOR_A.Motor_Pwm<0)	OLED_ShowString(15,20,"-"),
+															OLED_ShowNumber(20,20,-MOTOR_A.Motor_Pwm,5,12);
 			 else                 	OLED_ShowString(15,20,"+"),
-															OLED_ShowNumber(20,20, MOTOR_A.Target*1000,5,12);  
+															OLED_ShowNumber(20,20, MOTOR_A.Motor_Pwm,5,12);  
 			 if( MOTOR_A.Encoder<0)	OLED_ShowString(60,20,"-"),
 															OLED_ShowNumber(75,20,-MOTOR_A.Encoder*1000,5,12);
 			 else                 	OLED_ShowString(60,20,"+"),
 															OLED_ShowNumber(75,20, MOTOR_A.Encoder*1000,5,12);
 			 //Akm_Car, Diff_Car and Tank_Car Display the target speed and current actual speed of motor B
-			 //阿克曼、差速、履带车显示电机B的目标速度和当前实际速度
+			 //阿克曼、差速、履带车显示电机B的PWM和当前实际速度
 			 OLED_ShowString(0,30,"R:");
-			 if( MOTOR_B.Target<0)	OLED_ShowString(15,30,"-"),
-															OLED_ShowNumber(20,30,-MOTOR_B.Target*1000,5,12);
+			 if( MOTOR_B.Motor_Pwm<0)	OLED_ShowString(15,30,"-"),
+															OLED_ShowNumber(20,30,-MOTOR_B.Motor_Pwm,5,12);
 			 else                 	OLED_ShowString(15,30,"+"),
-															OLED_ShowNumber(20,30,  MOTOR_B.Target*1000,5,12);  
-				
+															OLED_ShowNumber(20,30, MOTOR_B.Motor_Pwm,5,12);  
+
 			 if( MOTOR_B.Encoder<0)	OLED_ShowString(60,30,"-"),
 															OLED_ShowNumber(75,30,-MOTOR_B.Encoder*1000,5,12);
 			 else                 	OLED_ShowString(60,30,"+"),

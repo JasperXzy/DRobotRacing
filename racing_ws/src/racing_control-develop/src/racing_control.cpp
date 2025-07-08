@@ -47,7 +47,7 @@ RacingControlNode::RacingControlNode(const std::string& node_name,const rclcpp::
   point_subscriber_ =
     this->create_subscription<ai_msgs::msg::PerceptionTargets>(
       "racing_track_center_detection",
-      10,
+      rclcpp::SensorDataQoS(),
       std::bind(&RacingControlNode::subscription_callback_point,
       this,
       std::placeholders::_1)); 
@@ -55,7 +55,7 @@ RacingControlNode::RacingControlNode(const std::string& node_name,const rclcpp::
   target_subscriber_ =
     this->create_subscription<ai_msgs::msg::PerceptionTargets>(
       "racing_obstacle_detection",
-      10,
+      rclcpp::SensorDataQoS(),
       std::bind(&RacingControlNode::subscription_callback_target,
       this,
       std::placeholders::_1)); 
@@ -136,7 +136,11 @@ void RacingControlNode::MessageProcess(){
           for(const auto &target : targets_msg->targets){
             if(target.type == "construction_cone"){
               int bottom = target.rois[0].rect.y_offset + target.rois[0].rect.height;
-              if (bottom < bottom_threshold_){
+              // ***加过滤边缘障碍
+              //int left_edge_x = target.rois[0].rect.x_offset + target.rois[0].rect.width;   //左边界为框的右边
+              //int right_edge_x = target.rois[0].rect.x_offset;  // 右边界为框的左边
+
+              if (bottom < bottom_threshold_ ){
                 LineFollowing(point_msg->targets[0]);
               } else {
                 if(target.rois[0].confidence > confidence_threshold_){
@@ -155,9 +159,9 @@ void RacingControlNode::LineFollowing(const ai_msgs::msg::Target &point_msg){
   int x = int(point_msg.points[0].point[0].x);
   int y = int(point_msg.points[0].point[0].y);
   float temp = x - 320.0;
-  if ((-20 < x ) && ( x < 0)) {
+  if ((-20 < temp ) && ( temp < 0)) {
     temp = -20;
-  } else if ((x > 0) && (x < 20)) {
+  } else if ((temp > 0) && (temp < 20)) {
     temp = 20;
   }
   auto twist_msg = geometry_msgs::msg::Twist();
@@ -175,12 +179,12 @@ void RacingControlNode::ObstaclesAvoiding(const ai_msgs::msg::Target &target){
   auto twist_msg = geometry_msgs::msg::Twist();
   int center_x = target.rois[0].rect.x_offset + target.rois[0].rect.width / 2;
   float temp = center_x - 320.0;
-  if ((-20 < center_x ) && ( center_x < 0)) {
+  if ((-20 < temp ) && ( temp <= 0)) {
     temp = -20;
-  } else if ((center_x > 0) && (center_x < 20)) {
+  } else if ((temp > 0) && (temp < 20)) {
     temp = 20;
   }
-  float angular_z = avoid_angular_ratio_ * 700 / temp;
+  float angular_z = avoid_angular_ratio_ * 100 / temp;
   twist_msg.linear.x = avoid_linear_speed_;
   twist_msg.linear.y = 0.0;
   twist_msg.linear.z = 0.0;
