@@ -20,7 +20,6 @@ def video_to_picture(video_path, output_folder, frame_interval=1):
         if not ret:
             break  
 
-        # Save the frame if it matches the interval
         if frame_count % frame_interval == 0:
             image_filename = f"{output_folder}\\frame_{frame_count:04d}.jpg"
             cv2.imwrite(image_filename, frame)
@@ -34,5 +33,5 @@ def video_to_picture(video_path, output_folder, frame_interval=1):
 if __name__ == "__main__":
     video_path = "D:\Racing\D_Robot\dataset\output.avi"
     output_folder = "D:\Racing\D_Robot\dataset\obstacle"
-    frame_interval = 1  # Save every frame
+    frame_interval = 1
     video_to_picture(video_path, output_folder, frame_interval)

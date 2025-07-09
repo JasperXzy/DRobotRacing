@@ -18,11 +18,11 @@ limitations under the License.
 
 // D-Robotics *.bin 模型路径
 // Path of D-Robotics *.bin model.
-#define MODEL_PATH "/userdata/D_Robot/racing_ws/src/racing_obstacle_detection/yolov8n_demo/yolov8n_detect_bayese_640x640_nv12_modified_cv2_cv3.bin"
+#define MODEL_PATH "/userdata/racing_obstacle_detection/yolov8n_demo/yolov8n_detect_bayese_640x640_nv12_modified_cv2_cv3.bin"
 
 // 推理使用的测试图片路径
 // Path of the test image used for inference.
-#define TESR_IMG_PATH "/userdata/D_Robot/racing_ws/src/racing_obstacle_detection/yolov8n_demo/3511.jpg"
+#define TEST_IMG_PATH "/userdata/racing_obstacle_detection/yolov8n_demo/3511.jpg"
 
 // 前处理方式选择, 0:Resize, 1:LetterBox
 // Preprocessing method selection, 0: Resize, 1: LetterBox
@@ -308,8 +308,8 @@ int main()
 
     // 3.1 利用OpenCV读取图像
     // 3.1 Read image using OpenCV
-    cv::Mat img = cv::imread(TESR_IMG_PATH);
-    std::cout << "img path: " << TESR_IMG_PATH << std::endl;
+    cv::Mat img = cv::imread(TEST_IMG_PATH);
+    std::cout << "img path: " << TEST_IMG_PATH << std::endl;
     std::cout << "img (cols, rows, channels): (";
     std::cout << img.rows << ", ";
     std::cout << img.cols << ", ";

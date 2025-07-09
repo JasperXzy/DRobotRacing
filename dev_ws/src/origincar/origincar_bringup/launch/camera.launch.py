@@ -17,23 +17,6 @@ def generate_launch_description():
             }.items()
     )
     
-    # # 新增图像压缩节点
-    # image_compressor = Node(
-    #     package='image_transport',
-    #     executable='republish',
-    #     name='image_compressor',
-    #     arguments=['raw', 'compressed'],
-    #     remappings=[
-    #         ('in', '/image_raw'),        # 输入原始图像
-    #         ('out/compressed', '/image_compressed')  # 输出压缩图像
-    #     ],
-    #     parameters=[{
-    #         'compressed.format': 'jpeg',  # 压缩格式
-    #         'compressed.jpeg_quality': 30  # 质量参数 (0-100)，值越小压缩率越高
-    #     }]
-    # )
-    
-    
     return LaunchDescription([
         Node(
             package='hobot_usb_cam',

@@ -62,6 +62,20 @@ private:
     void MessageProcess(void);
     std::string pub_control_topic_ = "cmd_vel";
 
+    enum class RobotState {
+        LINE_FOLLOWING,
+        OBSTACLE_AVOIDING,
+        SEARCHING_FOR_LINE
+    };
+
+    float confidence_threshold_ = 0.5;
+    RobotState current_state_ = RobotState::LINE_FOLLOWING;
+    int avoidance_direction_ = 0;
+    rclcpp::Time search_start_time_;
+  
+ 
+    double search_duration_sec_ = 0.2; 
+
     std::priority_queue<ai_msgs::msg::PerceptionTargets::SharedPtr,
                       std::vector<ai_msgs::msg::PerceptionTargets::SharedPtr>>
     point_queue_;
@@ -77,8 +91,8 @@ private:
     float follow_angular_ratio_ = -1.0;
     float follow_linear_speed_ = 1.5;
     bool sub_target_ = false; 
-    int bottom_threshold_ = 340;
-    float confidence_threshold_ = 0.5;
+    int bottom_threshold_ = 320;
+    //int edge_fliter_;
 };
 
 

@@ -1,37 +1,76 @@
-#pragma once
+#ifndef PARSER_H
+#define PARSER_H
 
-#include <memory>
+// C/C++ Standard Librarys
+#include <iostream>
 #include <vector>
-#include <string>
+#include <algorithm>
 #include <chrono>
-#include "ai_msgs/msg/perception_targets.hpp"
-#include "rclcpp/rclcpp.hpp"
+#include <fstream>
+#include <string>
 
-// 单目标推理结果结构体
-struct DetResult {
-    int class_id;
-    float confidence;
-    float xmin;
-    float ymin;
-    float xmax;
-    float ymax;
+// Third Party Librarys
+#include <opencv2/opencv.hpp>
+#include <opencv2/dnn/dnn.hpp>
+
+// RDK BPU libDNN API
+#include "dnn/hb_dnn.h"
+#include "dnn/hb_dnn_ext.h"
+#include "dnn/plugin/hb_dnn_layer.h"
+#include "dnn/plugin/hb_dnn_plugin.h"
+#include "dnn/hb_sys.h"
+
+#include <nlohmann/json.hpp>
+ 
+struct DetectedObject {
     std::string class_name;
+    float confidence;
+    uint32_t x;
+    uint32_t y;
+    uint32_t width;
+    uint32_t height;
 };
 
-class Yolo11Parser {
+class RacingObstacleDetection
+{
 public:
-    Yolo11Parser();
-    // 解析函数: 从BPU模型输出，后处理出所有目标并填充DetResult
-    int postprocess(
-        hbDNNTensor* outputs, int output_count, // 推理输出
-        int input_width, int input_height,      // 输入尺寸
-        float conf_threshold, float nms_threshold,
-        std::vector<std::string>& class_names,
-        std::vector<DetResult>& results);
+    const std::vector<DetectedObject>& get_detected_objects() const;
 
-    // 发布到ros2
-    void publish_to_ros(
-        rclcpp::Publisher<ai_msgs::msg::PerceptionTargets>::SharedPtr pub,
-        const std::vector<DetResult>& results,
-        const rclcpp::Time& stamp = rclcpp::Clock().now());
+    void load_config();
+    int load_bin_model();
+    void detect(uint8_t* ynv12);
+    int postprocessing(float x_shift, float y_shift, float x_scale, float y_scale, int src_w, int src_h);
+    void release_model();
+
+private:
+    std::vector<DetectedObject> detected_objects_;
+    std::string model_file;
+    int class_num;
+    std::string dnn_parser;
+    std::vector<std::string> cls_names_list;
+    int preprocess_type;
+    float nms_threshold;
+    float score_threshold;
+    int nms_top_k;
+    int reg;
+    float font_size;
+    float font_thickness;
+    float line_size;
+    int32_t output_count = 0;
+    int32_t input_H, input_W;
+    int order[6] = {0, 1, 2, 3, 4, 5};
+
+    hbDNNHandle_t dnn_handle;
+    hbPackedDNNHandle_t packed_dnn_handle;
+    hbDNNTensorProperties input_properties;
+    hbDNNTensor input;
+    hbDNNTensor* output;
+    hbDNNTaskHandle_t task_handle = nullptr;
+    std::vector<std::vector<cv::Rect2d>> bboxes;
+    std::vector<std::vector<float>> scores;
+    std::vector<std::vector<int>> indices;
+
+    int rdk_check_success(int value, const std::string &errmsg);
 };
+
+#endif // PARSER_H

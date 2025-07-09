@@ -51,6 +51,10 @@ def generate_launch_description():
             'confidence_threshold',
             default_value='0.5',
             description='image subscribe topic name'),
+        DeclareLaunchArgument(
+            'search_duration_sec',
+            default_value='0.1',
+            description='image subscribe topic name'),
         Node(
             package='racing_control',
             executable='racing_control',
@@ -63,6 +67,7 @@ def generate_launch_description():
                 {"follow_linear_speed": LaunchConfiguration('follow_linear_speed')},
                 {"bottom_threshold": LaunchConfiguration('bottom_threshold')},
                 {"confidence_threshold": LaunchConfiguration('confidence_threshold')},
+                {'search_duration_sec': LaunchConfiguration('search_duration_sec')},
             ],
             arguments=['--ros-args', '--log-level', 'warn']
         )

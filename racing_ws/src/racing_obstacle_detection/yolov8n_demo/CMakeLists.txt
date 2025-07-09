@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8)
 
 project(rdk_yolov8_detect)
 
-# 设置OpenCV包
+# Set OpenCV
 find_package(OpenCV REQUIRED)
 
 # libdnn.so depends on system software dynamic link library, use -Wl,-unresolved-symbols=ignore-in-shared-libs to shield during compilation
@@ -26,7 +26,7 @@ include_directories(${DNN_PATH})
 link_directories(${DNN_LIB_PATH})
 
 # 添加可执行文件
-add_executable(main main_processed.cpp)
+add_executable(main main_mul.cpp)
 
 target_link_libraries(main
                       ${OpenCV_LIBS}

@@ -17,12 +17,16 @@
 #include <unistd.h>
 
 
-RacingControlNode::RacingControlNode(const std::string& node_name,const rclcpp::NodeOptions& options)
+// racing_control.cpp
+
+RacingControlNode::RacingControlNode(const std::string& node_name, const rclcpp::NodeOptions& options)
   : rclcpp::Node(node_name, options) {
   if (!msg_process_) {
     msg_process_ = std::make_shared<std::thread>(
         std::bind(&RacingControlNode::MessageProcess, this));
   }
+  
+  // --- 声明和获取参数 ---
   this->declare_parameter<std::string>("pub_control_topic", pub_control_topic_);
   this->get_parameter<std::string>("pub_control_topic", pub_control_topic_);
 
@@ -44,21 +48,28 @@ RacingControlNode::RacingControlNode(const std::string& node_name,const rclcpp::
   this->declare_parameter<float>("confidence_threshold", confidence_threshold_);
   this->get_parameter<float>("confidence_threshold", confidence_threshold_);
 
+  // =========== 新增参数的声明与获取 ===========
+  this->declare_parameter<double>("search_duration_sec", search_duration_sec_);
+  this->get_parameter<double>("search_duration_sec", search_duration_sec_);
+  RCLCPP_INFO(this->get_logger(), "Parameter search_duration_sec set to: %.2f s", search_duration_sec_);
+  // ===========================================
+
+  // --- 创建订阅者和发布者 (这部分不变) ---
   point_subscriber_ =
-    this->create_subscription<ai_msgs::msg::PerceptionTargets>(
-      "racing_track_center_detection",
-      10,
-      std::bind(&RacingControlNode::subscription_callback_point,
-      this,
-      std::placeholders::_1)); 
+      this->create_subscription<ai_msgs::msg::PerceptionTargets>(
+            "racing_track_center_detection",
+            rclcpp::SensorDataQoS(),
+            std::bind(&RacingControlNode::subscription_callback_point,
+                      this,
+                      std::placeholders::_1));
 
   target_subscriber_ =
-    this->create_subscription<ai_msgs::msg::PerceptionTargets>(
-      "racing_obstacle_detection",
-      10,
-      std::bind(&RacingControlNode::subscription_callback_target,
-      this,
-      std::placeholders::_1)); 
+      this->create_subscription<ai_msgs::msg::PerceptionTargets>(
+            "racing_obstacle_detection",
+            rclcpp::SensorDataQoS(),
+            std::bind(&RacingControlNode::subscription_callback_target,
+                      this,
+                      std::placeholders::_1));
   publisher_ =
     this->create_publisher<geometry_msgs::msg::Twist>(pub_control_topic_, 5);
   RCLCPP_INFO(rclcpp::get_logger("RacingControlNode"), "RacingControlNode initialized!");
@@ -115,6 +126,7 @@ void RacingControlNode::MessageProcess(){
     this->get_parameter<float>("follow_linear_speed", follow_linear_speed_);
     this->get_parameter<float>("follow_angular_ratio", follow_angular_ratio_);
     this->get_parameter<float>("confidence_threshold", confidence_threshold_);
+    this->get_parameter<double>("search_duration_sec", search_duration_sec_); // 动态更新回正时长
 
     std::unique_lock<std::mutex> lock(point_target_mutex_);
     if (!point_queue_.empty() && sub_target_ == false){
@@ -130,23 +142,84 @@ void RacingControlNode::MessageProcess(){
       point_queue_.pop();
       targets_queue_.pop();
       lock.unlock();
-      if(targets_msg->targets.size() == 0){
-        LineFollowing(point_msg->targets[0]);
-      } else {
-          for(const auto &target : targets_msg->targets){
-            if(target.type == "construction_cone"){
-              int bottom = target.rois[0].rect.y_offset + target.rois[0].rect.height;
-              if (bottom < bottom_threshold_){
-                LineFollowing(point_msg->targets[0]);
-              } else {
-                if(target.rois[0].confidence > confidence_threshold_){
-                  ObstaclesAvoiding(target);
-                }
-              }
+
+    // --- 决策预处理 ---
+    bool has_close_obstacle = false;
+    ai_msgs::msg::Target close_obstacle;
+    if (!targets_msg->targets.empty()) {
+        for (const auto &target : targets_msg->targets) {
+            int bottom = target.rois[0].rect.y_offset + target.rois[0].rect.height;
+            if (bottom >= bottom_threshold_ && target.rois[0].confidence > confidence_threshold_) {
+                has_close_obstacle = true;
+                close_obstacle = target;
+                break;
             }
-          }
+        }
+    }
+    
+    // =========== 状态机逻辑开始 ============
+    switch (current_state_) {
+        case RobotState::LINE_FOLLOWING:
+            RCLCPP_INFO_ONCE(this->get_logger(), "Current State: LINE_FOLLOWING");
+            if (has_close_obstacle) {
+                // 条件：巡线时发现近距离障碍物
+                current_state_ = RobotState::OBSTACLE_AVOIDING;
+                RCLCPP_WARN(this->get_logger(), "Transitioning to OBSTACLE_AVOIDING state.");
+
+                // 记录避障方向
+                int center_x = close_obstacle.rois[0].rect.x_offset + close_obstacle.rois[0].rect.width / 2;
+                avoidance_direction_ = (center_x < 320) ? 1 : -1; // 障碍物在左，向右(1)避；障碍物在右，向左(-1)避。
+
+                ObstaclesAvoiding(close_obstacle); // 立即执行一次避障
+            } else {
+                // 保持巡线
+                if (!point_msg->targets.empty()) {
+                    LineFollowing(point_msg->targets[0]);
+                } else {
+                    // 理论上你的模型总有输出，但作为保护逻辑，如果没点就停下
+                    publisher_->publish(geometry_msgs::msg::Twist());
+                }
+            }
+            break;
+
+        case RobotState::OBSTACLE_AVOIDING:
+            RCLCPP_INFO_ONCE(this->get_logger(), "Current State: OBSTACLE_AVOIDING");
+            if (!has_close_obstacle) {
+                // 条件：障碍物消失
+                current_state_ = RobotState::SEARCHING_FOR_LINE;
+                RCLCPP_WARN(this->get_logger(), "Obstacle cleared. Transitioning to SEARCHING_FOR_LINE state.");
+
+                // 记录开始“回正”动作的时刻
+                search_start_time_ = this->get_clock()->now();
+            } else {
+                // 保持避障
+                ObstaclesAvoiding(close_obstacle);
+            }
+            break;
+
+        case RobotState::SEARCHING_FOR_LINE:
+            RCLCPP_INFO_ONCE(this->get_logger(), "Current State: SEARCHING_FOR_LINE");
+            
+            // 检查“回正”动作是否超时
+            if ((this->get_clock()->now() - search_start_time_).seconds() >= search_duration_sec_) {
+                // 条件：回正时间到
+                current_state_ = RobotState::LINE_FOLLOWING;
+                RCLCPP_WARN(this->get_logger(), "Search cooldown finished. Transitioning back to LINE_FOLLOWING state.");
+            } else {
+                // 保持“回正”动作
+                auto search_twist = geometry_msgs::msg::Twist();
+                search_twist.linear.x = avoid_linear_speed_ * 1.2f; // 使用一个安全的快速前进
+                
+                // 向避障的相反方向转弯，以找回赛道
+                // 例如：向右避障(avoidance_direction_=1, 角速度为正)，则回正时向左转(角速度为负)
+                search_twist.angular.z = 10 * static_cast<double>(avoidance_direction_); // 1.0是可调的转向强度
+
+                RCLCPP_INFO(this->get_logger(), "Re-centering... Turning with angular.z: %f for %.2fs", search_twist.angular.z, search_duration_sec_);
+                publisher_->publish(search_twist);
+            }
+            break;
       }
-      lock.lock();
+    // =========== 状态机逻辑结束 ============
     }
   }
 }
@@ -161,7 +234,7 @@ void RacingControlNode::LineFollowing(const ai_msgs::msg::Target &point_msg){
     temp = 20;
   }
   auto twist_msg = geometry_msgs::msg::Twist();
-  float angular_z = follow_angular_ratio_ * temp / 150.0 * y / 224.0;
+  float angular_z = follow_angular_ratio_ * temp / 200.0 * y / 224.0;
   twist_msg.linear.x = follow_linear_speed_;
   twist_msg.linear.y = 0.0;
   twist_msg.linear.z = 0.0;
@@ -175,12 +248,12 @@ void RacingControlNode::ObstaclesAvoiding(const ai_msgs::msg::Target &target){
   auto twist_msg = geometry_msgs::msg::Twist();
   int center_x = target.rois[0].rect.x_offset + target.rois[0].rect.width / 2;
   float temp = center_x - 320.0;
-  if ((-20 < center_x ) && ( center_x < 0)) {
+  if ((-20 < temp ) && ( temp <= 0)) {
     temp = -20;
-  } else if ((center_x > 0) && (center_x < 20)) {
+  } else if ((temp > 0) && (temp < 20)) {
     temp = 20;
   }
-  float angular_z = avoid_angular_ratio_ * 700 / temp;
+  float angular_z = avoid_angular_ratio_ * 100 / temp;
   twist_msg.linear.x = avoid_linear_speed_;
   twist_msg.linear.y = 0.0;
   twist_msg.linear.z = 0.0;
