@@ -25,46 +25,66 @@ class QRDetectorNode(Node):
         # 创建二维码内容发布者
         self.publisher_ = self.create_publisher(String, 'qr_code', 10)
         
+        # 创建 /sign4return 发布者 (新增)
+        self.sign_pub = self.create_publisher(Int32, '/sign4return', 10)
+        
         # 图像转换工具
         self.bridge = CvBridge()
         
         # QR检测器
         self.qr_detector = cv2.QRCodeDetector()
+
+        # 创建速度控制发布者（新增）
+        #self.vel_pub = self.create_publisher(Twist, 'cmd_vel', 10)
+
+
+        # 是否控制停止
+        self.is_control = True
         
         # 状态标志
         self.activated = True  # 是否激活二维码检测（新增：更改为True，默认打开）
         self.should_stop = False  # 是否停止节点
-        self.last_sign_time = 0  # 上次接收到信号的时间
+        self.last_sign_time = 0  
         
         # 优化参数
-        self.process_interval = 0.5  # 处理间隔(秒)
-        self.scale_factor = 0.5  # 图像缩放比例
-        self.last_process_time = 0
-        
+        self.process_interval = 0.2  # 处理间隔(秒)
+        self.scale_factor = 1  # 图像缩放比例
+
+        if self.activated:
+            self.last_process_time = 0    # 上次接收到信号的时间
+            self.image_sub = self.create_subscription(
+                Image,
+                'image_raw',
+                self.image_callback,
+                10)
+
+
         # 信号超时设置
-        self.sign_timeout = 5.0  # 5秒内未收到信号则自动停用
+        #self.sign_timeout = 5.0  # 5秒内未收到信号则自动停用
         
-        self.get_logger().info('QR检测器节点已启动 (等待/sign4return信号)')
+        #self.get_logger().info('QR检测器节点已启动 (等待/sign4return信号)')
 
     def sign_callback(self, msg):
         """处理/sign4return信号的回调函数"""
         current_time = time.time()
         self.last_sign_time = current_time
         
-        if msg.data == 5 and not self.activated:
+        if msg.data == 5 and self.should_stop == False:
             # 收到激活信号且当前未激活
             self.get_logger().info('收到激活信号(5)，启动二维码检测')
             self.activated = True
             
             # 创建图像订阅者（如果尚未创建）
-            if self.image_sub is None:
-                self.image_sub = self.create_subscription(
-                    Image,
-                    'image_raw',
-                    self.image_callback,
-                    10)
+        if self.activated and self.image_sub == None:
+            self.last_process_time = 0    # 上次接收到信号的时间
+            self.image_sub = self.create_subscription(
+                Image,
+                'image_raw',
+                self.image_callback,
+                10)
+
         
-        elif msg.data != 5 and self.activated:
+        if msg.data != 5 and self.activated:
             # 收到非激活信号但当前已激活
             self.get_logger().info('收到非激活信号，停止二维码检测')
             self.activated = False
@@ -89,6 +109,8 @@ class QRDetectorNode(Node):
             
         try:
             # 转换图像
+            self.get_logger().info('开始检测二维码')
+
             cv_image = self.bridge.imgmsg_to_cv2(msg, 'bgr8')
             
             # 缩小图像尺寸
@@ -108,6 +130,7 @@ class QRDetectorNode(Node):
             if len(barcodes) > 0:
                 for barcode in barcodes:
                     barcodeData = barcode.data.decode("utf-8")
+                    
                     barcodeType = barcode.type
 
                     # 发布结果
@@ -116,10 +139,12 @@ class QRDetectorNode(Node):
                     self.publisher_.publish(qr_msg)
                         
                     self.get_logger().info(f'检测到二维码: {barcodeData}')
-                    self.send_stop_command() # 发送停下小车命令
+                    #self.send_stop_command() # 发送停下小车命令
                     # 设置停止标志
                     self.should_stop = True
-                        
+                    
+                    if self.is_control:
+                        self.send_stop_command()
                     # 触发节点停止
                     self.get_logger().info('二维码已识别，节点即将停止')
                         
@@ -132,15 +157,16 @@ class QRDetectorNode(Node):
             self.get_logger().error(f'处理图像时出错: {str(e)}', throttle_duration_sec=30)
         finally:
             self.last_process_time = current_time
-
+    
     def send_stop_command(self):
-        """发送停止命令到机器人（新增）"""
-        twist = Twist()
-        twist.linear.x = 0.0  # 线速度为0
-        twist.angular.z = 0.0  # 角速度为0
-        self.vel_pub.publish(twist)
-        self.get_logger().info('发送停止命令')
-
+        """发送停止命令到机器人"""
+        # 创建Int32消息并设置为5
+        stop_msg = Int32()
+        stop_msg.data = 5
+        self.sign_pub.publish(stop_msg)  # 发布消息
+        self.get_logger().info('已发布停止命令(5)')
+        
+    
     def stop_node(self):
         """安全停止节点"""
         self.get_logger().info('节点停止中...')
