@@ -159,13 +159,13 @@ void RacingControlNode::LineFollowing(const ai_msgs::msg::Target &point_msg){
   int x = int(point_msg.points[0].point[0].x);
   int y = int(point_msg.points[0].point[0].y);
   float temp = x - 320.0;
-  if ((-20 < temp ) && ( temp < 0)) {
+  if ((-20 < x ) && ( x < 0)) {
     temp = -20;
-  } else if ((temp > 0) && (temp < 20)) {
+  } else if ((x > 0) && (x < 20)) {
     temp = 20;
   }
   auto twist_msg = geometry_msgs::msg::Twist();
-  float angular_z = follow_angular_ratio_ * temp / 150.0 * y / 224.0;
+  float angular_z = follow_angular_ratio_ * temp / 200.0 * y / 224.0;
   twist_msg.linear.x = follow_linear_speed_;
   twist_msg.linear.y = 0.0;
   twist_msg.linear.z = 0.0;
