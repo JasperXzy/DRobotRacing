@@ -21,7 +21,7 @@ Output  : none
 **************************************************************************/
 void Drive_Motor(float Vx,float Vy,float Vz)
 {
-		float amplitude=7.0f; //Wheel target speed limit //车轮目标速度限幅
+		float amplitude=3.5; //Wheel target speed limit //车轮目标速度限幅
 	
 	  //Speed smoothing is enabled when moving the omnidirectional trolley
 	  //全向移动小车才开启速度平滑处理
@@ -97,8 +97,19 @@ void Drive_Motor(float Vx,float Vy,float Vz)
 			}
 			// The PWM value of the servo controls the steering Angle of the front wheel
 			//舵机PWM值，舵机控制前轮转向角度
-			Angle_Servo    =  -0.628f*pow(AngleR, 3) + 1.269f*pow(AngleR, 2) - 1.772f*AngleR + 1.573f;
-			Servo=SERVO_INIT + (Angle_Servo - 1.573f)*Ratio;
+			if (AngleR == 0) 
+			{
+				Angle_Servo = 0;
+			}
+			else if  (AngleR > 0) 
+			{
+				Angle_Servo = - 0.628f*pow(AngleR, 3) - 1.269f*pow(AngleR, 2) - 1.772f*AngleR;
+			} 
+			else 
+			{
+				Angle_Servo = - 0.628f*pow(AngleR, 3) + 1.269f*pow(AngleR, 2) - 1.772f*AngleR;
+			}
+			Servo=SERVO_INIT + (Angle_Servo)*Ratio;
 
 			
 			//Wheel (motor) target speed limit //车轮(电机)目标速度限幅
@@ -106,7 +117,7 @@ void Drive_Motor(float Vx,float Vy,float Vz)
 			MOTOR_B.Target=target_limit_float(MOTOR_B.Target,-amplitude,amplitude); 
 			MOTOR_C.Target=0; //Out of use //没有使用到
 			MOTOR_D.Target=0; //Out of use //没有使用到
-			Servo=target_limit_int(Servo,1215,1785);	//Servo PWM value limit //舵机PWM值限幅
+			Servo=target_limit_int(Servo,1100,1900);	//Servo PWM value limit //舵机PWM值限幅
 		}
 		
 		//Differential car
@@ -115,11 +126,11 @@ void Drive_Motor(float Vx,float Vy,float Vz)
 		{
 			//Inverse kinematics //运动学逆解
 			MOTOR_A.Target  = Vx - Vz * Wheel_spacing / 2.0f; //计算出左轮的目标速度
-		  	MOTOR_B.Target =  Vx + Vz * Wheel_spacing / 2.0f; //计算出右轮的目标速度
+		  MOTOR_B.Target =  Vx + Vz * Wheel_spacing / 2.0f; //计算出右轮的目标速度
 			
 			//Wheel (motor) target speed limit //车轮(电机)目标速度限幅
-		  	MOTOR_A.Target=target_limit_float( MOTOR_A.Target,-amplitude,amplitude); 
-	    	MOTOR_B.Target=target_limit_float( MOTOR_B.Target,-amplitude,amplitude); 
+		  MOTOR_A.Target=target_limit_float( MOTOR_A.Target,-amplitude,amplitude); 
+	    MOTOR_B.Target=target_limit_float( MOTOR_B.Target,-amplitude,amplitude); 
 			MOTOR_C.Target=0; //Out of use //没有使用到
 			MOTOR_D.Target=0; //Out of use //没有使用到
 		}
@@ -147,11 +158,11 @@ void Drive_Motor(float Vx,float Vy,float Vz)
 		{
 			//Inverse kinematics //运动学逆解
 			MOTOR_A.Target  = Vx - Vz * (Wheel_spacing) / 2.0f;    //计算出左轮的目标速度
-		  	MOTOR_B.Target =  Vx + Vz * (Wheel_spacing) / 2.0f;    //计算出右轮的目标速度
+		  MOTOR_B.Target =  Vx + Vz * (Wheel_spacing) / 2.0f;    //计算出右轮的目标速度
 			
 			//Wheel (motor) target speed limit //车轮(电机)目标速度限幅
-		  	MOTOR_A.Target=target_limit_float( MOTOR_A.Target,-amplitude,amplitude); 
-	   		MOTOR_B.Target=target_limit_float( MOTOR_B.Target,-amplitude,amplitude); 
+		  MOTOR_A.Target=target_limit_float( MOTOR_A.Target,-amplitude,amplitude); 
+	    MOTOR_B.Target=target_limit_float( MOTOR_B.Target,-amplitude,amplitude); 
 			MOTOR_C.Target=0; //Out of use //没有使用到
 			MOTOR_D.Target=0; //Out of use //没有使用到
 		}
@@ -283,7 +294,7 @@ void Limit_Pwm(int amplitude)
 {	
 	    MOTOR_A.Motor_Pwm=target_limit_float(MOTOR_A.Motor_Pwm,-amplitude,amplitude);
 	    MOTOR_B.Motor_Pwm=target_limit_float(MOTOR_B.Motor_Pwm,-amplitude,amplitude);
-		MOTOR_C.Motor_Pwm=target_limit_float(MOTOR_C.Motor_Pwm,-amplitude,amplitude);
+		  MOTOR_C.Motor_Pwm=target_limit_float(MOTOR_C.Motor_Pwm,-amplitude,amplitude);
 	    MOTOR_D.Motor_Pwm=target_limit_float(MOTOR_D.Motor_Pwm,-amplitude,amplitude);
 }	    
 /**************************************************************************
@@ -442,8 +453,8 @@ void Get_RC(void)
 	 {	
 		 //If no direction control instruction is available, check the steering control status
 		 //如果无方向控制指令，检查转向控制状态
-		 if     (Flag_Left ==1)  Move_Z= PI/2; //left rotation  //左自转  
-		 else if(Flag_Right==1)  Move_Z=-PI/2; //right rotation //右自转
+		 if     (Flag_Left ==1)  Move_Z= PI/2*(RC_Velocity/500); //left rotation  //左自转  
+		 else if(Flag_Right==1)  Move_Z=-PI/2*(RC_Velocity/500); //right rotation //右自转
 		 else 		               Move_Z=0;                       //stop           //停止
 	 }
 	}	
@@ -475,7 +486,7 @@ void Get_RC(void)
 	else if(Car_Mode==Diff_Car||Car_Mode==Tank_Car||Car_Mode==FourWheel_Car)
 	{
 	  if(Move_X<0) Move_Z=-Move_Z; //The differential control principle series requires this treatment //差速控制原理系列需要此处理
-		Move_Z=Move_Z;
+		Move_Z=Move_Z*RC_Velocity/500;
 	}		
 	
 	//Unit conversion, mm/s -> m/s
@@ -518,14 +529,14 @@ void PS2_control(void)
 	
 	  //Handle PS2 controller control commands
 	  //对PS2手柄控制命令进行处理
-		Move_X=LX*500/128; 
-		Move_Y=LY*500/128; 
+		Move_X=LX*RC_Velocity/128; 
+		Move_Y=LY*RC_Velocity/128; 
 	  Move_Z=RY*(PI/2)/128;      
 	
 	  //Z-axis data conversion //Z轴数据转化
 	  if(Car_Mode==Mec_Car||Car_Mode==Omni_Car)
 		{
-			Move_Z=Move_Z;
+			Move_Z=Move_Z*RC_Velocity/500;
 		}	
 		else if(Car_Mode==Akm_Car)
 		{
@@ -536,7 +547,7 @@ void PS2_control(void)
 		else if(Car_Mode==Diff_Car||Car_Mode==Tank_Car||Car_Mode==FourWheel_Car)
 		{
 			if(Move_X<0) Move_Z=-Move_Z; //The differential control principle series requires this treatment //差速控制原理系列需要此处理
-			Move_Z=Move_Z;
+			Move_Z=Move_Z*RC_Velocity/500;
 		}	
 		 
 	  //Unit conversion, mm/s -> m/s
@@ -567,10 +578,10 @@ void Remote_Control(void)
 
 	  //limiter //限幅
     int LX,LY,RY,RX,Remote_RCvelocity; 
-		Remoter_Ch1=target_limit_int(Remoter_Ch1,500,2500);
-		Remoter_Ch2=target_limit_int(Remoter_Ch2,500,2500);
-		Remoter_Ch3=target_limit_int(Remoter_Ch3,500,2500);
-		Remoter_Ch4=target_limit_int(Remoter_Ch4,500,2500);
+		Remoter_Ch1=target_limit_int(Remoter_Ch1,1000,2000);
+		Remoter_Ch2=target_limit_int(Remoter_Ch2,1000,2000);
+		Remoter_Ch3=target_limit_int(Remoter_Ch3,1000,2000);
+		Remoter_Ch4=target_limit_int(Remoter_Ch4,1000,2000);
 
 	  // Front and back direction of left rocker. Control forward and backward.
 	  //左摇杆前后方向。控制前进后退。
@@ -600,14 +611,14 @@ void Remote_Control(void)
 		
 		//The remote control command of model aircraft is processed
 		//对航模遥控控制命令进行处理
-    Move_X= LX; 
-		Move_Y=-LY;
+    Move_X= LX*Remote_RCvelocity/500; 
+		Move_Y=-LY*Remote_RCvelocity/500;
 		Move_Z=-RY*(PI/2)/500;      
 			 
 		//Z轴数据转化
 	  if(Car_Mode==Mec_Car||Car_Mode==Omni_Car)
 		{
-			Move_Z=Move_Z;
+			Move_Z=Move_Z*Remote_RCvelocity/500;
 		}	
 		else if(Car_Mode==Akm_Car)
 		{
@@ -618,13 +629,13 @@ void Remote_Control(void)
 		else if(Car_Mode==Diff_Car||Car_Mode==Tank_Car||Car_Mode==FourWheel_Car)
 		{
 			if(Move_X<0) Move_Z=-Move_Z; //The differential control principle series requires this treatment //差速控制原理系列需要此处理
-			Move_Z=Move_Z;
+			Move_Z=Move_Z*Remote_RCvelocity/500;
 		}
 		
 	  //Unit conversion, mm/s -> m/s
     //单位转换，mm/s -> m/s	
 		Move_X=Move_X/1000;       
-    	Move_Y=Move_Y/1000;      
+    Move_Y=Move_Y/1000;      
 		Move_Z=Move_Z;
 		
 	  //Data within 1 second after entering the model control mode will not be processed
