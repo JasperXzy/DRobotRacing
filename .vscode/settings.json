@@ -64,7 +64,10 @@
         "xmemory": "cpp",
         "xstring": "cpp",
         "xtr1common": "cpp",
-        "xutility": "cpp"
+        "xutility": "cpp",
+        "chrono": "cpp",
+        "forward_list": "cpp",
+        "iomanip": "cpp"
     },
     "cmake.sourceDirectory": "D:/学习/大一/比赛/地瓜/D_Robot/dev_ws/src/origincar_base"
 }

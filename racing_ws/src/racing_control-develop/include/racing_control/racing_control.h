@@ -57,7 +57,7 @@ private:
 
     void subscription_callback_point(const ai_msgs::msg::PerceptionTargets::SharedPtr point_msg);
     void subscription_callback_target(const ai_msgs::msg::PerceptionTargets::SharedPtr targets_msg);
-    void LineFollowing(const ai_msgs::msg::Target &point_msg);
+    void LineFollowing(const ai_msgs::msg::Target &point_msg, float line_confidence);
     void ObstaclesAvoiding(const ai_msgs::msg::Target &target);
     void MessageProcess(void);
     std::string pub_control_topic_ = "cmd_vel";
@@ -75,10 +75,13 @@ private:
     float avoid_angular_ratio_ = 1.1;
     float avoid_linear_speed_ = 0.25;
     float follow_angular_ratio_ = -1.0;
-    float follow_linear_speed_ = 1.5;
+    float follow_linear_speed_ = 0.5;
     bool sub_target_ = false; 
     int bottom_threshold_ = 340;
-    float confidence_threshold_ = 0.5;
+    float obstacle_confidence_threshold_ = 0.8;
+    float line_confidence_threshold_ = 0.9;
+    float last_avoidance_angular_z_ = 0.0; // 新增：记录最后一次避障的角速度
+    float recovering_angular_ratio_ = 0.5; // 寻找赛道时的角速度比例
 };
 
 
