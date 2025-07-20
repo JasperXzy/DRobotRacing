@@ -1,16 +1,19 @@
 # README
 
-## 编译
 ```bash
-cd ~/racing_ws
-colcon build --packages-select <packages-name>
+cd ~/ros2_ws
+colcon build --packages-select <package-name>
 ```
-## HDU-203 WLAN
+
 ```bash
 ifconfig
 sudo nmcli dev dis wlan0
 ```
+cd ../userdata
+cd ../userdata && cd racing_ws && source install/setup.bash
 
+
+## HDU-203
 ```bash
 192.168.10.12
 ```
@@ -33,17 +36,12 @@ ros2 launch origincar_bringup camera.launch.py
 ## 检测中线
 ```bash
 cd racing_ws && source install/setup.bash
-ros2 launch racing_track_detection_resnet racing_track_detection_resnet.launch.py
+ros2 launch racing_track_detection racing_track_detection.launch.py
 ```
 
 ## 障碍物检测
 ```bash
 ros2 launch racing_obstacle_detection obstacle_detection.launch.py
-```
-
-## 巡线控制
-```bash
-ros2 launch racing_control racing_control.launch.py avoid_angular_ratio:=0.2 avoid_linear_speed:=0.5 follow_angular_ratio:=-1.0 follow_linear_speed:=0.5
 ```
 
 ## 扫二维码
@@ -54,4 +52,52 @@ ros2 run qr_detector qr_detector_node
 ## 图生文
 ```bash
 ros2 run qwen_pic_to_text qwen_pic_to_text
+```
+
+## 巡线控制
+```bash
+ros2 launch racing_control racing_control.launch.py avoid_angular_ratio:=-0.42 avoid_linear_speed:=0.54 recovering_linear_speed:=0.7 recovering_angular_ratio:=1.0 follow_angular_ratio:=-3.8 follow_linear_speed:=0.85 bottom_threshold_caution:=280 bottom_threshold_avoid:=313 parking_y_threshold:=400 line_confidence_threshold:=0.7 obstacle_confidence_threshold:=0.75 parking_sign_confidence_threshold:=0.4
+```
+
+## 龟速稳定的一版
+```bash
+ros2 launch racing_control racing_control.launch.py avoid_angular_ratio:=-0.46 avoid_linear_speed:=0.3 recovering_linear_speed:=0.75 recovering_angular_ratio:=0.8 follow_angular_ratio:=-4.2 follow_linear_speed:=0.75 bottom_threshold_caution:=275 bottom_threshold_avoid:=313 parking_y_threshold:=400 line_confidence_threshold:=0.7 obstacle_confidence_threshold:=0.7 parking_sign_confidence_threshold:=0.3
+```
+
+## 中速         //车身右视图摄像头直立，比较稳定的一版
+```bash
+ros2 launch racing_control racing_control.launch.py avoid_angular_ratio:=-0.5 avoid_linear_speed:=0.3 recovering_linear_speed:=0.8 recovering_angular_ratio:=0.95 follow_angular_ratio:=-4.5 follow_linear_speed:=0.85 bottom_threshold_caution:=275 bottom_threshold_avoid:=314 parking_y_threshold:=395 line_confidence_threshold:=0.7 obstacle_confidence_threshold:=0.7 parking_sign_confidence_threshold:=0.3
+```
+
+## 中速、更低的避障速度，更近的减速距离
+```bash
+ros2 launch racing_control racing_control.launch.py avoid_angular_ratio:=-0.5 avoid_linear_speed:=0.2 recovering_linear_speed:=0.8 recovering_angular_ratio:=0.95 follow_angular_ratio:=-4.5 follow_linear_speed:=0.85 bottom_threshold_caution:=280 bottom_threshold_avoid:=313 parking_y_threshold:=395 line_confidence_threshold:=0.7 obstacle_confidence_threshold:=0.7 parking_sign_confidence_threshold:=0.3
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## 高速         //车身右视图摄像头直立，比较稳定的一版
+```bash
+ros2 launch racing_control racing_control.launch.py avoid_angular_ratio:=-0.5 avoid_linear_speed:=0.2 recovering_linear_speed:=0.95 recovering_angular_ratio:=1.1 follow_angular_ratio:=-4.5 follow_linear_speed:=0.95 bottom_threshold_caution:=280 bottom_threshold_avoid:=300 parking_y_threshold:=395 line_confidence_threshold:=0.7 obstacle_confidence_threshold:=0.7 parking_sign_confidence_threshold:=0.3
+```
+
+
+
+
+
+
+## 性能监测
+```
+sudo hrut_somstatus
 ```
