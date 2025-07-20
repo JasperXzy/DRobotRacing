@@ -83,7 +83,7 @@ void Drive_Motor(float Vx,float Vy,float Vz)
 			
 			// Front wheel steering Angle limit (front wheel steering Angle controlled by steering engine), unit: rad
 			//前轮转向角度限幅(舵机控制前轮转向角度)，单位：rad
-			AngleR=target_limit_float(AngleR,-0.49f,0.32f);
+			AngleR=target_limit_float(AngleR,-0.55f,0.55f);
 			
 			//Inverse kinematics //运动学逆解
 			if(AngleR!=0)
@@ -98,8 +98,16 @@ void Drive_Motor(float Vx,float Vy,float Vz)
 			}
 			// The PWM value of the servo controls the steering Angle of the front wheel
 			//舵机PWM值，舵机控制前轮转向角度
-			Angle_Servo    =  -0.628f*pow(AngleR, 3) + 1.269f*pow(AngleR, 2) - 1.772f*AngleR + 1.573f;
-			Servo=SERVO_INIT + (Angle_Servo - 1.572f)*Ratio;
+			if(AngleR < 0)
+			{
+				Angle_Servo    =  -0.628f*pow(AngleR, 3) + 1.269f*pow(AngleR, 2) - 1.772f*AngleR;
+			}
+			else
+			{
+				Angle_Servo    =  -0.628f*pow(AngleR, 3) - 1.269f*pow(AngleR, 2) - 1.772f*AngleR;
+			}
+			
+			Servo=SERVO_INIT + (Angle_Servo)*Ratio;
 
 			
 			//Wheel (motor) target speed limit //车轮(电机)目标速度限幅
@@ -107,7 +115,7 @@ void Drive_Motor(float Vx,float Vy,float Vz)
 			MOTOR_B.Target=target_limit_float(MOTOR_B.Target,-amplitude,amplitude); 
 			MOTOR_C.Target=0; //Out of use //没有使用到
 			MOTOR_D.Target=0; //Out of use //没有使用到
-			Servo=target_limit_int(Servo,1215,1785);	//Servo PWM value limit //舵机PWM值限幅
+			Servo=target_limit_int(Servo,1050,1950);	//Servo PWM value limit //舵机PWM值限幅
 		}
 		
 		//Differential car
