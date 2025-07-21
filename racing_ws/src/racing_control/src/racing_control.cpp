@@ -3,6 +3,13 @@
 #include <chrono>
 
 const double LOOP_RATE_HZ = 30.0;
+struct ObstacleInfo {
+    bool found = false;
+    ai_msgs::msg::Target target;
+    int bottom = 0;
+    bool in_caution_zone = false;
+    bool in_avoid_zone = false;
+};
 
 // RacingControlNode 类的构造函数
 RacingControlNode::RacingControlNode(const std::string& node_name,const rclcpp::NodeOptions& options)
@@ -126,201 +133,122 @@ void RacingControlNode::subscription_callback_target(const ai_msgs::msg::Percept
 }
 
 // 核心控制逻辑线程
-void RacingControlNode::MessageProcess(){
-  rclcpp::Rate loop_rate(LOOP_RATE_HZ);
+void RacingControlNode::MessageProcess() {
+    rclcpp::Rate loop_rate(LOOP_RATE_HZ);
 
-  while(process_stop_ == false){
+    while (!process_stop_) {
     // 检查节点是否被挂起或已停车
-    if (is_suspended_ || current_state_ == State::PARKED) {
+        if (is_suspended_ || current_state_ == State::PARKED) {
       // 如果被挂起或已停车，则仅发布停止指令并等待
-      if (current_state_ == State::PARKED) {
-         auto stop_msg = geometry_msgs::msg::Twist(); // Ensure it stays stopped
-         publisher_->publish(stop_msg);
-      }
-      loop_rate.sleep();
-      continue;
-    }
-
-    std::unique_lock<std::mutex> lock(point_target_mutex_);
-    auto current_line_msg = latest_point_msg_;
-    auto current_obstacle_msg = latest_targets_msg_;
-    lock.unlock();
-
-    if (!current_line_msg) {
-        RCLCPP_INFO(this->get_logger(), "Waiting for track center message...");
-        loop_rate.sleep();
-        continue;
-    }
-
-    auto twist_msg = geometry_msgs::msg::Twist();
-    twist_msg.linear.x = 0.0;
-    twist_msg.angular.z = 0.0;
-
-    bool parking_condition_met = false;
-    if (current_obstacle_msg && !current_obstacle_msg->targets.empty()) {
-        for (const auto &target : current_obstacle_msg->targets) {
-            if (target.type == "parking_sign" && !target.rois.empty() &&
-                target.rois[0].confidence >= parking_sign_confidence_threshold_) {
-                
-                int bottom_y = target.rois[0].rect.y_offset + target.rois[0].rect.height / 2;
-                if (bottom_y >= parking_y_threshold_) {
-                    RCLCPP_FATAL(this->get_logger(), "PARKING CONDITION MET! Sign bottom at Y=%d >= %d. Stopping now.", 
-                                 bottom_y, parking_y_threshold_);
-                    current_state_ = State::PARKED;
-                    parking_condition_met = true;
-                    break; // Exit the loop once parking condition is met
-                }
+            if (current_state_ == State::PARKED) {
+                auto stop_msg = geometry_msgs::msg::Twist();
+                publisher_->publish(stop_msg);
             }
+            loop_rate.sleep();
+            continue;
         }
-    }
-    
-    if (parking_condition_met) {
-        publisher_->publish(twist_msg); // Publish final stop command
-        continue; // Skip all other logic for this cycle
-    }
 
-    // 状态机决策
-    bool obstacle_detected_and_close = false;
-    ai_msgs::msg::Target relevant_obstacle_target;
+        // 检查停车条件
+        if (checkParkingCondition()) {
+            current_state_ = State::PARKED;
+            auto stop_msg = geometry_msgs::msg::Twist();
+            publisher_->publish(stop_msg);
+            continue;
+        }
 
-    // 1. 检查障碍物是否近到需要【避障】 (使用 avoid 阈值)
-    if (current_obstacle_msg && !current_obstacle_msg->targets.empty()) {
-        for(const auto &target : current_obstacle_msg->targets){
-            if(target.type == "construction_cone" && !target.rois.empty()){
-                float obstacle_conf = target.rois[0].confidence;
-                int bottom = target.rois[0].rect.y_offset + target.rois[0].rect.height;
-                // Only trigger avoidance if the obstacle is past the AVOID threshold
-                if (obstacle_conf >= obstacle_confidence_threshold_ && bottom >= bottom_threshold_avoid_) {
-                    obstacle_detected_and_close = true;
-                    relevant_obstacle_target = target;
-                    if (current_state_ != State::OBSTACLE_AVOIDING) {
-                        RCLCPP_INFO(this->get_logger(), "Obstacle past avoid_threshold (%d >= %d)! Switching to OBSTACLE_AVOIDING.",
-                                    bottom, bottom_threshold_avoid_);
-                        current_state_ = State::OBSTACLE_AVOIDING;
+        std::unique_lock<std::mutex> lock(point_target_mutex_);
+        auto current_line_msg = latest_point_msg_;
+        lock.unlock();
+
+        auto twist_msg = geometry_msgs::msg::Twist();
+        twist_msg.linear.x = 0.0;
+        twist_msg.angular.z = 0.0;
+
+        // 获取障碍物信息
+        ObstacleInfo obstacle = getRelevantObstacle();
+        if (obstacle.in_avoid_zone) {
+                    current_state_ = State::OBSTACLE_AVOIDING;
+                    has_valid_twist_ = false;
+                    ObstaclesAvoiding(obstacle.target);
+                }
+        // 状态机决策
+        switch (current_state_) {
+            case State::OBSTACLE_AVOIDING:
+                if (obstacle.in_avoid_zone) {
+                    ObstaclesAvoiding(obstacle.target);
+                } else {
+                    last_avoidance_direction_ = 0.0f;
+                    current_state_ = hasVisiblePrimaryTarget() ? 
+                                     State::LINE_FOLLOWING : 
+                                     State::RECOVERING_LINE;
+                    RCLCPP_INFO(this->get_logger(), "Switching to %s state.", 
+                               current_state_ == State::LINE_FOLLOWING ? 
+                               "LINE_FOLLOWING" : "RECOVERING_LINE");
+                }
+                break;
+
+            case State::RECOVERING_LINE:
+                last_avoidance_direction_ = 0.0f;
+                if (hasVisiblePrimaryTarget()) {
+                    current_state_ = State::LINE_FOLLOWING;
+                    RCLCPP_INFO(this->get_logger(), "Target found! Switching to LINE_FOLLOWING.");
+                } else {
+                    twist_msg.linear.x = obstacle.in_caution_zone ? 
+                                        avoid_linear_speed_ : 
+                                        recovering_linear_speed_;
+                    twist_msg.angular.z = -1.0 * std::copysign(recovering_angular_ratio_, last_avoidance_angular_z_);
+                    publisher_->publish(twist_msg);
+                    RCLCPP_INFO(this->get_logger(), "Recovering: LinX=%.2f, AngZ=%.2f", 
+                               twist_msg.linear.x, twist_msg.angular.z);
+                }
+                break;
+
+            case State::LINE_FOLLOWING:
+                last_avoidance_direction_ = 0.0f;
+                if (obstacle.in_avoid_zone) {
+                    current_state_ = State::OBSTACLE_AVOIDING;
+                    has_valid_twist_ = false;
+                    ObstaclesAvoiding(obstacle.target);
+                } else {
+                    float target_linear_speed = obstacle.in_caution_zone ? 
+                                              avoid_linear_speed_ : 
+                                              follow_linear_speed_;
+                    
+                    if (obstacle.in_caution_zone) {
+                        RCLCPP_INFO(this->get_logger(), "Caution zone! Slowing to %.2f m/s.", target_linear_speed);
                     }
-                    break;
-                }
-            }
-        }
-    }
-    
-    // 2. 根据当前状态执行动作
-    switch(current_state_) {
+                    
+                    float line_confidence = 0.0f;
+                    if (!current_line_msg->targets.empty() && 
+                        !current_line_msg->targets[0].points.empty() && 
+                        !current_line_msg->targets[0].points[0].confidence.empty()) {
+                        line_confidence = current_line_msg->targets[0].points[0].confidence[0];
+                    }
 
-      case State::OBSTACLE_AVOIDING:
-        if (obstacle_detected_and_close) {
-          // 持续检测到障碍物，执行避障
-          ObstaclesAvoiding(relevant_obstacle_target);
-        } else {
-          // 结束避障，重置转弯方向
-          last_avoidance_direction_ = 0.0f;
-          RCLCPP_INFO(this->get_logger(), "Obstacle no longer detected. Deciding next state...");
-
-          // 优化点 1: 检查是否存在任何主要目标（线或停车标志）
-          if (hasVisiblePrimaryTarget()) {
-              // 看到了清晰的赛道线或停车标志，切回巡线模式
-              current_state_ = State::LINE_FOLLOWING;
-              RCLCPP_INFO(this->get_logger(), "Primary target (Line or Sign) found! Switching to LINE_FOLLOWING.");
-          } else {
-              // 两个都没看到，进入寻找赛道状态
-              current_state_ = State::RECOVERING_LINE;
-              RCLCPP_INFO(this->get_logger(), "No clear target. Switching to RECOVERING_LINE.");
-          }
-        }
-        break;
-
-      case State::RECOVERING_LINE:
-        last_avoidance_direction_ = 0.0f;
-        RCLCPP_INFO(this->get_logger(), "In RECOVERING_LINE state, trying to find a target.");
-        
-        // 优化点 2: 检查是否已找到任何主要目标（线或停车标志）
-        if (hasVisiblePrimaryTarget()) {
-          // 找到了，切换回巡线状态
-          current_state_ = State::LINE_FOLLOWING;
-          RCLCPP_INFO(this->get_logger(), "Primary target (Line or Sign) found! Switching back to LINE_FOLLOWING.");
-        } else {
-          // 检查是否存在障碍物且 bottom >= bottom_threshold_caution_
-          bool obstacle_in_caution_zone = false;
-          if (current_obstacle_msg && !current_obstacle_msg->targets.empty()) {
-              for (const auto &target : current_obstacle_msg->targets) {
-                  if(target.type == "construction_cone" && !target.rois.empty()){
-                      int bottom = target.rois[0].rect.y_offset + target.rois[0].rect.height;
-                      if (target.rois[0].confidence >= obstacle_confidence_threshold_ && bottom >= bottom_threshold_caution_) {
-                          obstacle_in_caution_zone = true;
-                          break;
-                      }
-                  }
-              }
-          }
-          // 根据检测结果调整线速度
-          twist_msg.linear.x = obstacle_in_caution_zone ? avoid_linear_speed_ : recovering_linear_speed_;
-          twist_msg.angular.z = -1.0 * std::copysign(recovering_angular_ratio_, last_avoidance_angular_z_);
-          RCLCPP_INFO(this->get_logger(), "Recovering with linear speed: %.2f, angular z: %f", twist_msg.linear.x, twist_msg.angular.z);
-          publisher_->publish(twist_msg);
-        }
-        break;
-
-      case State::LINE_FOLLOWING:
-        last_avoidance_direction_ = 0.0f;
-        // 在巡线状态，也要检查障碍物，因为障碍物可能突然出现
-        if (obstacle_detected_and_close) {
-            current_state_ = State::OBSTACLE_AVOIDING;
-            has_valid_twist_ = false; // 进入避障时，旧的巡线指令失效
-            ObstaclesAvoiding(relevant_obstacle_target);
-        } 
-        else {
-          // 正常巡线，但需要检查是否进入了“谨慎区域”
-          float target_linear_speed = follow_linear_speed_; // Start with default speed
-
-          // Check if any obstacle is in the caution zone (between caution and avoid thresholds)
-          if (current_obstacle_msg && !current_obstacle_msg->targets.empty()) {
-              for (const auto &target : current_obstacle_msg->targets) {
-                  if(target.type == "construction_cone" && !target.rois.empty()){
-                      int bottom = target.rois[0].rect.y_offset + target.rois[0].rect.height;
-                      if (target.rois[0].confidence >= obstacle_confidence_threshold_ && bottom >= bottom_threshold_caution_) {
-                          // Obstacle is close enough to be cautious, so slow down.
-                          target_linear_speed = avoid_linear_speed_;
-                          RCLCPP_INFO(this->get_logger(), "Obstacle in caution zone (%d >= %d). Slowing down to %.2f m/s.",
-                                      bottom, bottom_threshold_caution_, target_linear_speed);
-                          break; // Found one obstacle in caution, no need to check others
-                      }
-                  }
-              }
-          }
-
-          // 获取赛道线信息
-          float line_confidence = 0.0f;
-          if (!current_line_msg->targets.empty() && 
-              !current_line_msg->targets[0].points.empty() && 
-              !current_line_msg->targets[0].points[0].confidence.empty()) {
-            line_confidence = current_line_msg->targets[0].points[0].confidence[0];
-          }
-
-          const auto& line_target_to_pass = current_line_msg->targets.empty() ? ai_msgs::msg::Target() : current_line_msg->targets[0];
+                    const auto& line_target_to_pass = current_line_msg->targets.empty() ? ai_msgs::msg::Target() : current_line_msg->targets[0];
           
-          // 调用巡线函数，并传入最终决定的速度
-          bool target_followed = LineFollowing(line_target_to_pass, line_confidence, target_linear_speed);
+                    // 调用巡线函数，并传入最终决定的速度
+                    bool target_followed = LineFollowing(line_target_to_pass, line_confidence, target_linear_speed);
 
-          if (!target_followed) {
-            if (has_valid_twist_) {
-                RCLCPP_WARN(this->get_logger(), "No valid target found. Reusing last valid command.");
-                publisher_->publish(last_valid_twist_);
-            } else {
-                RCLCPP_WARN(this->get_logger(), "No valid target and no history. Cruising straight.");
-                publisher_->publish(last_valid_twist_);
-            }
-          }
+                    if (!target_followed) {
+                      if (has_valid_twist_) {
+                          RCLCPP_WARN(this->get_logger(), "No valid target found. Reusing last valid command.");
+                          publisher_->publish(last_valid_twist_);
+                      } else {
+                          RCLCPP_WARN(this->get_logger(), "No valid target and no history. Cruising straight.");
+                          publisher_->publish(last_valid_twist_);
+                      }
+                    }
+                }
+                break;
+            
+            default: // 包括 STOP 状态
+                publisher_->publish(twist_msg);
+                break;
         }
-        break;
-      
-      default: // 包括 STOP 状态
-        publisher_->publish(twist_msg); // 发布停止指令
-        break;
-    }
 
-    loop_rate.sleep();
-    
-  }
+        loop_rate.sleep();
+    }
 }
 
 // 巡线控制函数
@@ -386,8 +314,7 @@ bool RacingControlNode::LineFollowing(const ai_msgs::msg::Target &line_target, f
     angular_z = follow_angular_ratio_ * (center_offset / 320.0f) * target_y_relative; 
   }
 
-  // Use the speed passed into the function
-  twist_msg.linear.x = target_linear_speed; // <-- This is the main change here
+  twist_msg.linear.x = target_linear_speed;
   twist_msg.angular.z = angular_z;
 
   last_valid_twist_ = twist_msg;
@@ -457,34 +384,91 @@ void RacingControlNode::ObstaclesAvoiding(const ai_msgs::msg::Target &target){
 bool RacingControlNode::hasVisiblePrimaryTarget() {
     std::unique_lock<std::mutex> lock(point_target_mutex_);
 
-    // 1. Check for a high-confidence track line
+    // 1. 检查是否有高置信度的线
     if (latest_point_msg_ && !latest_point_msg_->targets.empty() && 
         !latest_point_msg_->targets[0].points.empty() && 
         !latest_point_msg_->targets[0].points[0].confidence.empty() &&
         latest_point_msg_->targets[0].points[0].confidence[0] >= line_confidence_threshold_) {
-        return true; // Found a valid line
+        return true; 
     }
 
-    // 2. If no line, check for a high-confidence parking sign
+    // 2. 如果没有线，检查是否有高置信度的停车标志
     if (latest_targets_msg_ && !latest_targets_msg_->targets.empty()) {
         for (const auto& target : latest_targets_msg_->targets) {
             if (target.type == "parking_sign" && !target.rois.empty() &&
                 target.rois[0].confidence >= parking_sign_confidence_threshold_) {
-                return true; // Found a valid parking sign
+                return true; 
             }
         }
     }
 
-    // 3. If neither is found
+    // 3. 如果都没有找到
+    return false;
+}
+
+ObstacleInfo RacingControlNode::getRelevantObstacle() {
+    ObstacleInfo info;
+    std::unique_lock<std::mutex> lock(point_target_mutex_);
+    
+    if (!latest_targets_msg_ || latest_targets_msg_->targets.empty()) {
+        return info;
+    }
+
+    for (const auto& target : latest_targets_msg_->targets) {
+        if (target.type == "construction_cone" && !target.rois.empty()) {
+            float obstacle_conf = target.rois[0].confidence;
+            int bottom = target.rois[0].rect.y_offset + target.rois[0].rect.height;
+            
+            if (obstacle_conf >= obstacle_confidence_threshold_) {
+                if (bottom >= bottom_threshold_avoid_) {
+                    info.found = true;
+                    info.target = target;
+                    info.bottom = bottom;
+                    info.in_avoid_zone = true;
+                    return info; // 优先返回需要避障的障碍物
+                } 
+                else if (bottom >= bottom_threshold_caution_) {
+                    info.found = true;
+                    info.target = target;
+                    info.bottom = bottom;
+                    info.in_caution_zone = true;
+                    // 继续检查是否有更紧急的障碍物
+                }
+            }
+        }
+    }
+    return info;
+}
+
+// 停车条件判断
+bool RacingControlNode::checkParkingCondition() {
+    std::unique_lock<std::mutex> lock(point_target_mutex_);
+    
+    if (!latest_targets_msg_ || latest_targets_msg_->targets.empty()) {
+        return false;
+    }
+
+    for (const auto& target : latest_targets_msg_->targets) {
+        if (target.type == "parking_sign" && !target.rois.empty() &&
+            target.rois[0].confidence >= parking_sign_confidence_threshold_) {
+            
+            int bottom_y = target.rois[0].rect.y_offset + target.rois[0].rect.height / 2;
+            if (bottom_y >= parking_y_threshold_) {
+                RCLCPP_FATAL(this->get_logger(), "PARKING CONDITION MET! Sign bottom at Y=%d >= %d.", 
+                             bottom_y, parking_y_threshold_);
+                return true;
+            }
+        }
+    }
     return false;
 }
 
 
 // 主函数
 int main(int argc, char* argv[]) {
-  rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<RacingControlNode>("racing_control"));
-  rclcpp::shutdown();
-  RCLCPP_WARN(rclcpp::get_logger("racing_control"), "Pkg exit.");
-  return 0;
+    rclcpp::init(argc, argv);
+    rclcpp::spin(std::make_shared<RacingControlNode>("racing_control"));
+    rclcpp::shutdown();
+    RCLCPP_WARN(rclcpp::get_logger("racing_control"), "Pkg exit.");
+    return 0;
 }

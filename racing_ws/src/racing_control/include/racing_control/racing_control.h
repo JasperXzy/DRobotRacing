@@ -59,8 +59,10 @@ private:
     bool LineFollowing(const ai_msgs::msg::Target &line_target, float line_confidence, float target_linear_speed);
     void ObstaclesAvoiding(const ai_msgs::msg::Target &obstacle_target);
     void MessageProcess(void);
-    bool hasVisiblePrimaryTarget();
-    
+    bool hasVisiblePrimaryTarget(); // 线和停车位判断
+    ObstacleInfo getRelevantObstacle(); // 障碍物判断
+    bool checkParkingCondition(); // 停车条件判断
+
     std::string pub_control_topic_ = "cmd_vel";
     std::mutex point_target_mutex_;
     bool process_stop_ = false;
