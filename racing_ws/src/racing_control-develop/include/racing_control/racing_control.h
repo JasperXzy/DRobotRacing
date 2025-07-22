@@ -2,6 +2,7 @@
 #define RACING_CONTROL_H_
 
 #include <vector>
+#include <optional>
 #include <queue>
 #include <mutex>
 #include <thread>
@@ -20,7 +21,8 @@ enum class State {
   LINE_FOLLOWING,       // 巡线模式
   OBSTACLE_AVOIDING,    // 避障模式
   RECOVERING_LINE,      // 避障后寻找赛道模式
-  STOP                  // 停止或等待
+  STOP,                 // 停止或等待
+  PARKED                // 已完成停车
 };
 
 // 比较函数，用于 priority_queue 以时间戳升序排序 (即最新消息在top)
@@ -55,9 +57,15 @@ private:
     void subscription_callback_target(const ai_msgs::msg::PerceptionTargets::SharedPtr targets_msg);
     // 处理/sign4return消息的回调函数
     void sign_callback(const std_msgs::msg::Int32::SharedPtr msg);
-    void LineFollowing(const ai_msgs::msg::Target &line_target, float line_confidence);
+    bool LineFollowing(float target_linear_speed);
     void ObstaclesAvoiding(const ai_msgs::msg::Target &obstacle_target);
     void MessageProcess(void);
+    bool hasValidTrackLine(const ai_msgs::msg::PerceptionTargets::SharedPtr& line_msg) const; //检查赛道线消息是否有效且置信度足够高
+    std::optional<ai_msgs::msg::Target> findFollowableParkingSign(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const; //查找一个置信度足够高、适合用于跟随的停车标志
+    bool isParkingConditionMet(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const;  //检查是否满足最终的停车条件（即停车标志足够近）
+    std::optional<ai_msgs::msg::Target> findAvoidanceObstacle(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const; //查找一个距离足够近、需要立即执行避障的障碍物
+    bool isObstacleInCautionZone(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const;  //检查是否有障碍物进入了需要减速的“谨慎区域”
+
     
     std::string pub_control_topic_ = "cmd_vel";
     std::mutex point_target_mutex_;
@@ -73,17 +81,20 @@ private:
     float avoid_linear_speed_ = 0.3;
     float avoid_angular_ratio_ = 1.2;
     float obstacle_confidence_threshold_ = 0.8;
-    int bottom_threshold_ = 320;
+    int bottom_threshold_caution_ = 280; 
+    int bottom_threshold_avoid_ = 320; 
+    int parking_y_threshold_ = 300;
     
     // 低置信度巡航和寻找赛道时的参数
+    float parking_sign_confidence_threshold_ = 0.3;
     float cruise_linear_speed_ = 0.2; // 低置信度时慢速直行的速度
-    float recovering_linear_speed_ = 0.2; // 寻找赛道时的线速度
-    float recovering_angular_ratio_ = 0.5; // 寻找赛道时的角速度比例
+    float recovering_linear_speed_ = 0.7; // 寻找赛道时的线速度
+    float recovering_angular_ratio_ = 0.8; // 寻找赛道时的角速度比例
 
     // 状态机变量
     State current_state_ = State::LINE_FOLLOWING;
     float last_avoidance_angular_z_ = 0.0; // 记录最后一次避障的角速度
-    // 7.13加
+ 
     float last_avoidance_direction_ = 0.0; // 记录最后一次避障的方向(符号和last_avoidance_angular_z_相同，值取-1或1)
 
     geometry_msgs::msg::Twist last_valid_twist_;
