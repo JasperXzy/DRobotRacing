@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 *.avi
 *.jpg
 *.pt
@@ -39,3 +40,19 @@ models
 *.uvoptx
 *.hex
 
+=======
+# model
+*.pt
+*.onnx
+*.bin
+
+# media
+*.jpg
+*.avi
+*.mp4
+
+runs
+build
+install
+log
+>>>>>>> 4506994e55ec8cb588b1371818883ea3659891b8
