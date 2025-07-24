@@ -58,7 +58,8 @@ private:
     // 处理/sign4return消息的回调函数
     void sign_callback(const std_msgs::msg::Int32::SharedPtr msg);
     bool LineFollowing(float target_linear_speed);
-    void ObstaclesAvoiding(const ai_msgs::msg::Target &obstacle_target);
+    void ObstaclesAvoiding(const ai_msgs::msg::Target& obstacle, 
+                       std::optional<ai_msgs::msg::Target> parking_spot);
     void MessageProcess(void);
     bool hasValidTrackLine(const ai_msgs::msg::PerceptionTargets::SharedPtr& line_msg) const; //检查赛道线消息是否有效且置信度足够高
     std::optional<ai_msgs::msg::Target> findFollowableParkingSign(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const; //查找一个置信度足够高、适合用于跟随的停车标志

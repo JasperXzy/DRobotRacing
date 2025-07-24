@@ -162,6 +162,8 @@ void RacingControlNode::MessageProcess(){
     
     // 第二优先级：检查是否有需要躲避的障碍物
     auto obstacle_to_avoid = findAvoidanceObstacle(current_obstacle_msg);
+    // 检查是否有可以跟随的停车标志
+    auto followable_sign = findFollowableParkingSign(current_obstacle_msg);
     // 检查是否有任何可以跟随的目标（线或停车标志）
     bool has_primary_target = hasValidTrackLine(current_line_msg) || findFollowableParkingSign(current_obstacle_msg).has_value();
 
@@ -187,7 +189,7 @@ void RacingControlNode::MessageProcess(){
       case State::OBSTACLE_AVOIDING:
         if (obstacle_to_avoid) {
           // 持续检测到障碍物，执行避障
-          ObstaclesAvoiding(*obstacle_to_avoid);
+          ObstaclesAvoiding(*obstacle_to_avoid, followable_sign);
         } else {
           // 结束避障，重置转弯方向
           last_avoidance_direction_ = 0.0f;
@@ -253,9 +255,9 @@ void RacingControlNode::MessageProcess(){
             } else {
                 // 如果没有任何历史指令，则执行低速直行
                 RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "LineFollowing failed. No valid target. Executing fallback.");
-                auto cruise_msg = geometry_msgs::msg::Twist();
-                cruise_msg.linear.x = cruise_linear_speed_;
-                publisher_->publish(cruise_msg);
+                //auto cruise_msg = geometry_msgs::msg::Twist();
+                //cruise_msg.linear.x = cruise_linear_speed_;
+                publisher_->publish(last_valid_twist_); // 发布上一次有效的指令
             }
           }
         }
@@ -311,7 +313,7 @@ bool RacingControlNode::LineFollowing(float target_linear_speed){
   auto twist_msg = geometry_msgs::msg::Twist();
   twist_msg.linear.x = target_linear_speed;
 
-  twist_msg.angular.z = (use_parking_sign ? 2.0f : 1.0f) * follow_angular_ratio_ * (center_offset / 320.0f) * target_y_relative;
+  twist_msg.angular.z = (use_parking_sign ? 6.0f : 1.0f) * follow_angular_ratio_ * (center_offset / 320.0f) * target_y_relative;
   
   last_valid_twist_ = twist_msg;
   last_valid_twist_.linear.x = target_linear_speed; 
@@ -327,15 +329,37 @@ bool RacingControlNode::LineFollowing(float target_linear_speed){
 }
 
 // 避障控制函数
-void RacingControlNode::ObstaclesAvoiding(const ai_msgs::msg::Target &target){
-  if (target.rois.empty() || target.rois[0].rect.width == 0) {
-      RCLCPP_ERROR(this->get_logger(), "CRITICAL: ObstaclesAvoiding called with invalid ROI data!");
+void RacingControlNode::ObstaclesAvoiding(const ai_msgs::msg::Target& obstacle, std::optional<ai_msgs::msg::Target> parking_spot) {
+  if (obstacle.rois.empty() || obstacle.rois[0].rect.width == 0) {
+      RCLCPP_ERROR(this->get_logger(), "CRITICAL: ObstaclesAvoiding called with invalid ROI data for obstacle!");
       return; 
   }
 
   auto twist_msg = geometry_msgs::msg::Twist();
-  int center_x = target.rois[0].rect.x_offset + target.rois[0].rect.width / 2;
-  float obstacle_center_offset = static_cast<float>(center_x) - 320.0f; 
+  int obstacle_center_x = obstacle.rois[0].rect.x_offset + obstacle.rois[0].rect.width / 2;
+  float obstacle_center_offset = 0.0f;
+  std::string log_reason;
+
+  // 判断是否有停车位作为参考 
+  if (parking_spot && !parking_spot->rois.empty()) {
+    // 如果有停车位，则以停车位中心为参考点
+    int parking_spot_center_x = parking_spot->rois[0].rect.x_offset + parking_spot->rois[0].rect.width / 2;
+    int parking_bottom = parking_spot->rois[0].rect.y_offset + parking_spot->rois[0].rect.height;
+    if (parking_bottom >= bottom_threshold_avoid_) {
+      obstacle_center_offset = static_cast<float>(obstacle_center_x) - static_cast<float>(parking_spot_center_x);
+      log_reason = "relative to Parking Spot";
+      RCLCPP_INFO(this->get_logger(), "Avoiding obstacle (x:%d) relative to parking spot (x:%d). Offset: %.1f", 
+                  obstacle_center_x, parking_spot_center_x, obstacle_center_offset);
+    }
+    else {
+      obstacle_center_offset = static_cast<float>(obstacle_center_x) - 320.0f; 
+      log_reason = "relative to Screen Center";
+    }
+  } else {
+    // 如果没有停车位，以屏幕中心为参考点
+    obstacle_center_offset = static_cast<float>(obstacle_center_x) - 320.0f; 
+    log_reason = "relative to Screen Center";
+  }
 
   float angular_z_avoid = 0.0f;
 
@@ -368,11 +392,10 @@ void RacingControlNode::ObstaclesAvoiding(const ai_msgs::msg::Target &target){
     angular_z_avoid = 10.0f * last_avoidance_direction_;
   }
 
-
   twist_msg.linear.x = avoid_linear_speed_;
   twist_msg.angular.z = angular_z_avoid;
   publisher_->publish(twist_msg);
-  RCLCPP_INFO(this->get_logger(), "Obstacles Avoiding -> CenterX:%d, Ang_Z: %f, Lin_X: %f", center_x, angular_z_avoid, avoid_linear_speed_);
+  RCLCPP_INFO(this->get_logger(), "Obstacles Avoiding ",log_reason.c_str());
 }
 
 // 检查是否有有效的、高置信度的赛道线
