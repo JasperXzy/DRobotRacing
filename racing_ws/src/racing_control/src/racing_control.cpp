@@ -91,11 +91,11 @@ RacingControlNode::~RacingControlNode(){
 // /sign4return 的回调函数
 void RacingControlNode::sign_callback(const std_msgs::msg::Int32::SharedPtr msg) {
   int sign_value = msg->data;
-  RCLCPP_INFO(this->get_logger(), "Received sign4return: %d", sign_value);
+  RCLCPP_INFO(this->get_logger(), "收到 sign4return: %d", sign_value);
   
   if (sign_value == 5) {
     // 收到5时，挂起控制节点
-    RCLCPP_WARN(this->get_logger(), "Suspending control node (manual override).");
+    RCLCPP_WARN(this->get_logger(), "挂起控制节点，等待恢复");
     is_suspended_ = true;
     // 立即发布停止指令
     auto stop_msg = geometry_msgs::msg::Twist();
@@ -105,7 +105,7 @@ void RacingControlNode::sign_callback(const std_msgs::msg::Int32::SharedPtr msg)
 
   } else if (sign_value == 6) {
     // 收到6时，恢复控制
-    RCLCPP_INFO(this->get_logger(), "Resuming control node.");
+    RCLCPP_INFO(this->get_logger(), "恢复控制节点");
     is_suspended_ = false;
     // 将状态机重置为默认巡线状态，避免从异常状态恢复
     current_state_ = State::LINE_FOLLOWING;
@@ -115,7 +115,7 @@ void RacingControlNode::sign_callback(const std_msgs::msg::Int32::SharedPtr msg)
 
 // 中线消息回调
 void RacingControlNode::subscription_callback_point(const ai_msgs::msg::PerceptionTargets::SharedPtr point_msg){
-  RCLCPP_DEBUG(this->get_logger(), "Received a track center message.");
+  RCLCPP_DEBUG(this->get_logger(), "收到中线消息");
   {
     std::unique_lock<std::mutex> lock(point_target_mutex_);
     latest_point_msg_ = point_msg;
@@ -124,7 +124,7 @@ void RacingControlNode::subscription_callback_point(const ai_msgs::msg::Percepti
 
 // 障碍物消息回调
 void RacingControlNode::subscription_callback_target(const ai_msgs::msg::PerceptionTargets::SharedPtr targets_msg){
-  RCLCPP_DEBUG(this->get_logger(), "Received an obstacle message.");
+  RCLCPP_DEBUG(this->get_logger(), "收到障碍物消息");
   {
     std::unique_lock<std::mutex> lock(point_target_mutex_);
     latest_targets_msg_ = targets_msg;
@@ -153,7 +153,7 @@ void RacingControlNode::MessageProcess(){
     lock.unlock();
 
     if (!current_line_msg) {
-        RCLCPP_INFO(this->get_logger(), "Waiting for track center message...");
+        RCLCPP_INFO(this->get_logger(), "等待中线消息");
         loop_rate.sleep();
         continue;
     }
@@ -170,8 +170,9 @@ void RacingControlNode::MessageProcess(){
     auto obstacle_to_avoid = findAvoidanceObstacle(current_obstacle_msg);
     // 检查是否有可以跟随的停车标志
     auto followable_sign = findFollowableParkingSign(current_obstacle_msg);
-    // 检查是否有任何可以跟随的目标（线或停车标志）
-    bool has_primary_target = hasValidTrackLine(current_line_msg) || findFollowableParkingSign(current_obstacle_msg).has_value();
+    // 检查是否有任何可以跟随的目标（线或停车标志或二维码）
+    bool has_primary_target = hasValidTrackLine(current_line_msg) || findFollowableParkingSign(current_obstacle_msg).has_value() ||
+                              findFollowableQrCode(current_obstacle_msg).has_value();
 
     // --- 状态转换逻辑 ---
     bool should_force_avoidance = obstacle_to_avoid.has_value();
@@ -199,27 +200,27 @@ void RacingControlNode::MessageProcess(){
         } else {
           // 结束避障，重置转弯方向
           last_avoidance_direction_ = 0.0f;
-          RCLCPP_INFO(this->get_logger(), "Obstacle no longer detected. Deciding next state...");
+          RCLCPP_INFO(this->get_logger(), "结束避障，重置转弯方向");
           // 如果看得到主目标，就去巡线；否则就去寻找赛道
           if (has_primary_target) {
               current_state_ = State::LINE_FOLLOWING;
-              RCLCPP_INFO(this->get_logger(), "Primary target found! Switching to LINE_FOLLOWING.");
+              RCLCPP_INFO(this->get_logger(), "找到主目标！切换到巡线状态");
           } else {
               current_state_ = State::RECOVERING_LINE;
-              RCLCPP_INFO(this->get_logger(), "No clear target. Switching to RECOVERING_LINE.");
+              RCLCPP_INFO(this->get_logger(), "没有明确目标，切换到回线状态");
           }
         }
         break;
 
       case State::RECOVERING_LINE:
         last_avoidance_direction_ = 0.0f;
-        RCLCPP_INFO(this->get_logger(), "In RECOVERING_LINE state, trying to find a target.");
+        RCLCPP_INFO(this->get_logger(), "在回线状态，尝试寻找目标");
         
         // 检查是否已找到任何主要目标（线或停车标志）
         if (has_primary_target) {
           // 找到了，切换回巡线状态
           current_state_ = State::LINE_FOLLOWING;
-          RCLCPP_INFO(this->get_logger(), "Primary target (Line or Sign) found! Switching back to LINE_FOLLOWING.");
+          RCLCPP_INFO(this->get_logger(), "找到主目标！切换回巡线状态");
         } else {
           // 检查是否存在障碍物且 bottom >= bottom_threshold_caution_
           auto twist_msg = geometry_msgs::msg::Twist();
@@ -242,7 +243,7 @@ void RacingControlNode::MessageProcess(){
           }
           twist_msg.linear.x = slow_down_for_obstacle ? avoid_linear_speed_ : recovering_linear_speed_;
           twist_msg.angular.z = -1.0 * std::copysign(recovering_angular_ratio_, last_avoidance_angular_z_);
-          RCLCPP_INFO(this->get_logger(), "Recovering with linear speed: %.2f, angular z: %f", twist_msg.linear.x, twist_msg.angular.z);
+          RCLCPP_INFO(this->get_logger(), "恢复中线状态：%.2f, angular z: %f", twist_msg.linear.x, twist_msg.angular.z);
           publisher_->publish(twist_msg);
         }
         break;
@@ -260,7 +261,7 @@ void RacingControlNode::MessageProcess(){
                 publisher_->publish(last_valid_twist_);
             } else {
                 // 如果没有任何历史指令，则执行低速直行
-                RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "LineFollowing failed. No valid target. Executing fallback.");
+                RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "巡线失败，执行低速直行");
                 //auto cruise_msg = geometry_msgs::msg::Twist();
                 //cruise_msg.linear.x = cruise_linear_speed_;
                 publisher_->publish(last_valid_twist_); // 发布上一次有效的指令
@@ -304,17 +305,21 @@ bool RacingControlNode::LineFollowing(float target_linear_speed){
     target_y = followable_qr_code->rois[0].rect.y_offset + followable_qr_code->rois[0].rect.height / 2;
     use_qr_code = true;
     log_reason = "QR Code";
+    // 记录跟随二维码的目标位置和置信度和面积
+    RCLCPP_WARN(this->get_logger(), "跟随二维码 -> X:%d, Y:%d, 置信度: %.2f, 面积: %d", target_x, target_y, followable_qr_code->rois[0].confidence, followable_qr_code->rois[0].rect.width * followable_qr_code->rois[0].rect.height);
   } else if (followable_parking_sign) {
     // 如果找到了可以跟随的停车标志
     target_x = followable_parking_sign->rois[0].rect.x_offset + followable_parking_sign->rois[0].rect.width / 2;
     target_y = followable_parking_sign->rois[0].rect.y_offset + followable_parking_sign->rois[0].rect.height / 2;
     use_parking_sign = true;
     log_reason = "Parking Sign";
+    RCLCPP_WARN(this->get_logger(), "跟随停车标志 -> X:%d, Y:%d, 置信度: %.2f", target_x, target_y, followable_parking_sign->rois[0].confidence);
   } else if (hasValidTrackLine(current_line_msg)) {
     // 否则，如果找到了有效的赛道线
     target_x = static_cast<int>(current_line_msg->targets[0].points[0].point[0].x);
     target_y = static_cast<int>(current_line_msg->targets[0].points[0].point[0].y);
     log_reason = "Track Line";
+    RCLCPP_WARN(this->get_logger(), "跟随赛道线 -> X:%d, Y:%d, 置信度: %.2f", target_x, target_y, current_line_msg->targets[0].points[0].confidence[0]);
   } else {
     // 如果三者都找不到，则巡线失败
     return false;
@@ -330,7 +335,7 @@ bool RacingControlNode::LineFollowing(float target_linear_speed){
   if (use_parking_sign) {
     twist_msg.angular.z = 6.0f * follow_angular_ratio_ * (center_offset / 320.0f) * target_y_relative;
   } else if (use_qr_code) {
-    twist_msg.angular.z = 2.0f * follow_angular_ratio_ * (center_offset / 320.0f) * target_y_relative;
+    twist_msg.angular.z =  - 2.0f * follow_angular_ratio_ * (center_offset / 320.0f) * target_y_relative;
   } else {
     twist_msg.angular.z = follow_angular_ratio_ * (center_offset / 320.0f) * target_y_relative;
   }
