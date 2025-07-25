@@ -32,6 +32,8 @@ RacingControlNode::RacingControlNode(const std::string& node_name,const rclcpp::
   this->get_parameter<float>("avoid_angular_ratio", avoid_angular_ratio_);
   this->declare_parameter<float>("obstacle_confidence_threshold", obstacle_confidence_threshold_);
   this->get_parameter<float>("obstacle_confidence_threshold", obstacle_confidence_threshold_);
+  
+  // 停车位参数
   this->declare_parameter<float>("parking_sign_confidence_threshold", parking_sign_confidence_threshold_);
   this->get_parameter<float>("parking_sign_confidence_threshold", parking_sign_confidence_threshold_);
   this->declare_parameter<int>("bottom_threshold_caution", bottom_threshold_caution_);
@@ -41,7 +43,11 @@ RacingControlNode::RacingControlNode(const std::string& node_name,const rclcpp::
   this->declare_parameter<int>("parking_y_threshold", parking_y_threshold_);
   this->get_parameter<int>("parking_y_threshold", parking_y_threshold_);
 
-  // 特殊状态下的参数
+  // 二维码参数
+  this->declare_parameter<float>("qr_code_confidence_threshold", qr_code_confidence_threshold_);
+  this->get_parameter<float>("qr_code_confidence_threshold", qr_code_confidence_threshold_);
+
+  // 回线参数
   this->declare_parameter<float>("cruise_linear_speed", cruise_linear_speed_);
   this->get_parameter<float>("cruise_linear_speed", cruise_linear_speed_);
   this->declare_parameter<float>("recovering_linear_speed", recovering_linear_speed_);
@@ -279,7 +285,8 @@ bool RacingControlNode::LineFollowing(float target_linear_speed){
   int target_x = 0;
   int target_y = 0;
   std::string log_reason;
-  bool use_parking_sign = false;
+  bool use_parking_sign = false; // 识别是否在跟随停车标志
+  bool use_qr_code = false; // 识别是否在跟随二维码
 
   // 安全地获取最新消息
   std::unique_lock<std::mutex> lock(point_target_mutex_);
@@ -287,13 +294,20 @@ bool RacingControlNode::LineFollowing(float target_linear_speed){
   auto current_obstacle_msg = latest_targets_msg_;
   lock.unlock();
 
-  // 1. 决策使用哪个目标：优先使用停车标志
-  auto followable_sign = findFollowableParkingSign(current_obstacle_msg);
-  
-  if (followable_sign) {
+  // 1. 决策使用哪个目标 qr_code = parking_sign > line
+  auto followable_qr_code = findFollowableQrCode(current_obstacle_msg);
+  auto followable_parking_sign = findFollowableParkingSign(current_obstacle_msg);
+
+  if (followable_qr_code) {
+    // 如果找到了可以跟随的二维码
+    target_x = followable_qr_code->rois[0].rect.x_offset + followable_qr_code->rois[0].rect.width / 2;
+    target_y = followable_qr_code->rois[0].rect.y_offset + followable_qr_code->rois[0].rect.height / 2;
+    use_qr_code = true;
+    log_reason = "QR Code";
+  } else if (followable_parking_sign) {
     // 如果找到了可以跟随的停车标志
-    target_x = followable_sign->rois[0].rect.x_offset + followable_sign->rois[0].rect.width / 2;
-    target_y = followable_sign->rois[0].rect.y_offset + followable_sign->rois[0].rect.height / 2;
+    target_x = followable_parking_sign->rois[0].rect.x_offset + followable_parking_sign->rois[0].rect.width / 2;
+    target_y = followable_parking_sign->rois[0].rect.y_offset + followable_parking_sign->rois[0].rect.height / 2;
     use_parking_sign = true;
     log_reason = "Parking Sign";
   } else if (hasValidTrackLine(current_line_msg)) {
@@ -302,7 +316,7 @@ bool RacingControlNode::LineFollowing(float target_linear_speed){
     target_y = static_cast<int>(current_line_msg->targets[0].points[0].point[0].y);
     log_reason = "Track Line";
   } else {
-    // 如果两者都找不到，则巡线失败
+    // 如果三者都找不到，则巡线失败
     return false;
   }
   
@@ -313,8 +327,14 @@ bool RacingControlNode::LineFollowing(float target_linear_speed){
   auto twist_msg = geometry_msgs::msg::Twist();
   twist_msg.linear.x = target_linear_speed;
 
-  twist_msg.angular.z = (use_parking_sign ? 6.0f : 1.0f) * follow_angular_ratio_ * (center_offset / 320.0f) * target_y_relative;
-  
+  if (use_parking_sign) {
+    twist_msg.angular.z = 6.0f * follow_angular_ratio_ * (center_offset / 320.0f) * target_y_relative;
+  } else if (use_qr_code) {
+    twist_msg.angular.z = 2.0f * follow_angular_ratio_ * (center_offset / 320.0f) * target_y_relative;
+  } else {
+    twist_msg.angular.z = follow_angular_ratio_ * (center_offset / 320.0f) * target_y_relative;
+  }
+
   last_valid_twist_ = twist_msg;
   last_valid_twist_.linear.x = target_linear_speed; 
   last_valid_twist_.angular.z = 3 * twist_msg.angular.z;
@@ -418,6 +438,20 @@ std::optional<ai_msgs::msg::Target> RacingControlNode::findFollowableParkingSign
     }
     return std::nullopt; // 没找到
 }
+
+std::optional<ai_msgs::msg::Target> RacingControlNode::findFollowableQrCode(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const {
+    if (targets_msg && !targets_msg->targets.empty()) {
+        for (const auto& target : targets_msg->targets) {
+            // 检查目标类型是否为 "qr_code"，并且ROI有效，置信度达标
+            if (target.type == "qr_code" && !target.rois.empty() &&
+                target.rois[0].confidence >= qr_code_confidence_threshold_) {
+                return target; // 找到了，返回这个目标
+            }
+        }
+    }
+    return std::nullopt; // 没找到
+}
+
 
 // 检查是否满足最终停车条件
 bool RacingControlNode::isParkingConditionMet(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const {

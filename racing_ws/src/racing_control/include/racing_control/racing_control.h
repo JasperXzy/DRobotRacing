@@ -63,6 +63,7 @@ private:
     void MessageProcess(void);
     bool hasValidTrackLine(const ai_msgs::msg::PerceptionTargets::SharedPtr& line_msg) const; //检查赛道线消息是否有效且置信度足够高
     std::optional<ai_msgs::msg::Target> findFollowableParkingSign(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const; //查找一个置信度足够高、适合用于跟随的停车标志
+    std::optional<ai_msgs::msg::Target> findFollowableQrCode(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const;
     bool isParkingConditionMet(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const;  //检查是否满足最终的停车条件（即停车标志足够近）
     std::optional<ai_msgs::msg::Target> findAvoidanceObstacle(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const; //查找一个距离足够近、需要立即执行避障的障碍物
     bool isObstacleInCautionZone(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const;  //检查是否有障碍物进入了需要减速的“谨慎区域”
@@ -76,18 +77,20 @@ private:
     // 巡线参数
     float follow_linear_speed_ = 0.5;
     float follow_angular_ratio_ = -0.8;
-    float line_confidence_threshold_ = 0.9;
-    
+    float line_confidence_threshold_ = 0.9; //赛道线置信度阈值
+    float qr_code_confidence_threshold_ = 0.2; //二维码置信度阈值
+    float parking_sign_confidence_threshold_ = 0.3; //停车标志置信度阈值
+    int parking_y_threshold_ = 300; //停车标志y轴阈值
+
+
     // 避障参数
     float avoid_linear_speed_ = 0.3;
     float avoid_angular_ratio_ = 1.2;
-    float obstacle_confidence_threshold_ = 0.8;
-    int bottom_threshold_caution_ = 280; 
-    int bottom_threshold_avoid_ = 320; 
-    int parking_y_threshold_ = 300;
+    float obstacle_confidence_threshold_ = 0.8; //障碍物置信度阈值
+    int bottom_threshold_caution_ = 280;  //谨慎区域下限阈值
+    int bottom_threshold_avoid_ = 320;    //避障区域下限阈值
     
     // 低置信度巡航和寻找赛道时的参数
-    float parking_sign_confidence_threshold_ = 0.3;
     float cruise_linear_speed_ = 0.2; // 低置信度时慢速直行的速度
     float recovering_linear_speed_ = 0.7; // 寻找赛道时的线速度
     float recovering_angular_ratio_ = 0.8; // 寻找赛道时的角速度比例
