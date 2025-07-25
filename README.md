@@ -68,7 +68,10 @@ ros2 launch racing_control racing_control.launch.py avoid_angular_ratio:=-0.55 a
 ```bash
 sudo hrut_somstatus
 ```
-
+## test
+```bash
+ros2 launch racing_control racing_control.launch.py avoid_angular_ratio:=-0.55 avoid_linear_speed:=0.1 recovering_linear_speed:=0.1 recovering_angular_ratio:=1.4 follow_angular_ratio:=-4.0 follow_linear_speed:=0.1 bottom_threshold_caution:=295 bottom_threshold_avoid:=305 parking_y_threshold:=405 line_confidence_threshold:=0.9 obstacle_confidence_threshold:=0.7 parking_sign_confidence_threshold:=0.5 qr_code_confidence_threshold:=1.1 qr_code_area_threshold:=500
+```
 
 
 

@@ -327,15 +327,14 @@ bool RacingControlNode::LineFollowing(float target_linear_speed){
   
   // 2. 如果找到了目标，则计算并发布控制指令
   float center_offset = static_cast<float>(target_x) - 320.0f;
-  float target_y_relative = (static_cast<float>(target_y) - 256.0f) / (480.0f - 256.0f);
-  
+  float target_y_relative = static_cast<float>(target_y) / 224.0f * 0.262f;
   auto twist_msg = geometry_msgs::msg::Twist();
   twist_msg.linear.x = target_linear_speed;
 
   if (use_parking_sign) {
-    twist_msg.angular.z = -2.0f * follow_angular_ratio_ * (center_offset / 320.0f) * target_y_relative;
+    twist_msg.angular.z = 2.0f * follow_angular_ratio_ * (center_offset / 320.0f) * target_y_relative;
   } else if (use_qr_code) {
-    twist_msg.angular.z = -2.0f * follow_angular_ratio_ * (center_offset / 320.0f) * target_y_relative;
+    twist_msg.angular.z = 2.0f * follow_angular_ratio_ * (center_offset / 320.0f) * target_y_relative;
   } else {
     twist_msg.angular.z = follow_angular_ratio_ * (center_offset / 320.0f) * target_y_relative;
   }
