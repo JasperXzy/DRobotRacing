@@ -333,9 +333,9 @@ bool RacingControlNode::LineFollowing(float target_linear_speed){
   twist_msg.linear.x = target_linear_speed;
 
   if (use_parking_sign) {
-    twist_msg.angular.z = 6.0f * follow_angular_ratio_ * (center_offset / 320.0f) * target_y_relative;
+    twist_msg.angular.z = -2.0f * follow_angular_ratio_ * (center_offset / 320.0f) * target_y_relative;
   } else if (use_qr_code) {
-    twist_msg.angular.z =  - 2.0f * follow_angular_ratio_ * (center_offset / 320.0f) * target_y_relative;
+    twist_msg.angular.z = -2.0f * follow_angular_ratio_ * (center_offset / 320.0f) * target_y_relative;
   } else {
     twist_msg.angular.z = follow_angular_ratio_ * (center_offset / 320.0f) * target_y_relative;
   }
