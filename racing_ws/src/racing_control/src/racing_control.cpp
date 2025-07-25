@@ -46,6 +46,8 @@ RacingControlNode::RacingControlNode(const std::string& node_name,const rclcpp::
   // 二维码参数
   this->declare_parameter<float>("qr_code_confidence_threshold", qr_code_confidence_threshold_);
   this->get_parameter<float>("qr_code_confidence_threshold", qr_code_confidence_threshold_);
+  this->declare_parameter<int>("qr_code_area_threshold", qr_code_area_threshold_);
+  this->get_parameter<int>("qr_code_area_threshold", qr_code_area_threshold_);
 
   // 回线参数
   this->declare_parameter<float>("cruise_linear_speed", cruise_linear_speed_);
@@ -449,7 +451,8 @@ std::optional<ai_msgs::msg::Target> RacingControlNode::findFollowableQrCode(cons
         for (const auto& target : targets_msg->targets) {
             // 检查目标类型是否为 "qr_code"，并且ROI有效，置信度达标
             if (target.type == "qr_code" && !target.rois.empty() &&
-                target.rois[0].confidence >= qr_code_confidence_threshold_) {
+                target.rois[0].confidence >= qr_code_confidence_threshold_ &&
+                (target.rois[0].rect.width * target.rois[0].rect.height) >= qr_code_area_threshold_) {
                 return target; // 找到了，返回这个目标
             }
         }

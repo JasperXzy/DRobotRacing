@@ -32,6 +32,10 @@ def generate_launch_description():
             default_value='0.8',
             description='qr_code confidence threshold for line following'),
         DeclareLaunchArgument(
+            'qr_code_area_threshold',
+            default_value='500',
+            description='qr_code area threshold for line following'),
+        DeclareLaunchArgument(
             'follow_angular_ratio',
             default_value='-1.0',
             description='angular speed ratio for line following'),
@@ -73,6 +77,7 @@ def generate_launch_description():
                 {"recovering_linear_speed": LaunchConfiguration('recovering_linear_speed')},
                 {"recovering_angular_ratio": LaunchConfiguration('recovering_angular_ratio')},
                 {"qr_code_confidence_threshold": LaunchConfiguration('qr_code_confidence_threshold')},
+                {"qr_code_area_threshold": LaunchConfiguration('qr_code_area_threshold')},
                 {"follow_angular_ratio": LaunchConfiguration('follow_angular_ratio')},
                 {"follow_linear_speed": LaunchConfiguration('follow_linear_speed')},
                 {"bottom_threshold_caution": LaunchConfiguration('bottom_threshold_caution')},
