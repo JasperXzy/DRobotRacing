@@ -39,6 +39,7 @@ ros2 launch racing_track_detection racing_track_detection.launch.py
 
 ## 障碍物检测
 ```bash
+export WEB_SHOW=True
 ros2 launch racing_obstacle_detection obstacle_detection.launch.py
 ```
 
@@ -56,12 +57,12 @@ ros2 run qwen_pic_to_text qwen_pic_to_text
 
 ## 中速         //提升0.85线速度
 ```bash
-ros2 launch racing_control racing_control.launch.py avoid_angular_ratio:=-0.55 avoid_linear_speed:=0.5 recovering_linear_speed:=0.85 recovering_angular_ratio:=1.1 follow_angular_ratio:=-4.0 follow_linear_speed:=0.85 bottom_threshold_caution:=295 bottom_threshold_avoid:=300 parking_y_threshold:=395 line_confidence_threshold:=0.7 obstacle_confidence_threshold:=0.7 parking_sign_confidence_threshold:=0.3
+ros2 launch racing_control racing_control.launch.py avoid_angular_ratio:=-0.55 avoid_linear_speed:=0.5 recovering_linear_speed:=0.85 recovering_angular_ratio:=1.4 follow_angular_ratio:=-4.0 follow_linear_speed:=0.85 bottom_threshold_caution:=295 bottom_threshold_avoid:=305 parking_y_threshold:=405 line_confidence_threshold:=0.9 obstacle_confidence_threshold:=0.7 parking_sign_confidence_threshold:=0.5 qr_code_confidence_threshold:=1.1 qr_code_area_threshold:=500
 ```
 
 ## 高速         //提升0.95线速度
 ```bash
-ros2 launch racing_control racing_control.launch.py avoid_angular_ratio:=-0.55 avoid_linear_speed:=0.5 recovering_linear_speed:=0.95 recovering_angular_ratio:=1.2 follow_angular_ratio:=-4.0 follow_linear_speed:=0.95 bottom_threshold_caution:=295 bottom_threshold_avoid:=300 parking_y_threshold:=395 line_confidence_threshold:=0.7 obstacle_confidence_threshold:=0.7 parking_sign_confidence_threshold:=0.3
+ros2 launch racing_control racing_control.launch.py avoid_angular_ratio:=-0.55 avoid_linear_speed:=0.5 recovering_linear_speed:=0.95 recovering_angular_ratio:=1.25 follow_angular_ratio:=-4.0 follow_linear_speed:=0.95 bottom_threshold_caution:=295 bottom_threshold_avoid:=300 parking_y_threshold:=395 line_confidence_threshold:=0.7 obstacle_confidence_threshold:=0.7 parking_sign_confidence_threshold:=0.3 qr_code_confidence_threshold:=0.6 qr_code_area_threshold:=500
 ```
 ## 性能监测
 ```bash

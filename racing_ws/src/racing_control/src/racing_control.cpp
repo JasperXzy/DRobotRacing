@@ -181,13 +181,13 @@ void RacingControlNode::MessageProcess(){
     if (current_state_ == State::RECOVERING_LINE && obstacle_to_avoid) {
         // 如果当前正在回线，只有当新障碍物出现在回线同侧时，才需要再次进入避障
         if (!isObstacleOnRecoverySide(*obstacle_to_avoid)) {
-            RCLCPP_INFO(this->get_logger(), "回线时发现异侧障碍物，忽略，继续回线。");
+            RCLCPP_WARN(this->get_logger(), "回线时发现异侧障碍物，忽略，继续回线。");
             should_force_avoidance = false; // 覆盖决定，不强制避障
         }
     }
 
     if (should_force_avoidance && current_state_ != State::OBSTACLE_AVOIDING) {
-        RCLCPP_INFO(this->get_logger(), "障碍物过近！强制切换到避障模式。");
+        RCLCPP_WARN(this->get_logger(), "障碍物过近！强制切换到避障模式。");
         current_state_ = State::OBSTACLE_AVOIDING;
         has_valid_twist_ = false; // 旧指令失效
     }
@@ -202,27 +202,27 @@ void RacingControlNode::MessageProcess(){
         } else {
           // 结束避障，重置转弯方向
           last_avoidance_direction_ = 0.0f;
-          RCLCPP_INFO(this->get_logger(), "结束避障，重置转弯方向");
+          RCLCPP_WARN(this->get_logger(), "结束避障，重置转弯方向");
           // 如果看得到主目标，就去巡线；否则就去寻找赛道
           if (has_primary_target) {
               current_state_ = State::LINE_FOLLOWING;
-              RCLCPP_INFO(this->get_logger(), "找到主目标！切换到巡线状态");
+              RCLCPP_WARN(this->get_logger(), "找到主目标！切换到巡线状态");
           } else {
               current_state_ = State::RECOVERING_LINE;
-              RCLCPP_INFO(this->get_logger(), "没有明确目标，切换到回线状态");
+              RCLCPP_WARN(this->get_logger(), "没有明确目标，切换到回线状态");
           }
         }
         break;
 
       case State::RECOVERING_LINE:
         last_avoidance_direction_ = 0.0f;
-        RCLCPP_INFO(this->get_logger(), "在回线状态，尝试寻找目标");
+        RCLCPP_WARN(this->get_logger(), "在回线状态，尝试寻找目标");
         
         // 检查是否已找到任何主要目标（线或停车标志）
         if (has_primary_target) {
           // 找到了，切换回巡线状态
           current_state_ = State::LINE_FOLLOWING;
-          RCLCPP_INFO(this->get_logger(), "找到主目标！切换回巡线状态");
+          RCLCPP_WARN(this->get_logger(), "找到主目标！切换回巡线状态");
         } else {
           // 检查是否存在障碍物且 bottom >= bottom_threshold_caution_
           auto twist_msg = geometry_msgs::msg::Twist();
@@ -263,9 +263,7 @@ void RacingControlNode::MessageProcess(){
                 publisher_->publish(last_valid_twist_);
             } else {
                 // 如果没有任何历史指令，则执行低速直行
-                RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "巡线失败，执行低速直行");
-                //auto cruise_msg = geometry_msgs::msg::Twist();
-                //cruise_msg.linear.x = cruise_linear_speed_;
+                RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "巡线失败");
                 publisher_->publish(last_valid_twist_); // 发布上一次有效的指令
             }
           }
@@ -396,7 +394,7 @@ void RacingControlNode::ObstaclesAvoiding(const ai_msgs::msg::Target& obstacle, 
     obstacle_center_offset = -5.0f;
   }
 
-  angular_z_avoid = -1.0f * avoid_angular_ratio_ * std::min(4.0f, (320.0f / obstacle_center_offset));
+  angular_z_avoid = -1.0f * avoid_angular_ratio_ * (320.0f / obstacle_center_offset);
 
   // 记录这次避障的转向角速度，以备恢复赛道时使用
   last_avoidance_angular_z_ = angular_z_avoid;
