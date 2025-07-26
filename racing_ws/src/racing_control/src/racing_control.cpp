@@ -188,6 +188,7 @@ void RacingControlNode::MessageProcess(){
 
     if (should_force_avoidance && current_state_ != State::OBSTACLE_AVOIDING) {
         RCLCPP_WARN(this->get_logger(), "障碍物过近！强制切换到避障模式。");
+        ObstaclesAvoiding(*obstacle_to_avoid, followable_sign);
         current_state_ = State::OBSTACLE_AVOIDING;
         has_valid_twist_ = false; // 旧指令失效
     }
@@ -205,6 +206,8 @@ void RacingControlNode::MessageProcess(){
           RCLCPP_WARN(this->get_logger(), "结束避障，重置转弯方向");
           // 如果看得到主目标，就去巡线；否则就去寻找赛道
           if (has_primary_target) {
+              float target_linear_speed = isObstacleInCautionZone(current_obstacle_msg) ? avoid_linear_speed_ : follow_linear_speed_;
+              LineFollowing(target_linear_speed);
               current_state_ = State::LINE_FOLLOWING;
               RCLCPP_WARN(this->get_logger(), "找到主目标！切换到巡线状态");
           } else {
@@ -221,6 +224,8 @@ void RacingControlNode::MessageProcess(){
         // 检查是否已找到任何主要目标（线或停车标志）
         if (has_primary_target) {
           // 找到了，切换回巡线状态
+          float target_linear_speed = isObstacleInCautionZone(current_obstacle_msg) ? avoid_linear_speed_ : follow_linear_speed_;
+          LineFollowing(target_linear_speed);
           current_state_ = State::LINE_FOLLOWING;
           RCLCPP_WARN(this->get_logger(), "找到主目标！切换回巡线状态");
         } else {
