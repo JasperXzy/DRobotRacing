@@ -47,30 +47,40 @@ ros2 launch racing_obstacle_detection obstacle_detection.launch.py
 ```bash
 ros2 run qr_detector qr_detector_node
 ```
-
+## 测试用二维码
+```bash
+ros2 run qr_detector qr_test
+```
 ## 图生文
 ```bash
 ros2 run qwen_pic_to_text qwen_pic_to_text
 ```
 
 
-
-## 中速         //提升0.85线速度
+## 中速_offset线性关系         //提升0.85线速度
 ```bash
-ros2 launch racing_control racing_control.launch.py avoid_angular_ratio:=-0.55 avoid_linear_speed:=0.5 recovering_linear_speed:=0.85 recovering_angular_ratio:=1.4 follow_angular_ratio:=-4.0 follow_linear_speed:=0.85 bottom_threshold_caution:=295 bottom_threshold_avoid:=305 parking_y_threshold:=405 line_confidence_threshold:=0.9 obstacle_confidence_threshold:=0.7 parking_sign_confidence_threshold:=0.5 qr_code_confidence_threshold:=1.1 qr_code_area_threshold:=500
+ros2 launch racing_control racing_control.launch.py avoid_angular_ratio:=-0.0045 avoid_linear_speed:=0.5 recovering_linear_speed:=0.85 recovering_angular_ratio:=1.25 follow_angular_ratio:=-3.0 follow_linear_speed:=0.85 bottom_threshold_caution:=300 bottom_threshold_avoid:=305 obstacle_y_jump_threshold:=50 parking_y_threshold:=405 line_confidence_threshold:=0.7 obstacle_confidence_threshold:=0.5 parking_sign_confidence_threshold:=0.3 qr_code_confidence_threshold:=1.1 qr_code_area_threshold:=500
+```
+
+
+## 中速_offset反比例         //提升0.85线速度
+```bash
+ros2 launch racing_control racing_control.launch.py avoid_angular_ratio:=-80.0 avoid_linear_speed:=0.5 recovering_linear_speed:=0.85 recovering_angular_ratio:=1.3 follow_angular_ratio:=-4.0 follow_linear_speed:=0.85 bottom_threshold_caution:=300 bottom_threshold_avoid:=305 obstacle_y_jump_threshold:=50 parking_y_threshold:=405 line_confidence_threshold:=0.7 obstacle_confidence_threshold:=0.5 parking_sign_confidence_threshold:=0.3 qr_code_confidence_threshold:=1.1 qr_code_area_threshold:=500
 ```
 
 ## 高速         //提升0.95线速度
 ```bash
-ros2 launch racing_control racing_control.launch.py avoid_angular_ratio:=-0.55 avoid_linear_speed:=0.5 recovering_linear_speed:=0.95 recovering_angular_ratio:=1.25 follow_angular_ratio:=-4.0 follow_linear_speed:=0.95 bottom_threshold_caution:=295 bottom_threshold_avoid:=300 parking_y_threshold:=395 line_confidence_threshold:=0.7 obstacle_confidence_threshold:=0.7 parking_sign_confidence_threshold:=0.3 qr_code_confidence_threshold:=0.6 qr_code_area_threshold:=500
+ros2 launch racing_control racing_control.launch.py avoid_angular_ratio:=-0.55 avoid_linear_speed:=0.5 recovering_linear_speed:=0.95 recovering_angular_ratio:=1.25 follow_angular_ratio:=-4.0 follow_linear_speed:=0.95 bottom_threshold_caution:=295 bottom_threshold_avoid:=305 obstacle_y_jump_threshold:=50 parking_y_threshold:=395 line_confidence_threshold:=0.9 obstacle_confidence_threshold:=0.7 parking_sign_confidence_threshold:=0.3 qr_code_confidence_threshold:=1.1 qr_code_area_threshold:=500
 ```
 ## 性能监测
 ```bash
 sudo hrut_somstatus
 ```
+
+
 ## test
 ```bash
-ros2 launch racing_control racing_control.launch.py avoid_angular_ratio:=-0.55 avoid_linear_speed:=0.1 recovering_linear_speed:=0.1 recovering_angular_ratio:=1.4 follow_angular_ratio:=-4.0 follow_linear_speed:=0.1 bottom_threshold_caution:=295 bottom_threshold_avoid:=305 parking_y_threshold:=405 line_confidence_threshold:=0.9 obstacle_confidence_threshold:=0.7 parking_sign_confidence_threshold:=0.5 qr_code_confidence_threshold:=1.1 qr_code_area_threshold:=500
+ros2 launch racing_control racing_control.launch.py avoid_angular_ratio:=-0.1 avoid_linear_speed:=0.1 recovering_linear_speed:=0.1 recovering_angular_ratio:=1.3 follow_angular_ratio:=-4.0 follow_linear_speed:=0.1 bottom_threshold_caution:=300 bottom_threshold_avoid:=305 obstacle_y_jump_threshold:=50 parking_y_threshold:=405 line_confidence_threshold:=0.7 obstacle_confidence_threshold:=0.5 parking_sign_confidence_threshold:=0.3 qr_code_confidence_threshold:=1.1 qr_code_area_threshold:=500
 ```
 
 

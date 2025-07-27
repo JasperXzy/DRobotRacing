@@ -70,6 +70,7 @@ private:
     bool isObstacleOnRecoverySide(const ai_msgs::msg::Target& obstacle) const; // 检查障碍物是否在回线方向的同侧
     std::optional<ai_msgs::msg::Target> findCautionObstacleOnRecoverySide(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const; // 查找回线时同侧的谨慎区障碍物
 
+    std::string pub_control_topic_ = "cmd_vel";
     std::mutex point_target_mutex_;
     bool process_stop_ = false;
     std::shared_ptr<std::thread> msg_process_;

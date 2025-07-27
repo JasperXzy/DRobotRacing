@@ -66,6 +66,10 @@ def generate_launch_description():
             'parking_sign_confidence_threshold',
             default_value='0.6',
             description='confidence threshold for parking sign targeting'),
+        DeclareLaunchArgument(
+            'obstacle_y_jump_threshold',
+            default_value='10',
+            description='obstacle_y_jump_threshold for obstacle avoidance'),
         Node(
             package='racing_control',
             executable='racing_control',
@@ -85,6 +89,7 @@ def generate_launch_description():
                 {"parking_y_threshold": LaunchConfiguration('parking_y_threshold')},
                 {"line_confidence_threshold": LaunchConfiguration('line_confidence_threshold')},
                 {"obstacle_confidence_threshold": LaunchConfiguration('obstacle_confidence_threshold')},
+                {"obstacle_y_jump_threshold": LaunchConfiguration('obstacle_y_jump_threshold')},
                 {"parking_sign_confidence_threshold": LaunchConfiguration('parking_sign_confidence_threshold')},
             ],
             arguments=['--ros-args', '--log-level', 'warn']

@@ -1,6 +1,7 @@
 #include "racing_control/racing_control.h"
 #include <unistd.h>
 #include <chrono>
+#include <cmath>
 
 const double LOOP_RATE_HZ = 30.0;
 
@@ -380,8 +381,6 @@ void RacingControlNode::ObstaclesAvoiding(const ai_msgs::msg::Target& obstacle, 
     if (parking_bottom >= bottom_threshold_avoid_) {
       obstacle_center_offset = static_cast<float>(obstacle_center_x) - static_cast<float>(parking_spot_center_x);
       log_reason = "relative to Parking Spot";
-      RCLCPP_INFO(this->get_logger(), "Avoiding obstacle (x:%d) relative to parking spot (x:%d). Offset: %.1f", 
-                  obstacle_center_x, parking_spot_center_x, obstacle_center_offset);
     }
     else {
       obstacle_center_offset = static_cast<float>(obstacle_center_x) - 320.0f; 
@@ -401,7 +400,16 @@ void RacingControlNode::ObstaclesAvoiding(const ai_msgs::msg::Target& obstacle, 
     obstacle_center_offset = -5.0f;
   }
 
-  angular_z_avoid = -1.0f * avoid_angular_ratio_ * (320.0f / obstacle_center_offset);
+  if (obstacle_center_offset > 0)
+  {
+    angular_z_avoid = -1.0f * avoid_angular_ratio_ * (320.0f - obstacle_center_offset);
+  }
+  else
+  {
+    angular_z_avoid = -1.0f * avoid_angular_ratio_ * (-320.0f - obstacle_center_offset);
+  }
+
+
 
   // 记录这次避障的转向角速度，以备恢复赛道时使用
   last_avoidance_angular_z_ = angular_z_avoid;
@@ -428,7 +436,8 @@ void RacingControlNode::ObstaclesAvoiding(const ai_msgs::msg::Target& obstacle, 
   twist_msg.linear.x = avoid_linear_speed_;
   twist_msg.angular.z = angular_z_avoid;
   publisher_->publish(twist_msg);
-  RCLCPP_INFO(this->get_logger(), "Obstacles Avoiding (%s). Angular Z: %.2f", log_reason.c_str(), angular_z_avoid);
+  RCLCPP_WARN(this->get_logger(), "避障 -> X:%d, Y:%d, 置信度: %.2f, 角速度: %.2f, %s",
+              obstacle_center_x, current_obstacle_bottom_y, obstacle.rois[0].confidence, angular_z_avoid, log_reason.c_str());
 }
 
 
@@ -467,7 +476,7 @@ std::optional<ai_msgs::msg::Target> RacingControlNode::findFollowableQrCode(cons
             // 检查目标类型是否为 "qr_code"，并且ROI有效，置信度达标
             if (target.type == "qr_code" && !target.rois.empty() &&
                 target.rois[0].confidence >= qr_code_confidence_threshold_ &&
-                (target.rois[0].rect.width * target.rois[0].rect.height) >= qr_code_area_threshold_) {
+                static_cast<int>(target.rois[0].rect.width * target.rois[0].rect.height) >= qr_code_area_threshold_) {
                 return target;
             }
         }
