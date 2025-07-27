@@ -229,35 +229,23 @@ void RacingControlNode::MessageProcess(){
           current_state_ = State::LINE_FOLLOWING;
           RCLCPP_WARN(this->get_logger(), "找到主目标！切换回巡线状态");
         } else {
-          // 检查是否存在障碍物且 bottom >= bottom_threshold_caution_
+          // 检查是否在回线同侧有需要注意的障碍物
           auto twist_msg = geometry_msgs::msg::Twist();
-          bool slow_down_for_obstacle = false;
-          // 我们需要检查是否有障碍物进入了谨慎区域
-          if (current_obstacle_msg && !current_obstacle_msg->targets.empty()) {
-              for (const auto& target : current_obstacle_msg->targets) {
-                  if (target.type == "construction_cone" && !target.rois.empty()) {
-                      int bottom = target.rois[0].rect.y_offset + target.rois[0].rect.height;
-                      if (target.rois[0].confidence >= obstacle_confidence_threshold_ && bottom >= bottom_threshold_caution_) {
-                          // 发现一个谨慎区障碍物，现在检查它是否在回线同侧
-                          if (isObstacleOnRecoverySide(target)) {
-                              slow_down_for_obstacle = true;
-                              RCLCPP_WARN(this->get_logger(), "回线时，同侧发现谨慎区障碍物，减速！");
-                              break; // 找到一个就够了
-                          }
-                      }
-                  }
-              }
+          bool slow_down_for_obstacle = findCautionObstacleOnRecoverySide(current_obstacle_msg).has_value();
+          // 如果有同侧的谨慎区障碍物，减速
+          if (slow_down_for_obstacle) {
+            RCLCPP_WARN(this->get_logger(), "回线时，同侧发现谨慎区障碍物，减速！");
           }
           twist_msg.linear.x = slow_down_for_obstacle ? avoid_linear_speed_ : recovering_linear_speed_;
           twist_msg.angular.z = -1.0 * std::copysign(recovering_angular_ratio_, last_avoidance_angular_z_);
-          RCLCPP_INFO(this->get_logger(), "恢复中线状态：%.2f, angular z: %f", twist_msg.linear.x, twist_msg.angular.z);
+          RCLCPP_INFO(this->get_logger(), "回线状态：%.2f, angular z: %f", twist_msg.linear.x, twist_msg.angular.z);
           publisher_->publish(twist_msg);
         }
         break;
 
       case State::LINE_FOLLOWING:
         { 
-          // 使用 isObstacleInCautionZone() 辅助函数决定速度
+          // 如果巡线时遇到需要谨慎的障碍物，则降速
           float target_linear_speed = isObstacleInCautionZone(current_obstacle_msg) ? avoid_linear_speed_ : follow_linear_speed_;
           if (!LineFollowing(target_linear_speed)) {
             if (has_valid_twist_) {
@@ -547,6 +535,27 @@ bool RacingControlNode::isObstacleOnRecoverySide(const ai_msgs::msg::Target& obs
 
     // 其他情况都返回 false
     return false;
+}
+
+// ********************************************************************************
+// ************* 查找在回线同侧且位于谨慎区域的障碍物 *****************
+// ********************************************************************************
+std::optional<ai_msgs::msg::Target> RacingControlNode::findCautionObstacleOnRecoverySide(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const {
+    if (targets_msg && !targets_msg->targets.empty()) {
+        for (const auto& target : targets_msg->targets) {
+            if (target.type == "construction_cone" && !target.rois.empty()) {
+                int bottom = target.rois[0].rect.y_offset + target.rois[0].rect.height;
+                // 判断条件1: 置信度足够高且底部超过了谨慎阈值
+                if (target.rois[0].confidence >= obstacle_confidence_threshold_ && bottom >= bottom_threshold_caution_) {
+                    // 判断条件2: 障碍物位于回线方向的同侧
+                    if (isObstacleOnRecoverySide(target)) {
+                        return target; 
+                    }
+                }
+            }
+        }
+    }
+    return std::nullopt;
 }
 
 // 主函数

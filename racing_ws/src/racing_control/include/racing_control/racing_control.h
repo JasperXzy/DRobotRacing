@@ -68,8 +68,8 @@ private:
     std::optional<ai_msgs::msg::Target> findAvoidanceObstacle(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const; //查找一个距离足够近、需要立即执行避障的障碍物
     bool isObstacleInCautionZone(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const;  //检查是否有障碍物进入了需要减速的“谨慎区域”
     bool isObstacleOnRecoverySide(const ai_msgs::msg::Target& obstacle) const; // 检查障碍物是否在回线方向的同侧
-    
-    std::string pub_control_topic_ = "cmd_vel";
+    std::optional<ai_msgs::msg::Target> findCautionObstacleOnRecoverySide(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const; // 查找回线时同侧的谨慎区障碍物
+
     std::mutex point_target_mutex_;
     bool process_stop_ = false;
     std::shared_ptr<std::thread> msg_process_;
