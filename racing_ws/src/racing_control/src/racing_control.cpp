@@ -251,8 +251,9 @@ void RacingControlNode::MessageProcess(){
             if (has_valid_twist_) {
                 publisher_->publish(last_valid_twist_);
             } else {
-                // 如果没有任何历史指令，则巡线失败，用上一次有效指令
+                // 如果没有任何历史指令（大概只有刚发车却没有找到有效追踪目标才会进入这个条件），则巡线失败，用上一次有效指令
                 RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "巡线失败！！！！！！！！！");
+                last_valid_twist_.linear.x = follow_linear_speed_; // 为了防止一开始就没有指令导致小车不动，所以给一个默认的线速度
                 publisher_->publish(last_valid_twist_); // 发布上一次有效的指令
             }
           }
