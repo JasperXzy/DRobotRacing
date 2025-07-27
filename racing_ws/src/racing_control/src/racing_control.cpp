@@ -32,7 +32,9 @@ RacingControlNode::RacingControlNode(const std::string& node_name,const rclcpp::
   this->get_parameter<float>("avoid_angular_ratio", avoid_angular_ratio_);
   this->declare_parameter<float>("obstacle_confidence_threshold", obstacle_confidence_threshold_);
   this->get_parameter<float>("obstacle_confidence_threshold", obstacle_confidence_threshold_);
-  
+  this->declare_parameter<int>("obstacle_y_jump_threshold", obstacle_y_jump_threshold_);
+  this->get_parameter<int>("obstacle_y_jump_threshold", obstacle_y_jump_threshold_);
+
   // 停车位参数
   this->declare_parameter<float>("parking_sign_confidence_threshold", parking_sign_confidence_threshold_);
   this->get_parameter<float>("parking_sign_confidence_threshold", parking_sign_confidence_threshold_);
@@ -176,7 +178,7 @@ void RacingControlNode::MessageProcess(){
     bool has_primary_target = hasValidTrackLine(current_line_msg) || findFollowableParkingSign(current_obstacle_msg).has_value() ||
                               findFollowableQrCode(current_obstacle_msg).has_value();
 
-    // --- 状态转换逻辑 ---
+    // 回线状态到避障状态转换
     bool should_force_avoidance = obstacle_to_avoid.has_value();
     if (current_state_ == State::RECOVERING_LINE && obstacle_to_avoid) {
         // 如果当前正在回线，只有当新障碍物出现在回线同侧时，才需要再次进入避障
@@ -201,8 +203,9 @@ void RacingControlNode::MessageProcess(){
           // 持续检测到障碍物，执行避障
           ObstaclesAvoiding(*obstacle_to_avoid, followable_sign);
         } else {
-          // 结束避障，重置转弯方向
+         // 结束避障，重置转弯方向和历史记录
           last_avoidance_direction_ = 0.0f;
+          last_obstacle_bottom_y_ = 0;
           RCLCPP_WARN(this->get_logger(), "结束避障，重置转弯方向");
           // 如果看得到主目标，就去巡线；否则就去寻找赛道
           if (has_primary_target) {
@@ -350,6 +353,19 @@ void RacingControlNode::ObstaclesAvoiding(const ai_msgs::msg::Target& obstacle, 
       RCLCPP_ERROR(this->get_logger(), "CRITICAL: ObstaclesAvoiding called with invalid ROI data for obstacle!");
       return; 
   }
+  int current_obstacle_bottom_y = obstacle.rois[0].rect.y_offset + obstacle.rois[0].rect.height;
+
+  // 检查障碍物是否发生向上跳变，切换到了一个更远的障碍物
+  // 仅在非首次进入避障才进行此检查
+  if (last_avoidance_direction_ != 0.0f && last_obstacle_bottom_y_ > 0) {
+    if ((last_obstacle_bottom_y_ - current_obstacle_bottom_y) > obstacle_y_jump_threshold_) {
+      RCLCPP_WARN(this->get_logger(), "检测到障碍物向上跳变 (从 %d -> %d)！切换了目标，重置避障方向",
+                  last_obstacle_bottom_y_, current_obstacle_bottom_y);
+      last_avoidance_direction_ = 0.0f; // 重置方向
+    }
+  }
+  // 更新上一帧的Y坐标记录
+  last_obstacle_bottom_y_ = current_obstacle_bottom_y;
 
   auto twist_msg = geometry_msgs::msg::Twist();
   int obstacle_center_x = obstacle.rois[0].rect.x_offset + obstacle.rois[0].rect.width / 2;
@@ -391,7 +407,7 @@ void RacingControlNode::ObstaclesAvoiding(const ai_msgs::msg::Target& obstacle, 
   last_avoidance_angular_z_ = angular_z_avoid;
 
   //记录这次避障的方向
-  if(last_avoidance_direction_ == 0.0) //每次结束避障时更新last_avoidance_direction_ = 0 ，仅在第一次进行记录
+  if(last_avoidance_direction_ == 0.0) //每次结束避障或检测到跳变时，此值为0，重新记录方向
   {
     if (angular_z_avoid > 0)
     {
@@ -401,6 +417,7 @@ void RacingControlNode::ObstaclesAvoiding(const ai_msgs::msg::Target& obstacle, 
     {
       last_avoidance_direction_ = -1.0f;
     }
+    RCLCPP_INFO(this->get_logger(), "首次避障或方向重置后，设定新的避障方向为: %.1f", last_avoidance_direction_); // 添加日志以便调试
   }
 
   if( last_avoidance_direction_ * angular_z_avoid < 0 && last_avoidance_direction_ != 0) //避障状态机中出现于第一次记录方向相反，则用上一次状态
@@ -411,7 +428,7 @@ void RacingControlNode::ObstaclesAvoiding(const ai_msgs::msg::Target& obstacle, 
   twist_msg.linear.x = avoid_linear_speed_;
   twist_msg.angular.z = angular_z_avoid;
   publisher_->publish(twist_msg);
-  RCLCPP_INFO(this->get_logger(), "Obstacles Avoiding ",log_reason.c_str());
+  RCLCPP_INFO(this->get_logger(), "Obstacles Avoiding (%s). Angular Z: %.2f", log_reason.c_str(), angular_z_avoid);
 }
 
 

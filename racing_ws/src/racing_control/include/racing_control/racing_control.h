@@ -91,9 +91,10 @@ private:
     float avoid_linear_speed_ = 0.3;
     float avoid_angular_ratio_ = 1.2;
     float obstacle_confidence_threshold_ = 0.8; //障碍物置信度阈值
-    int bottom_threshold_caution_ = 280;  //谨慎区域下限阈值
-    int bottom_threshold_avoid_ = 320;    //避障区域下限阈值
-    
+    int bottom_threshold_caution_ = 280;  // 谨慎区域下限阈值
+    int bottom_threshold_avoid_ = 320;    // 避障区域下限阈值
+    int obstacle_y_jump_threshold_ = 10;  // 障碍物Y轴向上跳变的阈值，用于重置避障方向
+
     // 低置信度巡航和寻找赛道时的参数
     float cruise_linear_speed_ = 0.2; // 低置信度时慢速直行的速度
     float recovering_linear_speed_ = 0.7; // 寻找赛道时的线速度
@@ -102,9 +103,8 @@ private:
     // 状态机变量
     State current_state_ = State::LINE_FOLLOWING;
     float last_avoidance_angular_z_ = 0.0; // 记录最后一次避障的角速度
- 
     float last_avoidance_direction_ = 0.0; // 记录最后一次避障的方向(符号和last_avoidance_angular_z_相同，值取-1或1)
-
+    int last_obstacle_bottom_y_ = 0;       // 记录上一帧避障时障碍物的底部Y坐标
     geometry_msgs::msg::Twist last_valid_twist_;
     bool has_valid_twist_ = false; // 标志位，确保有一个可用的指令
 
