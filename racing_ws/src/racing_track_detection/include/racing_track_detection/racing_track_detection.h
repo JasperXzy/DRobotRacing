@@ -49,7 +49,7 @@ class TrackDetectionNode : public DnnNode {
   int PostProcess(const std::shared_ptr<DnnNodeOutput> &outputs) override;
 
  private:
-  //巡线状态变量
+  // 巡线状态变量
   bool enable_lane_following_{true};  // 默认为开启巡线功能
   // 置信度阈值参数
   double confidence_threshold_ = 0.0; // 默认值设为0，表示总是发布，在参数中设置
@@ -59,12 +59,11 @@ class TrackDetectionNode : public DnnNode {
               const std::shared_ptr<std::vector<hbDNNRoi>> rois);
   void subscription_callback(
     const hbm_img_msgs::msg::HbmMsg1080P::SharedPtr msg);
-  // GetParams 和 AssignParams 未使用但保留，可以用于后续从参数服务加载 threshold
-  bool GetParams(); // 在实际使用中可能改为从参数服务获取confidence_threshold
+  bool GetParams(); 
   bool AssignParams(const std::vector<rclcpp::Parameter> & parameters);
   ModelTaskType model_task_type_ = ModelTaskType::ModelInferType;
 
-  // 订阅/sign4return话题的订阅器
+  //订阅/sign4return话题的订阅器
   rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr
     sign_subscriber_;
   // 处理/sign4return消息的回调函数
@@ -74,7 +73,7 @@ class TrackDetectionNode : public DnnNode {
     subscriber_hbmem_ = nullptr;
   rclcpp::Publisher<ai_msgs::msg::PerceptionTargets>::SharedPtr publisher_ =
       nullptr;
-  cv::Mat image_bgr_;
+  cv::Mat image_bgr_; 
   std::string model_path_ = "config/race_track_detection.bin";
   std::string sub_img_topic_ = "/hbmem_img";
 };

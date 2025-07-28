@@ -4,7 +4,7 @@
   <name>racing_track_detection</name>
   <version>2.0.0</version>
   <description>track detection</description>
-  <maintainer email="jasper.zhengyi.xu@gmail.com">JasperXzy</maintainer>
+  <maintainer email="jasper.zhengyi.xu@gmail.com">root</maintainer>
   <license>Apache License 2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>

@@ -1,27 +1,12 @@
-// Copyright (c) 2022，Horizon Robotics.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 #include "racing_track_detection/racing_track_detection.h"
-
 #include <fstream>
 #include <string>
-#include <cmath> // For std::exp (sigmoid inverse) or direct sigmoid computation
-
+#include <cmath>
 #include <opencv2/opencv.hpp>
 #include "dnn_node/util/image_proc.h"
 #include "hobot_cv/hobotcv_imgproc.h"
 #include "rclcpp/qos.hpp"
+
 void prepare_nv12_tensor_without_padding(const char *image_data,
                                          int image_height,
                                          int image_width,
@@ -74,7 +59,6 @@ void prepare_nv12_tensor_without_padding(int image_height,
   hbSysAllocCachedMem(&tensor->sysMem[0], image_length);
 }
 
-// sigmoid 激活函数实现
 float sigmoid(float x) {
     return 1.0f / (1.0f + std::exp(-x));
 }
@@ -317,6 +301,9 @@ int32_t LineCoordinateParser::Parse(
   float x_norm = output_data[0];
   float y_norm = output_data[1];
   float confidence_logit = output_data[2]; // 读取第三个输出值
+
+  x_norm = std::max(-1.0f, std::min(1.0f, x_norm));
+  y_norm = std::max(-1.0f, std::min(1.0f, y_norm));
 
   result->confidence = sigmoid(confidence_logit); // 应用 Sigmoid
 
