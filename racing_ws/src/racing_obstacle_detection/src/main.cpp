@@ -36,6 +36,7 @@ public:
 private:
     void img_callback(const hbm_img_msgs::msg::HbmMsg1080P::SharedPtr msg)
     {
+        auto input_timestamp = msg->time_stamp;
         ++frame_count_; 
 
         auto& frame = msg->data;
@@ -111,7 +112,7 @@ private:
         // cv::imshow("Obstacle Detection", bgr_mat);
         // cv::waitKey(1);
 
-        publish_detection_results();
+        publish_detection_results(input_timestamp);
 
         auto now = std::chrono::steady_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::seconds>(now - last_time_).count();
@@ -123,12 +124,12 @@ private:
         }
     }
 
-    void publish_detection_results() {
+    void publish_detection_results(const builtin_interfaces::msg::Time& timestamp) {
         auto targets_msg = ai_msgs::msg::PerceptionTargets();
-        
-        targets_msg.header.stamp = this->now();
-        targets_msg.header.frame_id = std::to_string(frame_count_); 
-        
+
+        targets_msg.header.stamp = timestamp;
+        targets_msg.header.frame_id = std::to_string(frame_count_);
+
         const auto& objects = detector_.get_detected_objects();
         for (const auto& obj : objects) {
             ai_msgs::msg::Target target;

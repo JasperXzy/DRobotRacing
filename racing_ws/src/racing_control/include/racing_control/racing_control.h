@@ -2,6 +2,7 @@
 #define RACING_CONTROL_H_
 
 #include <vector>
+#include <optional>
 #include <queue>
 #include <mutex>
 #include <thread>
@@ -56,12 +57,18 @@ private:
     void subscription_callback_target(const ai_msgs::msg::PerceptionTargets::SharedPtr targets_msg);
     // 处理/sign4return消息的回调函数
     void sign_callback(const std_msgs::msg::Int32::SharedPtr msg);
-    bool LineFollowing(const ai_msgs::msg::Target &line_target, float line_confidence, float target_linear_speed);
-    void ObstaclesAvoiding(const ai_msgs::msg::Target &obstacle_target);
+    bool LineFollowing(float target_linear_speed);
+    void ObstaclesAvoiding(const ai_msgs::msg::Target& obstacle, 
+                       std::optional<ai_msgs::msg::Target> parking_spot);
     void MessageProcess(void);
-    bool hasVisiblePrimaryTarget(); // 线和停车位判断
-    ObstacleInfo getRelevantObstacle(); // 障碍物判断
-    bool checkParkingCondition(); // 停车条件判断
+    bool hasValidTrackLine(const ai_msgs::msg::PerceptionTargets::SharedPtr& line_msg) const; //检查赛道线消息是否有效且置信度足够高
+    std::optional<ai_msgs::msg::Target> findFollowableParkingSign(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const; //查找一个置信度足够高、适合用于跟随的停车标志
+    std::optional<ai_msgs::msg::Target> findFollowableQrCode(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const;
+    bool isParkingConditionMet(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const;  //检查是否满足最终的停车条件（即停车标志足够近）
+    std::optional<ai_msgs::msg::Target> findAvoidanceObstacle(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const; //查找一个距离足够近、需要立即执行避障的障碍物
+    bool isObstacleInCautionZone(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const;  //检查是否有障碍物进入了需要减速的“谨慎区域”
+    bool isObstacleOnRecoverySide(const ai_msgs::msg::Target& obstacle) const; // 检查障碍物是否在回线方向的同侧
+    std::optional<ai_msgs::msg::Target> findCautionObstacleOnRecoverySide(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const; // 查找回线时同侧的谨慎区障碍物
 
     std::string pub_control_topic_ = "cmd_vel";
     std::mutex point_target_mutex_;
@@ -71,18 +78,25 @@ private:
     // 巡线参数
     float follow_linear_speed_ = 0.5;
     float follow_angular_ratio_ = -0.8;
-    float line_confidence_threshold_ = 0.9;
-    
+    float line_confidence_threshold_ = 0.9; //赛道线置信度阈值
+
+    // 停车位参数
+    int parking_y_threshold_ = 300; //停车标志y轴阈值
+    float parking_sign_confidence_threshold_ = 0.3; //停车标志置信度阈值
+
+    //二维码参数
+    float qr_code_confidence_threshold_ = 0.2; //二维码置信度阈值
+    int qr_code_area_threshold_ = 500; //二维码面积阈值
+
     // 避障参数
     float avoid_linear_speed_ = 0.3;
     float avoid_angular_ratio_ = 1.2;
-    float obstacle_confidence_threshold_ = 0.8;
-    int bottom_threshold_caution_ = 280; 
-    int bottom_threshold_avoid_ = 320; 
-    int parking_y_threshold_ = 300;
-    
+    float obstacle_confidence_threshold_ = 0.8; //障碍物置信度阈值
+    int bottom_threshold_caution_ = 280;  // 谨慎区域下限阈值
+    int bottom_threshold_avoid_ = 320;    // 避障区域下限阈值
+    int obstacle_y_jump_threshold_ = 10;  // 障碍物Y轴向上跳变的阈值，用于重置避障方向
+
     // 低置信度巡航和寻找赛道时的参数
-    float parking_sign_confidence_threshold_ = 0.3;
     float cruise_linear_speed_ = 0.2; // 低置信度时慢速直行的速度
     float recovering_linear_speed_ = 0.7; // 寻找赛道时的线速度
     float recovering_angular_ratio_ = 0.8; // 寻找赛道时的角速度比例
@@ -90,11 +104,10 @@ private:
     // 状态机变量
     State current_state_ = State::LINE_FOLLOWING;
     float last_avoidance_angular_z_ = 0.0; // 记录最后一次避障的角速度
- 
     float last_avoidance_direction_ = 0.0; // 记录最后一次避障的方向(符号和last_avoidance_angular_z_相同，值取-1或1)
-
+    int last_obstacle_bottom_y_ = 0;       // 记录上一帧避障时障碍物的底部Y坐标
     geometry_msgs::msg::Twist last_valid_twist_;
-    bool has_valid_twist_ = false; // 标志位，确保我们有一个可用的指令
+    bool has_valid_twist_ = false; // 标志位，确保有一个可用的指令
 
     // 最新消息存储
     ai_msgs::msg::PerceptionTargets::SharedPtr latest_point_msg_;
