@@ -51,6 +51,8 @@ RacingControlNode::RacingControlNode(const std::string& node_name,const rclcpp::
   this->get_parameter<float>("qr_code_confidence_threshold", qr_code_confidence_threshold_);
   this->declare_parameter<int>("qr_code_area_threshold", qr_code_area_threshold_);
   this->get_parameter<int>("qr_code_area_threshold", qr_code_area_threshold_);
+  this->declare_parameter<int>("qr_code_large_area_threshold", qr_code_large_area_threshold_);
+  this->get_parameter<int>("qr_code_large_area_threshold", qr_code_large_area_threshold_);
 
   // 回线参数
   this->declare_parameter<float>("cruise_linear_speed", cruise_linear_speed_);
@@ -163,6 +165,14 @@ void RacingControlNode::MessageProcess(){
         continue;
     }
 
+    float speed_modifier = 1.0f; // 默认速度修正因子为1.0
+    auto followable_qr_code_check = findFollowableQrCode(current_obstacle_msg);
+    if (followable_qr_code_check && 
+        static_cast<int>(followable_qr_code_check->rois[0].rect.width * followable_qr_code_check->rois[0].rect.height) >= qr_code_large_area_threshold_) {
+        speed_modifier = 0.5f; // 如果二维码面积超大，速度减半
+        RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "检测到大面积二维码！速度减半。");
+    }
+
     // 最高优先级：检查是否满足停车条件
     if (isParkingConditionMet(current_obstacle_msg)) {
             RCLCPP_FATAL(this->get_logger(), "满足停车条件！正在停止。");
@@ -191,7 +201,7 @@ void RacingControlNode::MessageProcess(){
 
     if (should_force_avoidance && current_state_ != State::OBSTACLE_AVOIDING) {
         RCLCPP_WARN(this->get_logger(), "障碍物过近！强制切换到避障模式。");
-        ObstaclesAvoiding(*obstacle_to_avoid, followable_sign);
+        ObstaclesAvoiding(*obstacle_to_avoid, followable_sign, speed_modifier);
         current_state_ = State::OBSTACLE_AVOIDING;
         has_valid_twist_ = false; // 旧指令失效
     }
@@ -202,7 +212,7 @@ void RacingControlNode::MessageProcess(){
       case State::OBSTACLE_AVOIDING:
         if (obstacle_to_avoid) {
           // 持续检测到障碍物，执行避障
-          ObstaclesAvoiding(*obstacle_to_avoid, followable_sign);
+          ObstaclesAvoiding(*obstacle_to_avoid, followable_sign, speed_modifier);
         } else {
          // 结束避障，重置转弯方向和历史记录
           last_avoidance_direction_ = 0.0f;
@@ -211,7 +221,7 @@ void RacingControlNode::MessageProcess(){
           // 如果看得到主目标，就去巡线；否则就去寻找赛道
           if (has_primary_target) {
               float target_linear_speed = isObstacleInCautionZone(current_obstacle_msg) ? avoid_linear_speed_ : follow_linear_speed_;
-              LineFollowing(target_linear_speed);
+              LineFollowing(target_linear_speed, speed_modifier);
               current_state_ = State::LINE_FOLLOWING;
               RCLCPP_WARN(this->get_logger(), "找到主目标！切换到巡线状态");
           } else {
@@ -229,7 +239,7 @@ void RacingControlNode::MessageProcess(){
         if (has_primary_target) {
           // 找到了，切换回巡线状态
           float target_linear_speed = isObstacleInCautionZone(current_obstacle_msg) ? avoid_linear_speed_ : follow_linear_speed_;
-          LineFollowing(target_linear_speed);
+          LineFollowing(target_linear_speed, speed_modifier);
           current_state_ = State::LINE_FOLLOWING;
           RCLCPP_WARN(this->get_logger(), "找到主目标！切换回巡线状态");
         } else {
@@ -240,7 +250,7 @@ void RacingControlNode::MessageProcess(){
           if (slow_down_for_obstacle) {
             RCLCPP_WARN(this->get_logger(), "回线时，同侧发现谨慎区障碍物，减速！");
           }
-          twist_msg.linear.x = slow_down_for_obstacle ? avoid_linear_speed_ : recovering_linear_speed_;
+          twist_msg.linear.x = (slow_down_for_obstacle ? avoid_linear_speed_ : recovering_linear_speed_) * speed_modifier;
           twist_msg.angular.z = -1.0 * std::copysign(recovering_angular_ratio_, last_avoidance_angular_z_);
           RCLCPP_INFO(this->get_logger(), "回线状态：%.2f, angular z: %f", twist_msg.linear.x, twist_msg.angular.z);
           publisher_->publish(twist_msg);
@@ -251,7 +261,7 @@ void RacingControlNode::MessageProcess(){
         { 
           // 如果巡线时遇到需要谨慎的障碍物，则降速
           float target_linear_speed = isObstacleInCautionZone(current_obstacle_msg) ? avoid_linear_speed_ : follow_linear_speed_;
-          if (!LineFollowing(target_linear_speed)) {
+          if (!LineFollowing(target_linear_speed, speed_modifier)) {
             if (has_valid_twist_) {
                 publisher_->publish(last_valid_twist_);
             } else {
@@ -276,7 +286,7 @@ void RacingControlNode::MessageProcess(){
 // ********************************************************************************
 // *********************************巡线控制函数************************************
 // ********************************************************************************
-bool RacingControlNode::LineFollowing(float target_linear_speed){
+bool RacingControlNode::LineFollowing(float target_linear_speed, float speed_modifier){
   int target_x = 0;
   int target_y = 0;
   std::string log_reason;
@@ -323,7 +333,7 @@ bool RacingControlNode::LineFollowing(float target_linear_speed){
   float center_offset = static_cast<float>(target_x) - 320.0f;
   float target_y_relative = static_cast<float>(target_y) / 224.0f * 0.262f;
   auto twist_msg = geometry_msgs::msg::Twist();
-  twist_msg.linear.x = target_linear_speed;
+  twist_msg.linear.x = target_linear_speed * speed_modifier;
 
   if (use_parking_sign) {
     twist_msg.angular.z = 2.0f * follow_angular_ratio_ * (center_offset / 320.0f) * target_y_relative;
@@ -334,14 +344,14 @@ bool RacingControlNode::LineFollowing(float target_linear_speed){
   }
 
   last_valid_twist_ = twist_msg;
-  last_valid_twist_.linear.x = target_linear_speed; 
+  last_valid_twist_.linear.x = twist_msg.linear.x;
   last_valid_twist_.angular.z = 3 * twist_msg.angular.z;
   has_valid_twist_ = true;
 
   publisher_->publish(twist_msg);
   
   RCLCPP_INFO(this->get_logger(), "Following %s -> X:%d, Y:%d, Ang:%.2f, Lin:%.2f", 
-              log_reason.c_str(), target_x, target_y, twist_msg.angular.z, target_linear_speed);
+              log_reason.c_str(), target_x, target_y, twist_msg.angular.z, twist_msg.linear.x);
 
   return true;
 }
@@ -349,7 +359,7 @@ bool RacingControlNode::LineFollowing(float target_linear_speed){
 // ********************************************************************************
 // *********************************避障控制函数************************************
 // ********************************************************************************
-void RacingControlNode::ObstaclesAvoiding(const ai_msgs::msg::Target& obstacle, std::optional<ai_msgs::msg::Target> parking_spot) {
+void RacingControlNode::ObstaclesAvoiding(const ai_msgs::msg::Target& obstacle, std::optional<ai_msgs::msg::Target> parking_spot, float speed_modifier) {
   if (obstacle.rois.empty() || obstacle.rois[0].rect.width == 0) {
       RCLCPP_ERROR(this->get_logger(), "CRITICAL: ObstaclesAvoiding called with invalid ROI data for obstacle!");
       return; 
@@ -433,11 +443,11 @@ void RacingControlNode::ObstaclesAvoiding(const ai_msgs::msg::Target& obstacle, 
     angular_z_avoid = 10.0f * last_avoidance_direction_;
   }
 
-  twist_msg.linear.x = avoid_linear_speed_;
+  twist_msg.linear.x = avoid_linear_speed_ * speed_modifier;
   twist_msg.angular.z = angular_z_avoid;
   publisher_->publish(twist_msg);
-  RCLCPP_WARN(this->get_logger(), "避障 -> X:%d, Y:%d, 置信度: %.2f, 角速度: %.2f, %s",
-              obstacle_center_x, current_obstacle_bottom_y, obstacle.rois[0].confidence, angular_z_avoid, log_reason.c_str());
+  RCLCPP_WARN(this->get_logger(), "避障 -> X:%d, Y:%d, 置信度: %.2f, 角速度: %.2f, 线速度: %.2f, %s",
+              obstacle_center_x, current_obstacle_bottom_y, obstacle.rois[0].confidence, twist_msg.angular.z, twist_msg.linear.x, log_reason.c_str());
 }
 
 

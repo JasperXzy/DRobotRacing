@@ -57,9 +57,10 @@ private:
     void subscription_callback_target(const ai_msgs::msg::PerceptionTargets::SharedPtr targets_msg);
     // 处理/sign4return消息的回调函数
     void sign_callback(const std_msgs::msg::Int32::SharedPtr msg);
-    bool LineFollowing(float target_linear_speed);
+    bool LineFollowing(float target_linear_speed, float speed_modifier);
     void ObstaclesAvoiding(const ai_msgs::msg::Target& obstacle, 
-                       std::optional<ai_msgs::msg::Target> parking_spot);
+                       std::optional<ai_msgs::msg::Target> parking_spot,
+                       float speed_modifier);
     void MessageProcess(void);
     bool hasValidTrackLine(const ai_msgs::msg::PerceptionTargets::SharedPtr& line_msg) const; //检查赛道线消息是否有效且置信度足够高
     std::optional<ai_msgs::msg::Target> findFollowableParkingSign(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const; //查找一个置信度足够高、适合用于跟随的停车标志
@@ -87,6 +88,7 @@ private:
     //二维码参数
     float qr_code_confidence_threshold_ = 0.2; //二维码置信度阈值
     int qr_code_area_threshold_ = 500; //二维码面积阈值
+    int qr_code_large_area_threshold_ = 2900; // 当二维码面积大于此值时，速度减半
 
     // 避障参数
     float avoid_linear_speed_ = 0.3;
