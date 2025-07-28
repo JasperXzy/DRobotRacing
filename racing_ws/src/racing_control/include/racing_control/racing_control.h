@@ -102,7 +102,8 @@ private:
     float cruise_linear_speed_ = 0.2; // 低置信度时慢速直行的速度
     float recovering_linear_speed_ = 0.7; // 寻找赛道时的线速度
     float recovering_angular_ratio_ = 0.8; // 寻找赛道时的角速度比例
-
+    float line_reentry_x_threshold_ = 100.0; // 结束避障后，赛道线可被接受的中心偏移量
+    
     // 状态机变量
     State current_state_ = State::LINE_FOLLOWING;
     float last_avoidance_angular_z_ = 0.0; // 记录最后一次避障的角速度

@@ -63,6 +63,10 @@ def generate_launch_description():
             default_value='0.5',
             description='confidence threshold for line following'),
         DeclareLaunchArgument(
+            'line_confidence_threshold',
+            default_value='0.5',
+            description='confidence threshold for line following'),
+        DeclareLaunchArgument(
             'obstacle_confidence_threshold',
             default_value='0.5',
             description='confidence threshold for obstacle avoidance'),
@@ -93,6 +97,7 @@ def generate_launch_description():
                 {"bottom_threshold_avoid": LaunchConfiguration('bottom_threshold_avoid')},
                 {"parking_y_threshold": LaunchConfiguration('parking_y_threshold')},
                 {"line_confidence_threshold": LaunchConfiguration('line_confidence_threshold')},
+                {"line_reentry_x_threshold": LaunchConfiguration('line_reentry_x_threshold')},
                 {"obstacle_confidence_threshold": LaunchConfiguration('obstacle_confidence_threshold')},
                 {"obstacle_y_jump_threshold": LaunchConfiguration('obstacle_y_jump_threshold')},
                 {"parking_sign_confidence_threshold": LaunchConfiguration('parking_sign_confidence_threshold')},

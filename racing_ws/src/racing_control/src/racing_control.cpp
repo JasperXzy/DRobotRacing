@@ -61,7 +61,9 @@ RacingControlNode::RacingControlNode(const std::string& node_name,const rclcpp::
   this->get_parameter<float>("recovering_linear_speed", recovering_linear_speed_);
   this->declare_parameter<float>("recovering_angular_ratio", recovering_angular_ratio_);
   this->get_parameter<float>("recovering_angular_ratio", recovering_angular_ratio_);
-
+  this->declare_parameter<float>("line_reentry_x_threshold", line_reentry_x_threshold_);
+  this->get_parameter<float>("line_reentry_x_threshold", line_reentry_x_threshold_);
+  
   // 订阅者和发布者创建
   point_subscriber_ =
     this->create_subscription<ai_msgs::msg::PerceptionTargets>(
@@ -214,19 +216,44 @@ void RacingControlNode::MessageProcess(){
           // 持续检测到障碍物，执行避障
           ObstaclesAvoiding(*obstacle_to_avoid, followable_sign, speed_modifier);
         } else {
-         // 结束避障，重置转弯方向和历史记录
+          // 结束避障，重置转弯方向和历史记录
           last_avoidance_direction_ = 0.0f;
           last_obstacle_bottom_y_ = 0;
-          RCLCPP_WARN(this->get_logger(), "结束避障，重置转弯方向");
-          // 如果看得到主目标，就去巡线；否则就去寻找赛道
-          if (has_primary_target) {
+          RCLCPP_WARN(this->get_logger(), "结束避障，重置转弯方向,准备决策下一状态");
+
+          // 决策是否可以切换回巡线
+          bool safe_to_reenter_line_following = false;
+          std::string reason_for_decision = "没有找到任何可跟随目标";
+
+          // 优先检查QR码和停车标志，它们不受位置限制
+          if (findFollowableQrCode(current_obstacle_msg).has_value()) {
+              safe_to_reenter_line_following = true;
+              reason_for_decision = "找到可跟随的QR码";
+          } else if (findFollowableParkingSign(current_obstacle_msg).has_value()) {
+              safe_to_reenter_line_following = true;
+              reason_for_decision = "找到可跟随的停车标志";
+          } else if (hasValidTrackLine(current_line_msg)) {
+              // 如果只有赛道线，检查其位置
+              float line_x = current_line_msg->targets[0].points[0].point[0].x;
+              float center_diff = std::abs(line_x - 320.0f);
+              if (center_diff <= line_reentry_x_threshold_) {
+                  safe_to_reenter_line_following = true;
+                  reason_for_decision = "找到赛道线，且位置居中";
+              } else {
+                  safe_to_reenter_line_following = false;
+                  reason_for_decision = "赛道线可见但偏离中心过大";
+                  RCLCPP_WARN(this->get_logger(), "赛道线偏离中心 %.1f > %.1f px", center_diff, line_reentry_x_threshold_);
+              }
+          }
+
+          if (safe_to_reenter_line_following) {
               float target_linear_speed = isObstacleInCautionZone(current_obstacle_msg) ? avoid_linear_speed_ : follow_linear_speed_;
               LineFollowing(target_linear_speed, speed_modifier);
               current_state_ = State::LINE_FOLLOWING;
-              RCLCPP_WARN(this->get_logger(), "找到主目标！切换到巡线状态");
+              RCLCPP_WARN(this->get_logger(), "%s, 切换到巡线状态", reason_for_decision.c_str());
           } else {
               current_state_ = State::RECOVERING_LINE;
-              RCLCPP_WARN(this->get_logger(), "没有明确目标，切换到回线状态");
+              RCLCPP_WARN(this->get_logger(), "%s, 切换到回线状态", reason_for_decision.c_str());
           }
         }
         break;
@@ -264,6 +291,7 @@ void RacingControlNode::MessageProcess(){
           if (!LineFollowing(target_linear_speed, speed_modifier)) {
             if (has_valid_twist_) {
                 publisher_->publish(last_valid_twist_);
+                RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "丢线，使用上一次有效指令: %.2f, %.2f", last_valid_twist_.linear.x, last_valid_twist_.angular.z);
             } else {
                 // 如果没有任何历史指令（大概只有刚发车却没有找到有效追踪目标才会进入这个条件），则巡线失败，用上一次有效指令
                 RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "巡线失败！！！！！！！！！");
@@ -345,7 +373,7 @@ bool RacingControlNode::LineFollowing(float target_linear_speed, float speed_mod
 
   last_valid_twist_ = twist_msg;
   last_valid_twist_.linear.x = twist_msg.linear.x;
-  last_valid_twist_.angular.z = 3 * twist_msg.angular.z;
+  last_valid_twist_.angular.z = twist_msg.angular.z;
   has_valid_twist_ = true;
 
   publisher_->publish(twist_msg);
