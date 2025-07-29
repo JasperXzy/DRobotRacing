@@ -11,9 +11,19 @@ cd ../userdata
 cd ../userdata && cd racing_ws && source install/setup.bash
 ```
 
+# VsCode启动
+```bash
+cd racing_ws && source install/setup.bash
+```
+
+# web_show前置
+```bash
+ros2 launch origincar_bringup usb_websocket_display.launch.py
+```
+
 ## HDU-203
 ```bash
-192.168.1.107
+192.168.1.104
 ```
 
 ## 启动rosbridge端⼝  --> 上位机costudio
@@ -33,14 +43,13 @@ ros2 launch origincar_bringup camera.launch.py
 
 ## 检测中线
 ```bash
-cd racing_ws && source install/setup.bash
 ros2 launch racing_track_detection racing_track_detection.launch.py
 ```
 
 ## 障碍物检测
 ```bash
-export WEB_SHOW=True
 ros2 launch racing_obstacle_detection obstacle_detection.launch.py
+ros2 launch racing_obstacle_detection obstacle_detection_web.launch.py 
 ```
 
 ## 扫二维码
@@ -78,12 +87,10 @@ sudo hrut_somstatus
 ```
 
 
-## test
+## 专门用来test、debug
 ```bash
-ros2 launch racing_control racing_control.launch.py avoid_angular_ratio:=-0.1 avoid_linear_speed:=0.1 recovering_linear_speed:=0.1 recovering_angular_ratio:=1.3 follow_angular_ratio:=-4.0 follow_linear_speed:=0.1 bottom_threshold_caution:=300 bottom_threshold_avoid:=305 obstacle_y_jump_threshold:=50 parking_y_threshold:=405 line_confidence_threshold:=0.7 obstacle_confidence_threshold:=0.5 parking_sign_confidence_threshold:=0.3 qr_code_confidence_threshold:=1.1 qr_code_area_threshold:=500
+ros2 launch racing_control racing_control.launch.py avoid_angular_ratio:=-0.0045 avoid_linear_speed:=0.5 recovering_linear_speed:=0.85 recovering_angular_ratio:=1.25 follow_angular_ratio:=-3.0 follow_linear_speed:=0.85 bottom_threshold_caution:=300 bottom_threshold_avoid:=305 obstacle_y_jump_threshold:=50 parking_y_threshold:=405 line_confidence_threshold:=1.0 obstacle_confidence_threshold:=0.5 parking_sign_confidence_threshold:=1.0 qr_code_confidence_threshold:=0.1 qr_code_area_threshold:=500
 ```
-
-
 
 
 
