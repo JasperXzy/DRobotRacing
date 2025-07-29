@@ -185,8 +185,6 @@ void RacingControlNode::MessageProcess(){
     
     // 第二优先级：检查是否有需要躲避的障碍物
     auto obstacle_to_avoid = findAvoidanceObstacle(current_obstacle_msg);
-    // 检查是否有可以跟随的停车标志
-    auto followable_sign = findFollowableParkingSign(current_obstacle_msg);
     // 检查是否有任何可以跟随的目标（线或停车标志或二维码）
     bool has_primary_target = hasValidTrackLine(current_line_msg) || findFollowableParkingSign(current_obstacle_msg).has_value() ||
                               findFollowableQrCode(current_obstacle_msg).has_value();
@@ -203,7 +201,7 @@ void RacingControlNode::MessageProcess(){
 
     if (should_force_avoidance && current_state_ != State::OBSTACLE_AVOIDING) {
         RCLCPP_WARN(this->get_logger(), "障碍物过近！强制切换到避障模式。");
-        ObstaclesAvoiding(*obstacle_to_avoid, followable_sign, speed_modifier);
+        ObstaclesAvoiding(*obstacle_to_avoid, speed_modifier);
         current_state_ = State::OBSTACLE_AVOIDING;
         has_valid_twist_ = false; // 旧指令失效
     }
@@ -214,7 +212,7 @@ void RacingControlNode::MessageProcess(){
       case State::OBSTACLE_AVOIDING:
         if (obstacle_to_avoid) {
           // 持续检测到障碍物，执行避障
-          ObstaclesAvoiding(*obstacle_to_avoid, followable_sign, speed_modifier);
+          ObstaclesAvoiding(*obstacle_to_avoid, speed_modifier);
         } else {
           // 结束避障，重置转弯方向和历史记录
           last_avoidance_direction_ = 0.0f;
@@ -387,7 +385,7 @@ bool RacingControlNode::LineFollowing(float target_linear_speed, float speed_mod
 // ********************************************************************************
 // *********************************避障控制函数************************************
 // ********************************************************************************
-void RacingControlNode::ObstaclesAvoiding(const ai_msgs::msg::Target& obstacle, std::optional<ai_msgs::msg::Target> parking_spot, float speed_modifier) {
+void RacingControlNode::ObstaclesAvoiding(const ai_msgs::msg::Target& obstacle, float speed_modifier) {
   if (obstacle.rois.empty() || obstacle.rois[0].rect.width == 0) {
       RCLCPP_ERROR(this->get_logger(), "CRITICAL: ObstaclesAvoiding called with invalid ROI data for obstacle!");
       return; 
@@ -408,27 +406,8 @@ void RacingControlNode::ObstaclesAvoiding(const ai_msgs::msg::Target& obstacle, 
 
   auto twist_msg = geometry_msgs::msg::Twist();
   int obstacle_center_x = obstacle.rois[0].rect.x_offset + obstacle.rois[0].rect.width / 2;
-  float obstacle_center_offset = 0.0f;
-  std::string log_reason;
-
-  // 判断是否有停车位作为参考 
-  if (parking_spot && !parking_spot->rois.empty()) {
-    // 如果有停车位，则以停车位中心为参考点
-    int parking_spot_center_x = parking_spot->rois[0].rect.x_offset + parking_spot->rois[0].rect.width / 2;
-    int parking_bottom = parking_spot->rois[0].rect.y_offset + parking_spot->rois[0].rect.height;
-    if (parking_bottom >= bottom_threshold_avoid_) {
-      obstacle_center_offset = static_cast<float>(obstacle_center_x) - static_cast<float>(parking_spot_center_x);
-      log_reason = "relative to Parking Spot";
-    }
-    else {
-      obstacle_center_offset = static_cast<float>(obstacle_center_x) - 320.0f; 
-      log_reason = "relative to Screen Center";
-    }
-  } else {
-    // 如果没有停车位，以屏幕中心为参考点
-    obstacle_center_offset = static_cast<float>(obstacle_center_x) - 320.0f; 
-    log_reason = "relative to Screen Center";
-  }
+ 
+  float obstacle_center_offset = static_cast<float>(obstacle_center_x) - 320.0f; 
 
   float angular_z_avoid = 0.0f;
 
@@ -453,29 +432,29 @@ void RacingControlNode::ObstaclesAvoiding(const ai_msgs::msg::Target& obstacle, 
   last_avoidance_angular_z_ = angular_z_avoid;
 
   //记录这次避障的方向
-  if(last_avoidance_direction_ == 0.0) //每次结束避障或检测到跳变时，此值为0，重新记录方向
-  {
-    if (angular_z_avoid > 0)
-    {
-      last_avoidance_direction_ = 1.0f;
-    }
-    else
-    {
-      last_avoidance_direction_ = -1.0f;
-    }
-    RCLCPP_INFO(this->get_logger(), "首次避障或方向重置后，设定新的避障方向为: %.1f", last_avoidance_direction_); // 添加日志以便调试
-  }
+  // if(last_avoidance_direction_ == 0.0) //每次结束避障或检测到跳变时，此值为0，重新记录方向
+  // {
+  //   if (angular_z_avoid > 0)
+  //   {
+  //     last_avoidance_direction_ = 1.0f;
+  //   }
+  //   else
+  //   {
+  //     last_avoidance_direction_ = -1.0f;
+  //   }
+  //   RCLCPP_WARN(this->get_logger(), "首次避障或方向重置后，设定新的避障方向为: %.1f", last_avoidance_direction_);
+  // }
 
-  if( last_avoidance_direction_ * angular_z_avoid < 0 && last_avoidance_direction_ != 0) //避障状态机中出现于第一次记录方向相反，则用上一次状态
-  {
-    angular_z_avoid = 10.0f * last_avoidance_direction_;
-  }
+  // if( last_avoidance_direction_ * angular_z_avoid < 0 && last_avoidance_direction_ != 0) //避障状态机中出现于第一次记录方向相反，则用上一次状态
+  // {
+  //   angular_z_avoid = 10.0f * last_avoidance_direction_;
+  // }
 
   twist_msg.linear.x = avoid_linear_speed_ * speed_modifier;
   twist_msg.angular.z = angular_z_avoid;
   publisher_->publish(twist_msg);
-  RCLCPP_WARN(this->get_logger(), "避障 -> X:%d, Y:%d, 置信度: %.2f, 角速度: %.2f, 线速度: %.2f, %s",
-              obstacle_center_x, current_obstacle_bottom_y, obstacle.rois[0].confidence, twist_msg.angular.z, twist_msg.linear.x, log_reason.c_str());
+  RCLCPP_WARN(this->get_logger(), "避障 -> X:%d, Y:%d, 置信度: %.2f, 角速度: %.2f, 线速度: %.2f",
+              obstacle_center_x, current_obstacle_bottom_y, obstacle.rois[0].confidence, twist_msg.angular.z, twist_msg.linear.x);
 }
 
 

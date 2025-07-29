@@ -59,7 +59,6 @@ private:
     void sign_callback(const std_msgs::msg::Int32::SharedPtr msg);
     bool LineFollowing(float target_linear_speed, float speed_modifier);
     void ObstaclesAvoiding(const ai_msgs::msg::Target& obstacle, 
-                       std::optional<ai_msgs::msg::Target> parking_spot,
                        float speed_modifier);
     void MessageProcess(void);
     bool hasValidTrackLine(const ai_msgs::msg::PerceptionTargets::SharedPtr& line_msg) const; //检查赛道线消息是否有效且置信度足够高
