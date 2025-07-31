@@ -32,9 +32,9 @@ def generate_launch_description():
             default_value='0.8',
             description='qr_code confidence threshold for line following'),
         DeclareLaunchArgument(
-            'qr_code_area_threshold',
+            'qr_code_hight_follow_threshold',
             default_value='500',
-            description='qr_code area threshold for line following'),
+            description='qr_code height threshold for line following'),
         DeclareLaunchArgument(
             'qr_code_height_threshold',
             default_value='54',
@@ -82,6 +82,10 @@ def generate_launch_description():
             'line_center_threshold_x',
             default_value='10',
             description='line_center_threshold_x for line following'),
+        DeclareLaunchArgument(
+            'qr_code_speed_modifier',
+            default_value='0.2',
+            description='qr_code_speed_modifier for qr_code detection'),
         Node(
             package='racing_control',
             executable='racing_control',
@@ -93,7 +97,7 @@ def generate_launch_description():
                 {"recovering_linear_speed": LaunchConfiguration('recovering_linear_speed')},
                 {"recovering_angular_ratio": LaunchConfiguration('recovering_angular_ratio')},
                 {"qr_code_confidence_threshold": LaunchConfiguration('qr_code_confidence_threshold')},
-                {"qr_code_area_threshold": LaunchConfiguration('qr_code_area_threshold')},
+                {"qr_code_hight_follow_threshold": LaunchConfiguration('qr_code_hight_follow_threshold')},
                 {"qr_code_height_threshold": LaunchConfiguration('qr_code_height_threshold')},
                 {"follow_angular_ratio": LaunchConfiguration('follow_angular_ratio')},
                 {"follow_linear_speed": LaunchConfiguration('follow_linear_speed')},
@@ -105,6 +109,7 @@ def generate_launch_description():
                 {"obstacle_confidence_threshold": LaunchConfiguration('obstacle_confidence_threshold')},
                 {"obstacle_y_jump_threshold": LaunchConfiguration('obstacle_y_jump_threshold')},
                 {"parking_sign_confidence_threshold": LaunchConfiguration('parking_sign_confidence_threshold')},
+                {"qr_code_speed_modifier": LaunchConfiguration('qr_code_speed_modifier')},
             ],
             arguments=['--ros-args', '--log-level', 'warn']
         )
