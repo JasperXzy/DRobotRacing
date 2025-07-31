@@ -69,7 +69,7 @@ ros2 run qwen_pic_to_text qwen_pic_to_text
 
 ## 中速_offset线性关系         //提升0.85线速度
 ```bash
-ros2 launch racing_control racing_control.launch.py avoid_angular_ratio:=-0.005 avoid_linear_speed:=0.5 recovering_linear_speed:=0.85 recovering_angular_ratio:=1.25 follow_angular_ratio:=-3.0 follow_linear_speed:=0.85 bottom_threshold_caution:=300 bottom_threshold_avoid:=305 obstacle_y_jump_threshold:=50 parking_y_threshold:=405 line_confidence_threshold:=0.7 obstacle_confidence_threshold:=0.5 parking_sign_confidence_threshold:=0.6 qr_code_confidence_threshold:=0.6 qr_code_hight_follow_threshold:=30 qr_code_height_threshold:=54 line_center_threshold_x:=200 qr_code_speed_modifier:=0.2
+ros2 launch racing_control racing_control.launch.py avoid_angular_ratio:=-0.005 avoid_linear_speed:=0.5 recovering_linear_speed:=0.85 recovering_angular_ratio:=1.25 follow_angular_ratio:=-3.0 follow_linear_speed:=0.85 bottom_threshold_caution:=300 bottom_threshold_avoid:=305 obstacle_y_jump_threshold:=50 parking_y_threshold:=405 line_confidence_threshold:=0.7 obstacle_confidence_threshold:=0.5 parking_sign_confidence_threshold:=0.6 qr_code_confidence_threshold:=0.6 qr_code_hight_follow_threshold:=30 qr_code_height_threshold:=54 line_center_threshold_x:=200 qr_code_speed_modifier:=0.2 follow_qr_code_ratio:=-4.0 follow_parking_sign_ratio:=-4.0
 ```
 
 ## 性能监测
@@ -80,7 +80,7 @@ sudo hrut_somstatus
 
 ## 专门用来test、debug
 ```bash
-ros2 launch racing_control racing_control.launch.py avoid_angular_ratio:=-0.0052 avoid_linear_speed:=0.5 recovering_linear_speed:=0.85 recovering_angular_ratio:=1.45 follow_angular_ratio:=-3.0 follow_linear_speed:=0.85 bottom_threshold_caution:=295 bottom_threshold_avoid:=305 obstacle_y_jump_threshold:=50 parking_y_threshold:=405 line_confidence_threshold:=0.7 obstacle_confidence_threshold:=0.5 parking_sign_confidence_threshold:=0.6 qr_code_confidence_threshold:=0.2 qr_code_hight_follow_threshold:=5 qr_code_height_threshold:=53 line_center_threshold_x:=200 qr_code_speed_modifier:=0.2
+ros2 launch racing_control racing_control.launch.py avoid_angular_ratio:=-0.0052 avoid_linear_speed:=0.5 recovering_linear_speed:=0.85 recovering_angular_ratio:=1.45 follow_angular_ratio:=-3.0 follow_linear_speed:=0.85 bottom_threshold_caution:=295 bottom_threshold_avoid:=305 obstacle_y_jump_threshold:=50 parking_y_threshold:=405 line_confidence_threshold:=0.7 obstacle_confidence_threshold:=0.5 parking_sign_confidence_threshold:=0.6 qr_code_confidence_threshold:=0.2 qr_code_hight_follow_threshold:=5 qr_code_height_threshold:=53 line_center_threshold_x:=200 qr_code_speed_modifier:=0.2 follow_qr_code_ratio:=-4.0 follow_parking_sign_ratio:=-4.0
 ```
 
 

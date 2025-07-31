@@ -47,6 +47,8 @@ RacingControlNode::RacingControlNode(const std::string& node_name,const rclcpp::
   this->get_parameter<int>("bottom_threshold_avoid", bottom_threshold_avoid_);
   this->declare_parameter<int>("parking_y_threshold", parking_y_threshold_);
   this->get_parameter<int>("parking_y_threshold", parking_y_threshold_);
+  this->declare_parameter<float>("follow_parking_sign_ratio", follow_parking_sign_ratio_);
+  this->get_parameter<float>("follow_parking_sign_ratio", follow_parking_sign_ratio_);
 
   // 二维码参数
   this->declare_parameter<float>("qr_code_confidence_threshold", qr_code_confidence_threshold_);
@@ -57,6 +59,8 @@ RacingControlNode::RacingControlNode(const std::string& node_name,const rclcpp::
   this->get_parameter<int>("qr_code_height_threshold", qr_code_height_threshold_);
   this->declare_parameter<float>("qr_code_speed_modifier", qr_code_speed_modifier_);
   this->get_parameter<float>("qr_code_speed_modifier", qr_code_speed_modifier_);
+  this->declare_parameter<float>("follow_qr_code_ratio", follow_qr_code_ratio_);
+  this->get_parameter<float>("follow_qr_code_ratio", follow_qr_code_ratio_);
 
   // 回线参数
   this->declare_parameter<float>("cruise_linear_speed", cruise_linear_speed_);
@@ -339,9 +343,9 @@ bool RacingControlNode::LineFollowing(float target_linear_speed, float speed_mod
   twist_msg.linear.x = target_linear_speed * speed_modifier;
 
   if (use_parking_sign) {
-    twist_msg.angular.z = 2.0f * follow_angular_ratio_ * (center_offset / 320.0f) * target_y_relative;
+    twist_msg.angular.z = follow_parking_sign_ratio_ * (center_offset / 320.0f) * target_y_relative;
   } else if (use_qr_code) {
-    twist_msg.angular.z = 2.0f * follow_angular_ratio_ * (center_offset / 320.0f) * target_y_relative;
+    twist_msg.angular.z = follow_qr_code_ratio_ * (center_offset / 320.0f) * target_y_relative;
   } else {
     twist_msg.angular.z = follow_angular_ratio_ * (center_offset / 320.0f) * target_y_relative;
   }

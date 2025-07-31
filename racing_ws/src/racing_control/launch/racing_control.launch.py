@@ -86,6 +86,14 @@ def generate_launch_description():
             'qr_code_speed_modifier',
             default_value='0.2',
             description='qr_code_speed_modifier for qr_code detection'),
+        DeclareLaunchArgument(
+            'follow_qr_code_ratio',
+            default_value='-4.0',
+            description='follow_qr_code_ratio for qr_code following'),
+        DeclareLaunchArgument(
+            'follow_parking_sign_ratio',
+            default_value='-4.0',
+            description='follow_parking_sign_ratio for parking_sign following'),
         Node(
             package='racing_control',
             executable='racing_control',
@@ -110,6 +118,8 @@ def generate_launch_description():
                 {"obstacle_y_jump_threshold": LaunchConfiguration('obstacle_y_jump_threshold')},
                 {"parking_sign_confidence_threshold": LaunchConfiguration('parking_sign_confidence_threshold')},
                 {"qr_code_speed_modifier": LaunchConfiguration('qr_code_speed_modifier')},
+                {"follow_qr_code_ratio": LaunchConfiguration('follow_qr_code_ratio')},
+                {"follow_parking_sign_ratio": LaunchConfiguration('follow_parking_sign_ratio')},
             ],
             arguments=['--ros-args', '--log-level', 'warn']
         )

@@ -83,12 +83,14 @@ private:
     // 停车位参数
     int parking_y_threshold_ = 300; //停车标志y轴阈值
     float parking_sign_confidence_threshold_ = 0.3; //停车标志置信度阈值
+    float follow_parking_sign_ratio_ = -4.0; 
 
     //二维码参数
     float qr_code_confidence_threshold_ = 0.2; //二维码置信度阈值
     int qr_code_hight_follow_threshold_ = 30; //二维码面积高度阈值
     int qr_code_height_threshold_ = 54; // 当二维码高度大于此值时，速度减半
     float qr_code_speed_modifier_ = 0.2; //当二维码高度超过阈值时的速度修正因子
+    float follow_qr_code_ratio_ = -4.0; 
 
     // 避障参数
     float avoid_linear_speed_ = 0.3;
