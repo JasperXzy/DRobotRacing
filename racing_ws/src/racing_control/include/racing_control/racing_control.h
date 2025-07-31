@@ -87,7 +87,7 @@ private:
     //二维码参数
     float qr_code_confidence_threshold_ = 0.2; //二维码置信度阈值
     int qr_code_area_threshold_ = 500; //二维码面积阈值
-    int qr_code_large_area_threshold_ = 2900; // 当二维码面积大于此值时，速度减半
+    int qr_code_height_threshold_ = 54; // 当二维码高度大于此值时，速度减半
 
     // 避障参数
     float avoid_linear_speed_ = 0.3;

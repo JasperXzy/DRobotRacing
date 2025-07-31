@@ -53,8 +53,8 @@ RacingControlNode::RacingControlNode(const std::string& node_name,const rclcpp::
   this->get_parameter<float>("qr_code_confidence_threshold", qr_code_confidence_threshold_);
   this->declare_parameter<int>("qr_code_area_threshold", qr_code_area_threshold_);
   this->get_parameter<int>("qr_code_area_threshold", qr_code_area_threshold_);
-  this->declare_parameter<int>("qr_code_large_area_threshold", qr_code_large_area_threshold_);
-  this->get_parameter<int>("qr_code_large_area_threshold", qr_code_large_area_threshold_);
+  this->declare_parameter<int>("qr_code_height_threshold", qr_code_height_threshold_);
+  this->get_parameter<int>("qr_code_height_threshold", qr_code_height_threshold_);
 
   // 回线参数
   this->declare_parameter<float>("cruise_linear_speed", cruise_linear_speed_);
@@ -169,7 +169,7 @@ void RacingControlNode::MessageProcess(){
     float speed_modifier = 1.0f; // 默认速度修正因子为1.0
     auto followable_qr_code_check = findFollowableQrCode(current_obstacle_msg);
     if (followable_qr_code_check && 
-        static_cast<int>(followable_qr_code_check->rois[0].rect.width * followable_qr_code_check->rois[0].rect.height) >= qr_code_large_area_threshold_) {
+        static_cast<int>(followable_qr_code_check->rois[0].rect.height) >= qr_code_height_threshold_) {
         speed_modifier = 0.5f; // 如果二维码面积超大，速度减半
         RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "检测到大面积二维码！速度减半。");
     }
@@ -311,7 +311,7 @@ bool RacingControlNode::LineFollowing(float target_linear_speed, float speed_mod
     use_qr_code = true;
     log_reason = "QR Code";
     // 记录跟随二维码的目标位置和置信度和面积
-    RCLCPP_WARN(this->get_logger(), "跟随二维码 -> X:%d, Y:%d, 置信度: %.2f, 面积: %d", target_x, target_y, followable_qr_code->rois[0].confidence, followable_qr_code->rois[0].rect.width * followable_qr_code->rois[0].rect.height);
+    RCLCPP_WARN(this->get_logger(), "跟随二维码 -> X:%d, Y:%d, 置信度: %.2f, 高度: %d", target_x, target_y, followable_qr_code->rois[0].confidence, followable_qr_code->rois[0].rect.height);
   } else if (followable_parking_sign) {
     // 如果找到了可以跟随的停车标志
     target_x = followable_parking_sign->rois[0].rect.x_offset + followable_parking_sign->rois[0].rect.width / 2;
