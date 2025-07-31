@@ -69,7 +69,7 @@ private:
     bool isObstacleInCautionZone(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const;  //检查是否有障碍物进入了需要减速的“谨慎区域”
     bool isObstacleOnRecoverySide(const ai_msgs::msg::Target& obstacle) const; // 检查障碍物是否在回线方向的同侧
     std::optional<ai_msgs::msg::Target> findCautionObstacleOnRecoverySide(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const; // 查找回线时同侧的谨慎区障碍物
-
+    bool isTrackLineCentered(const ai_msgs::msg::PerceptionTargets::SharedPtr& line_msg) const; //检查赛道线是否位于图像中心区域
     std::string pub_control_topic_ = "cmd_vel";
     std::mutex point_target_mutex_;
     bool process_stop_ = false;
@@ -87,7 +87,7 @@ private:
     //二维码参数
     float qr_code_confidence_threshold_ = 0.2; //二维码置信度阈值
     int qr_code_area_threshold_ = 500; //二维码面积阈值
-    int qr_code_large_area_threshold_ = 2900; // 当二维码面积大于此值时，速度减半
+    int qr_code_height_threshold_ = 54; // 当二维码高度大于此值时，速度减半
 
     // 避障参数
     float avoid_linear_speed_ = 0.3;
@@ -101,7 +101,7 @@ private:
     float cruise_linear_speed_ = 0.2; // 低置信度时慢速直行的速度
     float recovering_linear_speed_ = 0.7; // 寻找赛道时的线速度
     float recovering_angular_ratio_ = 0.8; // 寻找赛道时的角速度比例
-    float line_reentry_x_threshold_ = 100.0; // 结束避障后，赛道线可被接受的中心偏移量
+    int line_center_threshold_x_ = 100; // 结束避障后，赛道线可被接受的中心偏移量
     
     // 状态机变量
     State current_state_ = State::LINE_FOLLOWING;

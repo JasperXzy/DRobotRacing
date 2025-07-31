@@ -25,6 +25,8 @@ RacingControlNode::RacingControlNode(const std::string& node_name,const rclcpp::
   this->get_parameter<float>("follow_angular_ratio", follow_angular_ratio_);
   this->declare_parameter<float>("line_confidence_threshold", line_confidence_threshold_);
   this->get_parameter<float>("line_confidence_threshold", line_confidence_threshold_);
+  this->declare_parameter<int>("line_center_threshold_x", line_center_threshold_x_);
+  this->get_parameter<int>("line_center_threshold_x", line_center_threshold_x_);
 
   // 避障参数
   this->declare_parameter<float>("avoid_linear_speed", avoid_linear_speed_);
@@ -51,8 +53,8 @@ RacingControlNode::RacingControlNode(const std::string& node_name,const rclcpp::
   this->get_parameter<float>("qr_code_confidence_threshold", qr_code_confidence_threshold_);
   this->declare_parameter<int>("qr_code_area_threshold", qr_code_area_threshold_);
   this->get_parameter<int>("qr_code_area_threshold", qr_code_area_threshold_);
-  this->declare_parameter<int>("qr_code_large_area_threshold", qr_code_large_area_threshold_);
-  this->get_parameter<int>("qr_code_large_area_threshold", qr_code_large_area_threshold_);
+  this->declare_parameter<int>("qr_code_height_threshold", qr_code_height_threshold_);
+  this->get_parameter<int>("qr_code_height_threshold", qr_code_height_threshold_);
 
   // 回线参数
   this->declare_parameter<float>("cruise_linear_speed", cruise_linear_speed_);
@@ -61,9 +63,6 @@ RacingControlNode::RacingControlNode(const std::string& node_name,const rclcpp::
   this->get_parameter<float>("recovering_linear_speed", recovering_linear_speed_);
   this->declare_parameter<float>("recovering_angular_ratio", recovering_angular_ratio_);
   this->get_parameter<float>("recovering_angular_ratio", recovering_angular_ratio_);
-  this->declare_parameter<float>("line_reentry_x_threshold", line_reentry_x_threshold_);
-  this->get_parameter<float>("line_reentry_x_threshold", line_reentry_x_threshold_);
-  
   // 订阅者和发布者创建
   point_subscriber_ =
     this->create_subscription<ai_msgs::msg::PerceptionTargets>(
@@ -170,7 +169,7 @@ void RacingControlNode::MessageProcess(){
     float speed_modifier = 1.0f; // 默认速度修正因子为1.0
     auto followable_qr_code_check = findFollowableQrCode(current_obstacle_msg);
     if (followable_qr_code_check && 
-        static_cast<int>(followable_qr_code_check->rois[0].rect.width * followable_qr_code_check->rois[0].rect.height) >= qr_code_large_area_threshold_) {
+        static_cast<int>(followable_qr_code_check->rois[0].rect.height) >= qr_code_height_threshold_) {
         speed_modifier = 0.5f; // 如果二维码面积超大，速度减半
         RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "检测到大面积二维码！速度减半。");
     }
@@ -186,8 +185,9 @@ void RacingControlNode::MessageProcess(){
     // 第二优先级：检查是否有需要躲避的障碍物
     auto obstacle_to_avoid = findAvoidanceObstacle(current_obstacle_msg);
     // 检查是否有任何可以跟随的目标（线或停车标志或二维码）
-    bool has_primary_target = hasValidTrackLine(current_line_msg) || findFollowableParkingSign(current_obstacle_msg).has_value() ||
-                              findFollowableQrCode(current_obstacle_msg).has_value();
+    bool has_followable_sign = findFollowableParkingSign(current_obstacle_msg).has_value();
+    bool has_followable_qrcode = findFollowableQrCode(current_obstacle_msg).has_value();
+    bool line_is_near_center = isTrackLineCentered(current_line_msg);
 
     // 回线状态到避障状态转换
     bool should_force_avoidance = obstacle_to_avoid.has_value();
@@ -219,39 +219,14 @@ void RacingControlNode::MessageProcess(){
           last_obstacle_bottom_y_ = 0;
           RCLCPP_WARN(this->get_logger(), "结束避障，重置转弯方向,准备决策下一状态");
 
-          // 决策是否可以切换回巡线
-          bool safe_to_reenter_line_following = false;
-          std::string reason_for_decision = "没有找到任何可跟随目标";
-
-          // 优先检查QR码和停车标志，它们不受位置限制
-          if (findFollowableQrCode(current_obstacle_msg).has_value()) {
-              safe_to_reenter_line_following = true;
-              reason_for_decision = "找到可跟随的QR码";
-          } else if (findFollowableParkingSign(current_obstacle_msg).has_value()) {
-              safe_to_reenter_line_following = true;
-              reason_for_decision = "找到可跟随的停车标志";
-          } else if (hasValidTrackLine(current_line_msg)) {
-              // 如果只有赛道线，检查其位置
-              float line_x = current_line_msg->targets[0].points[0].point[0].x;
-              float center_diff = std::abs(line_x - 320.0f);
-              if (center_diff <= line_reentry_x_threshold_) {
-                  safe_to_reenter_line_following = true;
-                  reason_for_decision = "找到赛道线，且位置居中";
-              } else {
-                  safe_to_reenter_line_following = false;
-                  reason_for_decision = "赛道线可见但偏离中心过大";
-                  RCLCPP_WARN(this->get_logger(), "赛道线偏离中心 %.1f > %.1f px", center_diff, line_reentry_x_threshold_);
-              }
-          }
-
-          if (safe_to_reenter_line_following) {
+          if (has_followable_qrcode || has_followable_sign || line_is_near_center) {
               float target_linear_speed = isObstacleInCautionZone(current_obstacle_msg) ? avoid_linear_speed_ : follow_linear_speed_;
               LineFollowing(target_linear_speed, speed_modifier);
               current_state_ = State::LINE_FOLLOWING;
-              RCLCPP_WARN(this->get_logger(), "%s, 切换到巡线状态", reason_for_decision.c_str());
+              RCLCPP_WARN(this->get_logger(), "找到居中赛道线或高优先级目标，切换到巡线");
           } else {
               current_state_ = State::RECOVERING_LINE;
-              RCLCPP_WARN(this->get_logger(), "%s, 切换到回线状态", reason_for_decision.c_str());
+              RCLCPP_WARN(this->get_logger(), "赛道线偏离中心且无高优先级目标，切换到回线");
           }
         }
         break;
@@ -261,7 +236,7 @@ void RacingControlNode::MessageProcess(){
         RCLCPP_WARN(this->get_logger(), "在回线状态，尝试寻找目标");
         
         // 检查是否已找到任何主要目标（线或停车标志）
-        if (has_primary_target) {
+        if (has_followable_qrcode || has_followable_sign || line_is_near_center) {
           // 找到了，切换回巡线状态
           float target_linear_speed = isObstacleInCautionZone(current_obstacle_msg) ? avoid_linear_speed_ : follow_linear_speed_;
           LineFollowing(target_linear_speed, speed_modifier);
@@ -336,7 +311,7 @@ bool RacingControlNode::LineFollowing(float target_linear_speed, float speed_mod
     use_qr_code = true;
     log_reason = "QR Code";
     // 记录跟随二维码的目标位置和置信度和面积
-    RCLCPP_WARN(this->get_logger(), "跟随二维码 -> X:%d, Y:%d, 置信度: %.2f, 面积: %d", target_x, target_y, followable_qr_code->rois[0].confidence, followable_qr_code->rois[0].rect.width * followable_qr_code->rois[0].rect.height);
+    RCLCPP_WARN(this->get_logger(), "跟随二维码 -> X:%d, Y:%d, 置信度: %.2f, 高度: %d", target_x, target_y, followable_qr_code->rois[0].confidence, followable_qr_code->rois[0].rect.height);
   } else if (followable_parking_sign) {
     // 如果找到了可以跟随的停车标志
     target_x = followable_parking_sign->rois[0].rect.x_offset + followable_parking_sign->rois[0].rect.width / 2;
@@ -582,7 +557,7 @@ bool RacingControlNode::isObstacleOnRecoverySide(const ai_msgs::msg::Target& obs
 }
 
 // ********************************************************************************
-// ************* 查找在回线同侧且位于谨慎区域的障碍物 *****************
+// ********************** 查找在回线同侧且位于谨慎区域的障碍物 ***********************
 // ********************************************************************************
 std::optional<ai_msgs::msg::Target> RacingControlNode::findCautionObstacleOnRecoverySide(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const {
     if (targets_msg && !targets_msg->targets.empty()) {
@@ -600,6 +575,23 @@ std::optional<ai_msgs::msg::Target> RacingControlNode::findCautionObstacleOnReco
         }
     }
     return std::nullopt;
+}
+
+// ********************************************************************************
+// ************************ 检查赛道线是否位于图像中心区域 ***************************
+// ********************************************************************************
+bool RacingControlNode::isTrackLineCentered(const ai_msgs::msg::PerceptionTargets::SharedPtr& line_msg) const {
+    if (hasValidTrackLine(line_msg)) {
+        int target_x = static_cast<int>(line_msg->targets[0].points[0].point[0].x);
+        const int screen_center_x = 320;
+        if (std::abs(target_x - screen_center_x) <= line_center_threshold_x_) {
+            RCLCPP_WARN(this->get_logger(), "赛道线在中心区域 (X: %d)", target_x);
+            return true;
+        } else {
+             RCLCPP_WARN(this->get_logger(), "赛道线偏离中心 (X: %d)", target_x);
+        }
+    }
+    return false;
 }
 
 // 主函数
