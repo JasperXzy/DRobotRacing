@@ -36,8 +36,8 @@ def generate_launch_description():
             default_value='500',
             description='qr_code area threshold for line following'),
         DeclareLaunchArgument(
-            'qr_code_large_area_threshold',
-            default_value='500',
+            'qr_code_height_threshold',
+            default_value='54',
             description='qr_code large area threshold for lower speed'),
         DeclareLaunchArgument(
             'follow_angular_ratio',
@@ -78,6 +78,10 @@ def generate_launch_description():
             'obstacle_y_jump_threshold',
             default_value='10',
             description='obstacle_y_jump_threshold for obstacle avoidance'),
+        DeclareLaunchArgument(
+            'line_center_threshold_x',
+            default_value='10',
+            description='line_center_threshold_x for line following'),
         Node(
             package='racing_control',
             executable='racing_control',
@@ -90,14 +94,14 @@ def generate_launch_description():
                 {"recovering_angular_ratio": LaunchConfiguration('recovering_angular_ratio')},
                 {"qr_code_confidence_threshold": LaunchConfiguration('qr_code_confidence_threshold')},
                 {"qr_code_area_threshold": LaunchConfiguration('qr_code_area_threshold')},
-                {"qr_code_large_area_threshold": LaunchConfiguration('qr_code_large_area_threshold')},
+                {"qr_code_height_threshold": LaunchConfiguration('qr_code_height_threshold')},
                 {"follow_angular_ratio": LaunchConfiguration('follow_angular_ratio')},
                 {"follow_linear_speed": LaunchConfiguration('follow_linear_speed')},
                 {"bottom_threshold_caution": LaunchConfiguration('bottom_threshold_caution')},
                 {"bottom_threshold_avoid": LaunchConfiguration('bottom_threshold_avoid')},
                 {"parking_y_threshold": LaunchConfiguration('parking_y_threshold')},
                 {"line_confidence_threshold": LaunchConfiguration('line_confidence_threshold')},
-                {"line_reentry_x_threshold": LaunchConfiguration('line_reentry_x_threshold')},
+                {"line_center_threshold_x": LaunchConfiguration('line_center_threshold_x')},
                 {"obstacle_confidence_threshold": LaunchConfiguration('obstacle_confidence_threshold')},
                 {"obstacle_y_jump_threshold": LaunchConfiguration('obstacle_y_jump_threshold')},
                 {"parking_sign_confidence_threshold": LaunchConfiguration('parking_sign_confidence_threshold')},
