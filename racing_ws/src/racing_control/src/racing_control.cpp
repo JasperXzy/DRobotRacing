@@ -47,14 +47,20 @@ RacingControlNode::RacingControlNode(const std::string& node_name,const rclcpp::
   this->get_parameter<int>("bottom_threshold_avoid", bottom_threshold_avoid_);
   this->declare_parameter<int>("parking_y_threshold", parking_y_threshold_);
   this->get_parameter<int>("parking_y_threshold", parking_y_threshold_);
+  this->declare_parameter<float>("follow_parking_sign_ratio", follow_parking_sign_ratio_);
+  this->get_parameter<float>("follow_parking_sign_ratio", follow_parking_sign_ratio_);
 
   // 二维码参数
   this->declare_parameter<float>("qr_code_confidence_threshold", qr_code_confidence_threshold_);
   this->get_parameter<float>("qr_code_confidence_threshold", qr_code_confidence_threshold_);
-  this->declare_parameter<int>("qr_code_area_threshold", qr_code_area_threshold_);
-  this->get_parameter<int>("qr_code_area_threshold", qr_code_area_threshold_);
+  this->declare_parameter<int>("qr_code_hight_follow_threshold", qr_code_hight_follow_threshold_);
+  this->get_parameter<int>("qr_code_hight_follow_threshold", qr_code_hight_follow_threshold_);
   this->declare_parameter<int>("qr_code_height_threshold", qr_code_height_threshold_);
   this->get_parameter<int>("qr_code_height_threshold", qr_code_height_threshold_);
+  this->declare_parameter<float>("qr_code_speed_modifier", qr_code_speed_modifier_);
+  this->get_parameter<float>("qr_code_speed_modifier", qr_code_speed_modifier_);
+  this->declare_parameter<float>("follow_qr_code_ratio", follow_qr_code_ratio_);
+  this->get_parameter<float>("follow_qr_code_ratio", follow_qr_code_ratio_);
 
   // 回线参数
   this->declare_parameter<float>("cruise_linear_speed", cruise_linear_speed_);
@@ -170,8 +176,8 @@ void RacingControlNode::MessageProcess(){
     auto followable_qr_code_check = findFollowableQrCode(current_obstacle_msg);
     if (followable_qr_code_check && 
         static_cast<int>(followable_qr_code_check->rois[0].rect.height) >= qr_code_height_threshold_) {
-        speed_modifier = 0.5f; // 如果二维码面积超大，速度减半
-        RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "检测到大面积二维码！速度减半。");
+        speed_modifier = qr_code_speed_modifier_; // 如果二维码高度到达阈值，降速
+        RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "检测到高度到阈值二维码，速度修正为: %.2f", qr_code_speed_modifier_);
     }
 
     // 最高优先级：检查是否满足停车条件
@@ -337,9 +343,9 @@ bool RacingControlNode::LineFollowing(float target_linear_speed, float speed_mod
   twist_msg.linear.x = target_linear_speed * speed_modifier;
 
   if (use_parking_sign) {
-    twist_msg.angular.z = 2.0f * follow_angular_ratio_ * (center_offset / 320.0f) * target_y_relative;
+    twist_msg.angular.z = follow_parking_sign_ratio_ * (center_offset / 320.0f) * target_y_relative;
   } else if (use_qr_code) {
-    twist_msg.angular.z = 2.0f * follow_angular_ratio_ * (center_offset / 320.0f) * target_y_relative;
+    twist_msg.angular.z = follow_qr_code_ratio_ * (center_offset / 320.0f) * target_y_relative;
   } else {
     twist_msg.angular.z = follow_angular_ratio_ * (center_offset / 320.0f) * target_y_relative;
   }
@@ -468,7 +474,7 @@ std::optional<ai_msgs::msg::Target> RacingControlNode::findFollowableQrCode(cons
             // 检查目标类型是否为 "qr_code"，并且ROI有效，置信度达标
             if (target.type == "qr_code" && !target.rois.empty() &&
                 target.rois[0].confidence >= qr_code_confidence_threshold_ &&
-                static_cast<int>(target.rois[0].rect.width * target.rois[0].rect.height) >= qr_code_area_threshold_) {
+                static_cast<int>(target.rois[0].rect.height) >= qr_code_hight_follow_threshold_) {
                 return target;
             }
         }
