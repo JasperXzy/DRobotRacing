@@ -87,7 +87,7 @@ TrackDetectionNode::TrackDetectionNode(const std::string& node_name,
   }
 
   publisher_ =
-    this->create_publisher<ai_msgs::msg::PerceptionTargets>("racing_track_center_detection", 5);
+    this->create_publisher<ai_msgs::msg::PerceptionTargets>("racing_track_center_detection", 1);//8.1，从5变1
   subscriber_hbmem_ =
     this->create_subscription<hbm_img_msgs::msg::HbmMsg1080P>(
       sub_img_topic_,

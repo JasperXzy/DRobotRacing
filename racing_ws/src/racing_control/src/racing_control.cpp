@@ -37,6 +37,8 @@ RacingControlNode::RacingControlNode(const std::string& node_name,const rclcpp::
   this->get_parameter<float>("obstacle_confidence_threshold", obstacle_confidence_threshold_);
   this->declare_parameter<int>("obstacle_y_jump_threshold", obstacle_y_jump_threshold_);
   this->get_parameter<int>("obstacle_y_jump_threshold", obstacle_y_jump_threshold_);
+  this->declare_parameter<float>("delta_x_ratio", delta_x_ratio_);
+  this->get_parameter<float>("delta_x_ratio", delta_x_ratio_);
 
   // 停车位参数
   this->declare_parameter<float>("parking_sign_confidence_threshold", parking_sign_confidence_threshold_);
@@ -75,11 +77,12 @@ RacingControlNode::RacingControlNode(const std::string& node_name,const rclcpp::
       "racing_track_center_detection", 
       rclcpp::SensorDataQoS(),
       std::bind(&RacingControlNode::subscription_callback_point, this, std::placeholders::_1)); 
-
+  auto costum_qos = rclcpp::SensorDataQoS()
+      .keep_last(1);
   target_subscriber_ =
     this->create_subscription<ai_msgs::msg::PerceptionTargets>(
       "racing_obstacle_detection", 
-      rclcpp::SensorDataQoS(),
+      costum_qos,
       std::bind(&RacingControlNode::subscription_callback_target, this, std::placeholders::_1)); 
 
   // 订阅 /sign4return
@@ -123,6 +126,7 @@ void RacingControlNode::sign_callback(const std_msgs::msg::Int32::SharedPtr msg)
     is_suspended_ = false;
     // 将状态机重置为默认巡线状态，避免从异常状态恢复
     current_state_ = State::LINE_FOLLOWING;
+    flag_ratio_change_ = 1;
     has_valid_twist_ = false; // 清除旧的指令历史
   }
 }
@@ -148,6 +152,10 @@ void RacingControlNode::subscription_callback_target(const ai_msgs::msg::Percept
 // 核心控制逻辑线程
 void RacingControlNode::MessageProcess(){
   rclcpp::Rate loop_rate(LOOP_RATE_HZ);
+  // if (flag_ratio_change_ == 1)
+  // {
+  //   delta_x_ratio_ = 0.0;
+  // }
 
   while(process_stop_ == false){
     // 检查节点是否被挂起或已停车
@@ -207,6 +215,7 @@ void RacingControlNode::MessageProcess(){
 
     if (should_force_avoidance && current_state_ != State::OBSTACLE_AVOIDING) {
         RCLCPP_WARN(this->get_logger(), "障碍物过近！强制切换到避障模式。");
+        RCLCPP_WARN(this->get_logger(), "delta_x_ratio_: %.2f", delta_x_ratio_);
         ObstaclesAvoiding(*obstacle_to_avoid, speed_modifier);
         current_state_ = State::OBSTACLE_AVOIDING;
         has_valid_twist_ = false; // 旧指令失效
@@ -327,7 +336,7 @@ bool RacingControlNode::LineFollowing(float target_linear_speed, float speed_mod
     RCLCPP_WARN(this->get_logger(), "跟随停车标志 -> X:%d, Y:%d, 置信度: %.2f", target_x, target_y, followable_parking_sign->rois[0].confidence);
   } else if (hasValidTrackLine(current_line_msg)) {
     // 否则，如果找到了有效的赛道线
-    target_x = static_cast<int>(current_line_msg->targets[0].points[0].point[0].x);
+    target_x = static_cast<int>(current_line_msg->targets[0].points[0].point[0].x) - 20;
     target_y = static_cast<int>(current_line_msg->targets[0].points[0].point[0].y);
     log_reason = "Track Line";
     RCLCPP_WARN(this->get_logger(), "跟随赛道线 -> X:%d, Y:%d, 置信度: %.2f", target_x, target_y, current_line_msg->targets[0].points[0].confidence[0]);
@@ -504,8 +513,10 @@ std::optional<ai_msgs::msg::Target> RacingControlNode::findAvoidanceObstacle(con
         for (const auto& target : targets_msg->targets) {
             if (target.type == "construction_cone" && !target.rois.empty()) {
                 int bottom = target.rois[0].rect.y_offset + target.rois[0].rect.height;
+                int middle_x = target.rois[0].rect.x_offset + target.rois[0].rect.width / 2;
+                int delta_x = std::abs(middle_x - 320);
                 // 判断条件：置信度足够高 且 底部超过了避障阈值
-                if (target.rois[0].confidence >= obstacle_confidence_threshold_ && bottom >= bottom_threshold_avoid_) {
+                if (target.rois[0].confidence >= obstacle_confidence_threshold_ && bottom >= bottom_threshold_avoid_ + delta_x * delta_x_ratio_) {
                     return target;
                 }
             }
@@ -523,8 +534,10 @@ bool RacingControlNode::isObstacleInCautionZone(const ai_msgs::msg::PerceptionTa
         for (const auto& target : targets_msg->targets) {
             if (target.type == "construction_cone" && !target.rois.empty()) {
                 int bottom = target.rois[0].rect.y_offset + target.rois[0].rect.height;
+                int middle_x = target.rois[0].rect.x_offset + target.rois[0].rect.width / 2;
+                int delta_x = std::abs(middle_x - 320);
                 // 判断条件：置信度足够高 且 底部超过了谨慎阈值
-                if (target.rois[0].confidence >= obstacle_confidence_threshold_ && bottom >= bottom_threshold_caution_) {
+                if (target.rois[0].confidence >= obstacle_confidence_threshold_ && bottom >= bottom_threshold_caution_ + delta_x * delta_x_ratio_) {
                     return true;
                 }
             }
@@ -570,8 +583,10 @@ std::optional<ai_msgs::msg::Target> RacingControlNode::findCautionObstacleOnReco
         for (const auto& target : targets_msg->targets) {
             if (target.type == "construction_cone" && !target.rois.empty()) {
                 int bottom = target.rois[0].rect.y_offset + target.rois[0].rect.height;
+                int middle_x = target.rois[0].rect.x_offset + target.rois[0].rect.width / 2;
+                int delta_x = std::abs(middle_x - 320);
                 // 判断条件1: 置信度足够高且底部超过了谨慎阈值
-                if (target.rois[0].confidence >= obstacle_confidence_threshold_ && bottom >= bottom_threshold_caution_) {
+                if (target.rois[0].confidence >= obstacle_confidence_threshold_ && bottom >= bottom_threshold_caution_ + delta_x * delta_x_ratio_) {
                     // 判断条件2: 障碍物位于回线方向的同侧
                     if (isObstacleOnRecoverySide(target)) {
                         return target; 
@@ -591,10 +606,10 @@ bool RacingControlNode::isTrackLineCentered(const ai_msgs::msg::PerceptionTarget
         int target_x = static_cast<int>(line_msg->targets[0].points[0].point[0].x);
         const int screen_center_x = 320;
         if (std::abs(target_x - screen_center_x) <= line_center_threshold_x_) {
-            RCLCPP_WARN(this->get_logger(), "赛道线在中心区域 (X: %d)", target_x);
+            //RCLCPP_WARN(this->get_logger(), "赛道线在中心区域 (X: %d)", target_x);
             return true;
         } else {
-             RCLCPP_WARN(this->get_logger(), "赛道线偏离中心 (X: %d)", target_x);
+             //RCLCPP_WARN(this->get_logger(), "赛道线偏离中心 (X: %d)", target_x);
         }
     }
     return false;

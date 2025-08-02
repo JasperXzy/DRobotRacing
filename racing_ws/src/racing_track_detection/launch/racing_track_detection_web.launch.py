@@ -35,7 +35,7 @@ def generate_launch_description():
             {"image_type": "mjpeg"},
             {"only_show_image": False},
             {"output_fps": 0},
-            {"smart_topic": "/racing_segmentation"}, 
+            {"smart_topic": "/racing_track_center_detection"}, 
             {"channel": 0}
         ],
         arguments=['--ros-args', '--log-level', 'info']
