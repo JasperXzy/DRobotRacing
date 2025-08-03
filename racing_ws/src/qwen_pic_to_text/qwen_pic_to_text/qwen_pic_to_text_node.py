@@ -17,7 +17,7 @@ class PicToTextNode(Node):
         super().__init__('pic_to_text_node')
         
         self.client = OpenAI(
-            base_url="http://192.168.10.138:1234/v1", 
+            base_url="http://192.168.1.103:1234/v1", 
             api_key="sk-no-key-required"         
         )
 

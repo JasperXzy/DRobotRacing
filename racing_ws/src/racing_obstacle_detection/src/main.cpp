@@ -18,7 +18,7 @@ public:
           detector_(detector)
     {
         publisher_ = this->create_publisher<ai_msgs::msg::PerceptionTargets>(
-            "/racing_obstacle_detection", 10);
+            "/racing_obstacle_detection", 1);//8.1改过，从10变1
 
         sub_ = this->create_subscription<hbm_img_msgs::msg::HbmMsg1080P>(
             "/hbmem_img", 

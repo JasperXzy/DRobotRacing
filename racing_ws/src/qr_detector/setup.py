@@ -22,6 +22,8 @@ setup(
     entry_points={
         'console_scripts': [
             'qr_detector_node = qr_detector.qr_detector_node:main',
+            'qr_test = qr_detector.qr_test:main',
+            'qr_zbar_try = qr_detector.qr_zbar_try:main',
         ],
     },
 )

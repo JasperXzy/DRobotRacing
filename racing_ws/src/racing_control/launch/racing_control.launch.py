@@ -94,6 +94,10 @@ def generate_launch_description():
             'follow_parking_sign_ratio',
             default_value='-4.0',
             description='follow_parking_sign_ratio for parking_sign following'),
+        DeclareLaunchArgument(
+            'delta_x_ratio',
+            default_value='0.05',
+            description='delta_x_ratio for obstacle avoidance'),
         Node(
             package='racing_control',
             executable='racing_control',
@@ -116,6 +120,7 @@ def generate_launch_description():
                 {"line_center_threshold_x": LaunchConfiguration('line_center_threshold_x')},
                 {"obstacle_confidence_threshold": LaunchConfiguration('obstacle_confidence_threshold')},
                 {"obstacle_y_jump_threshold": LaunchConfiguration('obstacle_y_jump_threshold')},
+                {"delta_x_ratio": LaunchConfiguration('delta_x_ratio')},
                 {"parking_sign_confidence_threshold": LaunchConfiguration('parking_sign_confidence_threshold')},
                 {"qr_code_speed_modifier": LaunchConfiguration('qr_code_speed_modifier')},
                 {"follow_qr_code_ratio": LaunchConfiguration('follow_qr_code_ratio')},

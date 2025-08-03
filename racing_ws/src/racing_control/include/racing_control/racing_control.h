@@ -99,6 +99,7 @@ private:
     int bottom_threshold_caution_ = 280;  // 谨慎区域下限阈值
     int bottom_threshold_avoid_ = 320;    // 避障区域下限阈值
     int obstacle_y_jump_threshold_ = 10;  // 障碍物Y轴向上跳变的阈值，用于重置避障方向
+    float delta_x_ratio_ = 0.05;
 
     // 低置信度巡航和寻找赛道时的参数
     float cruise_linear_speed_ = 0.2; // 低置信度时慢速直行的速度
@@ -113,7 +114,8 @@ private:
     int last_obstacle_bottom_y_ = 0;       // 记录上一帧避障时障碍物的底部Y坐标
     geometry_msgs::msg::Twist last_valid_twist_;
     bool has_valid_twist_ = false; // 标志位，确保有一个可用的指令
-
+    float x_ratio_ = 0.0;
+    int flag_ratio_change_ = 0;
     // 最新消息存储
     ai_msgs::msg::PerceptionTargets::SharedPtr latest_point_msg_;
     ai_msgs::msg::PerceptionTargets::SharedPtr latest_targets_msg_;
