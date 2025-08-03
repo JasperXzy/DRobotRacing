@@ -1,5 +1,4 @@
 {
-<<<<<<< HEAD
     "files.associations": {
         "DataScope_DP.C": "cpp",
         "system.h": "c",
@@ -7,16 +6,13 @@
 =======
     "cmake.sourceDirectory": "D:/学习/大一/比赛/地瓜/D_Robot/racing_ws/src/racing_control",
     "files.associations": {
->>>>>>> 4506994e55ec8cb588b1371818883ea3659891b8
         "algorithm": "cpp",
         "atomic": "cpp",
         "bit": "cpp",
         "cctype": "cpp",
         "charconv": "cpp",
-<<<<<<< HEAD
 =======
         "chrono": "cpp",
->>>>>>> 4506994e55ec8cb588b1371818883ea3659891b8
         "clocale": "cpp",
         "cmath": "cpp",
         "compare": "cpp",
@@ -33,7 +29,6 @@
         "deque": "cpp",
         "exception": "cpp",
         "format": "cpp",
-<<<<<<< HEAD
         "fstream": "cpp",
         "initializer_list": "cpp",
 =======
@@ -41,7 +36,6 @@
         "fstream": "cpp",
         "initializer_list": "cpp",
         "iomanip": "cpp",
->>>>>>> 4506994e55ec8cb588b1371818883ea3659891b8
         "ios": "cpp",
         "iosfwd": "cpp",
         "iostream": "cpp",
@@ -80,7 +74,6 @@
         "xmemory": "cpp",
         "xstring": "cpp",
         "xtr1common": "cpp",
-<<<<<<< HEAD
         "xutility": "cpp",
         "chrono": "cpp",
         "forward_list": "cpp",
@@ -90,5 +83,4 @@
 =======
         "xutility": "cpp"
     }
->>>>>>> 4506994e55ec8cb588b1371818883ea3659891b8
 }
