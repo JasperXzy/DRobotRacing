@@ -1,0 +1,441 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
+     Commit Version: 1.6.0-4-g7f85cfe  Build Version: 1.6.7995.38578
+     For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
+<robot
+  name="OriginCarPro">
+  <link
+    name="base_link">
+    <inertial>
+      <origin
+        xyz="-0.091437 -1.1218E-08 -0.060728"
+        rpy="0 0 0" />
+      <mass
+        value="1.7295" />
+      <inertia
+        ixx="0.0014262"
+        ixy="1.0936E-07"
+        ixz="-0.00014025"
+        iyy="0.0056633"
+        iyz="-1.216E-09"
+        izz="0.0066251" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://OriginCarPro/meshes/base_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.29804 0.29804 0.29804 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://OriginCarPro/meshes/base_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="lidar_joint"
+    type="fixed">
+    <origin
+      xyz="0.14321 0 0.069623"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="lidar" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="left_steering_hinge">
+    <inertial>
+      <origin
+        xyz="-0.0083031 0.0025999 -2.4498E-09"
+        rpy="0 0 0" />
+      <mass
+        value="0.028478" />
+      <inertia
+        ixx="3.0216E-06"
+        ixy="-2.1455E-06"
+        ixz="-5.3757E-12"
+        iyy="3.267E-06"
+        iyz="-9.3338E-12"
+        izz="5.5999E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://OriginCarPro/meshes/left_steering_hinge.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.65098 0.61961 0.58824 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://OriginCarPro/meshes/left_steering_hinge.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_steering_joint"
+    type="revolute">
+    <origin
+      xyz="0.00479229225059925 0.0508254924141161 -0.0694098627769566"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="left_steering_hinge" />
+    <axis
+      xyz="0 0 0.999999999999292" />
+    <limit
+      lower="-0.6"
+      upper="0.6"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="left_front_wheel">
+    <inertial>
+      <origin
+        xyz="-2.374E-08 -2.8018E-08 -0.0042746"
+        rpy="0 0 0" />
+      <mass
+        value="0.056669" />
+      <inertia
+        ixx="1.8565E-05"
+        ixy="-2.0158E-10"
+        ixz="-2.583E-11"
+        iyy="1.8569E-05"
+        iyz="-2.4405E-11"
+        izz="3.1649E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://OriginCarPro/meshes/left_front_wheel.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.74118 0.90196 0.95686 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://OriginCarPro/meshes/left_front_wheel.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_front_wheel_joint"
+    type="continuous">
+    <origin
+      xyz="0 0.0363699995536664 0"
+      rpy="-1.57079632679488 0 0" />
+    <parent
+      link="left_steering_hinge" />
+    <child
+      link="left_front_wheel" />
+    <axis
+      xyz="0 0 -1" />
+  </joint>
+  <link
+    name="right_steering_hinge">
+    <inertial>
+      <origin
+        xyz="-0.0083031 -0.0025999 2.4498E-09"
+        rpy="0 0 0" />
+      <mass
+        value="0.028478" />
+      <inertia
+        ixx="3.0216E-06"
+        ixy="2.1455E-06"
+        ixz="5.3757E-12"
+        iyy="3.267E-06"
+        iyz="-9.3338E-12"
+        izz="5.5999E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://OriginCarPro/meshes/right_steering_hinge.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.65098 0.61961 0.58824 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://OriginCarPro/meshes/right_steering_hinge.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_steering_joint"
+    type="revolute">
+    <origin
+      xyz="0.0047922922506001 -0.0508254924141207 -0.0694098639605537"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="right_steering_hinge" />
+    <axis
+      xyz="0 0 0.999999999999292" />
+    <limit
+      lower="-0.6"
+      upper="0.6"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="right_front_wheel">
+    <inertial>
+      <origin
+        xyz="2.3372E-08 2.7549E-08 -0.0042746"
+        rpy="0 0 0" />
+      <mass
+        value="0.056669" />
+      <inertia
+        ixx="1.8565E-05"
+        ixy="-2.0138E-10"
+        ixz="2.5941E-11"
+        iyy="1.8569E-05"
+        iyz="2.4727E-11"
+        izz="3.1649E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://OriginCarPro/meshes/right_front_wheel.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.74118 0.90196 0.95686 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://OriginCarPro/meshes/right_front_wheel.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_front_wheel_joint"
+    type="continuous">
+    <origin
+      xyz="0 -0.0363699995536695 0"
+      rpy="1.5707963267949 0 0" />
+    <parent
+      link="right_steering_hinge" />
+    <child
+      link="right_front_wheel" />
+    <axis
+      xyz="0 0 -1" />
+  </joint>
+  <link
+    name="left_rear_wheel">
+    <inertial>
+      <origin
+        xyz="-2.3296E-08 -2.8147E-08 -0.0042746"
+        rpy="0 0 0" />
+      <mass
+        value="0.056669" />
+      <inertia
+        ixx="1.8565E-05"
+        ixy="-2.0151E-10"
+        ixz="-2.6021E-11"
+        iyy="1.8569E-05"
+        iyz="-2.4347E-11"
+        izz="3.1649E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://OriginCarPro/meshes/left_rear_wheel.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.74118 0.90196 0.95686 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://OriginCarPro/meshes/left_rear_wheel.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_rear_wheel_joint"
+    type="continuous">
+    <origin
+      xyz="-0.14321 0.0872 -0.069623"
+      rpy="-1.5708 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="left_rear_wheel" />
+    <axis
+      xyz="0 0 -1" />
+  </joint>
+  <link
+    name="right_rear_wheel">
+    <inertial>
+      <origin
+        xyz="-1.3411E-08 3.4953E-08 -0.0042746"
+        rpy="0 0 0" />
+      <mass
+        value="0.056669" />
+      <inertia
+        ixx="1.8565E-05"
+        ixy="-2.0008E-10"
+        ixz="-7.9611E-12"
+        iyy="1.8569E-05"
+        iyz="3.446E-11"
+        izz="3.1649E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://OriginCarPro/meshes/right_rear_wheel.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.74118 0.90196 0.95686 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://OriginCarPro/meshes/right_rear_wheel.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_rear_wheel_joint"
+    type="continuous">
+    <origin
+      xyz="-0.14321 -0.0872 -0.069623"
+      rpy="1.5708 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="right_rear_wheel" />
+    <axis
+      xyz="0 0 -1" />
+  </joint>
+  <link
+    name="lidar">
+    <inertial>
+      <origin
+        xyz="-0.00017804 -3.8763E-05 -0.012484"
+        rpy="0 0 0" />
+      <mass
+        value="0.0789" />
+      <inertia
+        ixx="1.5187E-05"
+        ixy="1.8727E-07"
+        ixz="-1.4595E-08"
+        iyy="1.5312E-05"
+        iyz="-3.0743E-08"
+        izz="2.6665E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://OriginCarPro/meshes/lidar.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.64706 0.61961 0.58824 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://OriginCarPro/meshes/lidar.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="lidar_joint"
+    type="fixed">
+    <origin
+      xyz="0 0 0"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="lidar" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+</robot>
