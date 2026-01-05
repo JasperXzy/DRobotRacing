@@ -99,8 +99,9 @@
     <limit
       lower="-0.6"
       upper="0.6"
-      effort="0"
-      velocity="0" />
+      effort="10"
+      velocity="1.0" />
+    <dynamics damping="0.5" friction="0.1" />
   </joint>
   <link
     name="left_front_wheel">
@@ -137,8 +138,7 @@
         xyz="0 0 0"
         rpy="0 0 0" />
       <geometry>
-        <mesh
-          filename="package://OriginCarPro/meshes/left_front_wheel.STL" />
+        <cylinder radius="0.0325" length="0.026" />
       </geometry>
     </collision>
   </link>
@@ -154,6 +154,7 @@
       link="left_front_wheel" />
     <axis
       xyz="0 0 -1" />
+    <dynamics damping="0.1" friction="0.05" />
   </joint>
   <link
     name="right_steering_hinge">
@@ -210,8 +211,9 @@
     <limit
       lower="-0.6"
       upper="0.6"
-      effort="0"
-      velocity="0" />
+      effort="10"
+      velocity="1.0" />
+    <dynamics damping="0.5" friction="0.1" />
   </joint>
   <link
     name="right_front_wheel">
@@ -248,8 +250,7 @@
         xyz="0 0 0"
         rpy="0 0 0" />
       <geometry>
-        <mesh
-          filename="package://OriginCarPro/meshes/right_front_wheel.STL" />
+        <cylinder radius="0.0325" length="0.026" />
       </geometry>
     </collision>
   </link>
@@ -265,6 +266,7 @@
       link="right_front_wheel" />
     <axis
       xyz="0 0 -1" />
+    <dynamics damping="0.1" friction="0.05" />
   </joint>
   <link
     name="left_rear_wheel">
@@ -301,8 +303,7 @@
         xyz="0 0 0"
         rpy="0 0 0" />
       <geometry>
-        <mesh
-          filename="package://OriginCarPro/meshes/left_rear_wheel.STL" />
+        <cylinder radius="0.0325" length="0.026" />
       </geometry>
     </collision>
   </link>
@@ -318,6 +319,7 @@
       link="left_rear_wheel" />
     <axis
       xyz="0 0 -1" />
+    <dynamics damping="0.1" friction="0.05" />
   </joint>
   <link
     name="right_rear_wheel">
@@ -351,11 +353,10 @@
     </visual>
     <collision>
       <origin
-        xyz="0 0 0"
+        xyz="0 0 -0.004"
         rpy="0 0 0" />
       <geometry>
-        <mesh
-          filename="package://OriginCarPro/meshes/right_rear_wheel.STL" />
+        <cylinder radius="0.034" length="0.026" />
       </geometry>
     </collision>
   </link>
@@ -371,5 +372,6 @@
       link="right_rear_wheel" />
     <axis
       xyz="0 0 -1" />
+    <dynamics damping="0.1" friction="0.05" />
   </joint>
 </robot>
