@@ -1,0 +1,36 @@
+# Parameter configuration for Aurora930 Camera
+/aurora/aurora:
+  ros__parameters:
+    # --- Stream Enablers ---
+    rgb_enable: true
+    ir_enable: true
+    depth_enable: true
+    rgbd_enable: false
+    point_cloud_enable: true
+
+    # --- Hardware/SDK Configuration ---
+    resolution_mode_index: 2
+    boot_order: 1
+    ir_fps: 15
+    rgb_fps: 15
+    usb_port_number: ""
+    
+    # --- Image Processing ---
+    threshold_size: 110
+    depth_correction: true
+    align_mode: true
+    laser_power: 1.0
+    minimum_filter_depth_value: 150
+    maximum_filter_depth_value: 4000
+    
+    # --- Exposure & Gain ---
+    exposure_enable: false
+    exposure_time: 1
+    gain_enable: false
+    gain_value: 20
+    
+    # --- Logging & Maintenance ---
+    log_dir: "/tmp/"
+    stream_sdk_log_enable: true
+    heart_enable: false
+    update_file_path: ""
