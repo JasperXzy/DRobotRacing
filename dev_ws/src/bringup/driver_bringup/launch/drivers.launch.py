@@ -15,6 +15,17 @@ def generate_launch_description():
         )
     )
 
+    camera_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([
+                FindPackageShare('camera_driver'),
+                'launch',
+                'camera.launch.py'
+            ])
+        )
+    )
+
     return LaunchDescription([
         depth_camera_launch,
+        camera_launch,
     ])
