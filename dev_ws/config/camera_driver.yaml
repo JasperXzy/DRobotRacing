@@ -1,0 +1,44 @@
+# Parameter configuration for OriginCar USB Camera
+
+# USB Camera Node Configuration
+usb_cam_node:
+  ros__parameters:
+    # --- Camera Settings ---
+    video_device: "/dev/video8"   # Device path
+    framerate: 30                 # Frames per second
+    image_width: 1920             # Resolution width
+    image_height: 1080            # Resolution height
+    pixel_format: "mjpeg"         # Output format from camera
+    io_method: "mmap"             # I/O method
+    
+    # --- Frame & Calibration ---
+    frame_id: "default_usb_cam"
+    camera_calibration_file_path: "/opt/tros/lib/hobot_usb_cam/config/usb_camera_calibration.yaml"
+    zero_copy: false
+
+# MJPEG -> BGR8 Codec Configuration
+usb_cam_bgr8_codec_node:
+  ros__parameters:
+    # --- Codec Settings ---
+    channel: 1
+    in_mode: "ros"            # Input from ROS topic
+    in_format: "jpeg"         # Input format
+    out_mode: "ros"           # Output to ROS topic
+    out_format: "bgr8"        # Output format
+    
+    # --- Topics ---
+    sub_topic: "/image"       # Subscribe to raw camera image
+    pub_topic: "/image_raw"   # Publish decompressed image
+
+# MJPEG -> NV12 Codec Configuration
+usb_cam_nv12_codec_node:
+  ros__parameters:
+    # --- Codec Settings ---
+    in_mode: "ros"            # Input from ROS topic
+    in_format: "jpeg"         # Input format
+    out_mode: "shared_mem"    # Output to Shared Memory
+    out_format: "nv12"        # Output format
+    
+    # --- Topics ---
+    sub_topic: "/image"       # Subscribe to raw camera image
+    pub_topic: "/image_hbmem" # Publish shared memory handle
