@@ -27,8 +27,8 @@ usb_cam_bgr8_codec_node:
     out_format: "bgr8"        # Output format
     
     # --- Topics ---
-    sub_topic: "/image"       # Subscribe to raw camera image
-    pub_topic: "/image_raw"   # Publish decompressed image
+    sub_topic: "/camera/image"       # Subscribe to raw camera image
+    pub_topic: "/camera/image_raw"   # Publish decompressed image
 
 # MJPEG -> NV12 Codec Configuration
 usb_cam_nv12_codec_node:
@@ -40,5 +40,5 @@ usb_cam_nv12_codec_node:
     out_format: "nv12"        # Output format
     
     # --- Topics ---
-    sub_topic: "/image"       # Subscribe to raw camera image
-    pub_topic: "/image_hbmem" # Publish shared memory handle
+    sub_topic: "/camera/image"       # Subscribe to raw camera image
+    pub_topic: "/camera/image_hbmem" # Publish shared memory handle

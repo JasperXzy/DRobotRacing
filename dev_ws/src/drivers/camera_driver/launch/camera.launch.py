@@ -29,6 +29,9 @@ def generate_launch_description():
             executable='hobot_usb_cam',
             name='usb_cam_node',
             parameters=[config_file],
+            remappings=[
+                ('/image', '/camera/image')
+            ],
             arguments=['--ros-args', '--log-level', 'error']
         ),
 
