@@ -20,7 +20,6 @@ setup(
     maintainer_email='jasper.zhengyi.xu@gmail.com',
     description='Camera driver package for OriginCar',
     license='Apache-2.0',
-    tests_require=['pytest'],
     entry_points={
         'console_scripts': [
         ],
