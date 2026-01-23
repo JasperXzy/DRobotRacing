@@ -35,23 +35,23 @@ def generate_launch_description():
             arguments=['--ros-args', '--log-level', 'error']
         ),
 
-        # Decoder for Standard Usage
-        # MJPEG -> BGR8
-        Node(
-            package='hobot_codec',
-            executable='hobot_codec_republish',
-            name='usb_cam_bgr8_codec_node',
-            output='screen',
-            parameters=[config_file],
-            arguments=['--ros-args', '--log-level', 'error']
-        ),
-
         # Decoder for AI Usage
         # MJPEG -> NV12 (Shared Memory)
         Node(
             package='hobot_codec',
             executable='hobot_codec_republish',
             name='usb_cam_nv12_codec_node',
+            output='screen',
+            parameters=[config_file],
+            arguments=['--ros-args', '--log-level', 'error']
+        ),
+
+        # Encoder for Remote Preview
+        # NV12 (Shared Mem) -> JPEG (Compressed)
+        Node(
+            package='hobot_codec',
+            executable='hobot_codec_republish',
+            name='usb_cam_preview_codec_node',
             output='screen',
             parameters=[config_file],
             arguments=['--ros-args', '--log-level', 'error']

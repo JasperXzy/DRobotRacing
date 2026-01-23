@@ -12,28 +12,15 @@ usb_cam_node:
     io_method: "mmap"             # I/O method
     
     # --- Frame & Calibration ---
-    frame_id: "default_usb_cam"
-    camera_calibration_file_path: "/opt/tros/lib/hobot_usb_cam/config/usb_camera_calibration.yaml"
-    zero_copy: false
-
-# MJPEG -> BGR8 Codec Configuration
-usb_cam_bgr8_codec_node:
-  ros__parameters:
-    # --- Codec Settings ---
-    channel: 1
-    in_mode: "ros"            # Input from ROS topic
-    in_format: "jpeg"         # Input format
-    out_mode: "ros"           # Output to ROS topic
-    out_format: "bgr8"        # Output format
-    
-    # --- Topics ---
-    sub_topic: "/camera/image"       # Subscribe to raw camera image
-    pub_topic: "/camera/image_raw"   # Publish decompressed image
+    frame_id: "usb_cam"           # Frame ID
+    camera_calibration_file_path: ""
+    zero_copy: false              # Zero copy
 
 # MJPEG -> NV12 Codec Configuration
 usb_cam_nv12_codec_node:
   ros__parameters:
     # --- Codec Settings ---
+    channel: 0                # Channel ID
     in_mode: "ros"            # Input from ROS topic
     in_format: "jpeg"         # Input format
     out_mode: "shared_mem"    # Output to Shared Memory
@@ -42,3 +29,18 @@ usb_cam_nv12_codec_node:
     # --- Topics ---
     sub_topic: "/camera/image"       # Subscribe to raw camera image
     pub_topic: "/camera/image_hbmem" # Publish shared memory handle
+
+# NV12 -> JPEG Codec Configuration
+usb_cam_preview_codec_node:
+  ros__parameters:
+    # --- Codec Settings ---
+    channel: 1                # Channel ID
+    in_mode: "shared_mem"     # Input from Shared Memory
+    in_format: "nv12"         # Input format
+    out_mode: "ros"           # Output to ROS topic
+    out_format: "jpeg"        # Output format
+    jpg_quality: 15.0         # Compress ratio
+
+    # --- Topics ---
+    sub_topic: "/camera/image_hbmem"      # Subscribe to raw camera image
+    pub_topic: "/camera/image_compressed" # Publish compressed image
