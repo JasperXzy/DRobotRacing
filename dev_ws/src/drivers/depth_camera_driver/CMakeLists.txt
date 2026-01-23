@@ -47,10 +47,6 @@ include_directories(include)
 include_directories(${DEPTRUM_STREAM_AURORA900_INCLUDE_DIRS})
 link_directories(${DEPTRUM_STREAM_AURORA900_STATIC_LIBRARY_DIRS})
 
-# GLog and GFlags
-find_package(glog REQUIRED)
-find_package(gflags REQUIRED)
-
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
@@ -63,8 +59,6 @@ target_link_libraries(aurora930_node
   ${STREAM_SDK_LIBS}
   opencv_core
   opencv_highgui
-  glog::glog
-  gflags
 )
 
 # Export libraries

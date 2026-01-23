@@ -3,7 +3,6 @@
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include "camera_parameters.h"
 #include "ros2_device.h"
-#include "glog/logging.h"
 #include "opencv2/highgui/highgui.hpp"
 using namespace std;
 using namespace deptrum;
@@ -98,8 +97,8 @@ RosDevice::RosDevice(std::shared_ptr<rclcpp::Node> node) : node_(node), camera_p
   node_->get_parameter<bool>("enable_imu", params_.enable_imu);
 
   node_->get_parameter<int>("stof_minimum_range", params_.stof_minimum_range);
-  std::string info_log = params_.log_dir + "deptrum_ros_driver_";
-  google::SetLogDestination(0, info_log.c_str());
+  // std::string info_log = params_.log_dir + "deptrum_ros_driver_";
+  // google::SetLogDestination(0, info_log.c_str());
 
   handle_ = std::bind(&RosDevice::DeviceConnectCb,
                       this,
@@ -110,10 +109,10 @@ RosDevice::RosDevice(std::shared_ptr<rclcpp::Node> node) : node_(node), camera_p
 }
 RosDevice::~RosDevice() {
   if (device_ != nullptr) {
-    LOG(INFO) << "close device...";
+    RCLCPP_INFO(node_->get_logger(), "close device...");
     device_->Close();
   }
-  LOG(INFO) << "quit succeed";
+  RCLCPP_INFO(node_->get_logger(), "quit succeed");
 }
 
 int RosDevice::rgb_frame_publish(const deptrum::stream::StreamFrame& rgb_frame,
@@ -290,8 +289,7 @@ std::string RosDevice::FrameModeToString(deptrum::FrameMode mode) {
       break;
 
     default:
-      LOG(WARNING) << "unknown frame mode!!"
-                   << "mode=" << (int) mode;
+      RCLCPP_WARN(node_->get_logger(), "unknown frame mode!! mode=%d", (int) mode);
   }
   return mode_str;
 }
@@ -328,7 +326,7 @@ void RosDevice::PrintFPS() {
     auto end_getframe = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::micro> tm = end_getframe - start_getframe;
 
-    std::cout << "fps = " << 10000000 / tm.count() << std::endl;
+    RCLCPP_INFO(node_->get_logger(), "fps = %f", 10000000 / tm.count());
 
     start_getframe = std::chrono::high_resolution_clock::now();
   }
@@ -336,22 +334,24 @@ void RosDevice::PrintFPS() {
 
 void RosDevice::DeviceConnectCb(int flag, const deptrum::DeviceInformation& device_information) {
   if (1 == flag) {
-    LOG(INFO) << "Device [model=" << device_information.model.c_str()
-              << ",ir_camera.serial_num=" << device_information.ir_camera.serial_number.c_str()
-              << "ir_camera.pid=" << device_information.ir_camera.pid << "]connected";
+    RCLCPP_INFO(node_->get_logger(), "Device [model=%s, ir_camera.serial_num=%s, ir_camera.pid=%d] connected",
+                device_information.model.c_str(),
+                device_information.ir_camera.serial_number.c_str(),
+                device_information.ir_camera.pid);
     if (device_ != nullptr) {
-      LOG(INFO) << "[hot plug]reset device parms";
+      RCLCPP_INFO(node_->get_logger(), "[hot plug]reset device parms");
       if (!SetDeviceParams(device_)) {
-        LOG(WARNING) << "[hot plug]set device params error";
+        RCLCPP_WARN(node_->get_logger(), "[hot plug]set device params error");
       }
     }
     hot_plug_num++;
   } else if (2 == flag) {
-    LOG(INFO) << "Device [model=" << device_information.model
-              << ",ir_camera.serial_num=" << device_information.ir_camera.serial_number
-              << "ir_camera.pid=" << device_information.ir_camera.pid << "]disconnected";
+    RCLCPP_INFO(node_->get_logger(), "Device [model=%s, ir_camera.serial_num=%s, ir_camera.pid=%d] disconnected",
+                device_information.model.c_str(),
+                device_information.ir_camera.serial_number.c_str(),
+                device_information.ir_camera.pid);
   } else {
-    LOG(WARNING) << "not known (dis)connect flag, flag=" << flag;
+    RCLCPP_WARN(node_->get_logger(), "not known (dis)connect flag, flag=%d", flag);
   }
 #ifdef SYSTEM_STATUS_TRANSFORM
   if (device_ != nullptr) {
@@ -366,7 +366,7 @@ void RosDevice::DeviceConnectCb(int flag, const deptrum::DeviceInformation& devi
 }
 
 void RosDevice::UpgradeProgress(int process) {
-  LOG(INFO) << "upgrade progress:" << process << "percent";
+  RCLCPP_INFO(node_->get_logger(), "upgrade progress:%d percent", process);
 }
 
 void RosDevice::FramePublisherThread() {
@@ -386,14 +386,14 @@ void RosDevice::FramePublisherThread() {
     status = streams_->GetFrames(frames, 2000);
     if (status != 0) {
       if (status == 0x42005) {
-        LOG(WARNING) << "BOOT_ORDER_" << params_.boot_order << "::Get frames timeout!";
+        RCLCPP_WARN(node_->get_logger(), "BOOT_ORDER_%d::Get frames timeout!", params_.boot_order);
         continue;
       } else if (status == 0x2100c) {
-        LOG(WARNING) << "BOOT_ORDER_" << params_.boot_order << "::Device disconnect!";
+        RCLCPP_WARN(node_->get_logger(), "BOOT_ORDER_%d::Device disconnect!", params_.boot_order);
         std::this_thread::sleep_for(std::chrono::milliseconds(2000));
         continue;
       } else {
-        LOG(ERROR) << "BOOT_ORDER_" << params_.boot_order << "::Get frames error," << status;
+        RCLCPP_ERROR(node_->get_logger(), "BOOT_ORDER_%d::Get frames error, %d", params_.boot_order, status);
         // rclcpp::shutdown();
         // exit(status);
         continue;
@@ -406,7 +406,7 @@ void RosDevice::FramePublisherThread() {
       if (frame->frame_type == deptrum::FrameType::kRgbFrame && params_.rgb_enable) {
         status = rgb_frame_publish(*frame, capture_time);
         if (status != 0) {
-          LOG(ERROR) << "BOOT_ORDER_" << params_.boot_order << "::Failed to get rgb frame";
+          RCLCPP_ERROR(node_->get_logger(), "BOOT_ORDER_%d::Failed to get rgb frame", params_.boot_order);
           rclcpp::shutdown();
           exit(status);
         }
@@ -414,7 +414,7 @@ void RosDevice::FramePublisherThread() {
       if (frame->frame_type == deptrum::FrameType::kDepthFrame && params_.depth_enable) {
         status = depth_frame_publish(*frame, capture_time);
         if (status != 0) {
-          LOG(ERROR) << "BOOT_ORDER_" << params_.boot_order << "::Failed to get depth frame";
+          RCLCPP_ERROR(node_->get_logger(), "BOOT_ORDER_%d::Failed to get depth frame", params_.boot_order);
           rclcpp::shutdown();
           exit(status);
         }
@@ -422,7 +422,7 @@ void RosDevice::FramePublisherThread() {
       if (frame->frame_type == deptrum::FrameType::kIrFrame && params_.ir_enable) {
         status = ir_frame_publish(*frame, capture_time);
         if (status != 0) {
-          LOG(ERROR) << "BOOT_ORDER_" << params_.boot_order << "::Failed to get ir frame";
+          RCLCPP_ERROR(node_->get_logger(), "BOOT_ORDER_%d::Failed to get ir frame", params_.boot_order);
           rclcpp::shutdown();
           exit(status);
         }
@@ -440,7 +440,7 @@ void RosDevice::FramePublisherThread() {
           continue;
         }
         if (status != 0) {
-          LOG(ERROR) << "Failed to get point cloud frame";
+          RCLCPP_ERROR(node_->get_logger(), "Failed to get point cloud frame");
           rclcpp::shutdown();
           exit(status);
         }

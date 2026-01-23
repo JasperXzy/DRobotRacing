@@ -11,14 +11,14 @@ void StreamCameraParameters::Initialize(std::shared_ptr<deptrum::stream::Device>
   boot_order_ = boot_order;
   params_ = params;
   if (device == nullptr) {
-    LOG(ERROR) << "BOOT_ORDER_" << boot_order_ << "::Device Not Created";
+    RCLCPP_ERROR(node_->get_logger(), "BOOT_ORDER_%d::Device Not Created", boot_order_);
     rclcpp::shutdown();
     exit(-1);
   }
 
   int status = device->GetCameraParameters(ir_intri_, rgb_intri_, ext_);
   if (status != 0) {
-    LOG(ERROR) << "BOOT_ORDER_" << boot_order_ << "::Get camera parameters failed, " << status;
+    RCLCPP_ERROR(node_->get_logger(), "BOOT_ORDER_%d::Get camera parameters failed, %d", boot_order_, status);
     rclcpp::shutdown();
     exit(status);
   }
@@ -131,43 +131,39 @@ int StreamCameraParameters::GetRgbCameraInfo(sensor_msgs::msg::CameraInfo& camer
 }
 
 void StreamCameraParameters::PrintCameraInformation() {
-  LOG(INFO) << "BOOT_ORDER_" << boot_order_ << "::Camera Parameters:";
-  LOG(INFO) << "BOOT_ORDER_" << boot_order_ << "::\t Ir Intrinsics:";
+  RCLCPP_DEBUG(node_->get_logger(), "BOOT_ORDER_%d::Camera Parameters:", boot_order_);
+  RCLCPP_DEBUG(node_->get_logger(), "BOOT_ORDER_%d::\t Ir Intrinsics:", boot_order_);
   PrintCameraIntrinsicParam(ir_intri_);
 
-  LOG(INFO) << "BOOT_ORDER_" << boot_order_ << "::\t Rgb Intrinsics:";
+  RCLCPP_DEBUG(node_->get_logger(), "BOOT_ORDER_%d::\t Rgb Intrinsics:", boot_order_);
   PrintCameraIntrinsicParam(rgb_intri_);
 
-  LOG(INFO) << "BOOT_ORDER_" << boot_order_ << "::\t Ir to Rgb Extrinsic:";
+  RCLCPP_DEBUG(node_->get_logger(), "BOOT_ORDER_%d::\t Ir to Rgb Extrinsic:", boot_order_);
   PrintCameraExtrinsicParameters(ext_);
 }
 
 void StreamCameraParameters::PrintCameraIntrinsicParam(const deptrum::Intrinsic& intri) {
-  LOG(INFO) << "\t\t Resolution:";
-  LOG(INFO) << "\t\t\t Rows:" << intri.rows;
-  LOG(INFO) << "\t\t\t Cols:" << intri.cols;
-  LOG(INFO) << "\t\t Intrinsics:";
-  LOG(INFO) << "\t\t\t fx: " << intri.focal_length[0];
-  LOG(INFO) << "\t\t\t fy: " << intri.focal_length[1];
-  LOG(INFO) << "\t\t\t cx: " << intri.principal_point[0];
-  LOG(INFO) << "\t\t\t cy: " << intri.principal_point[1];
-  LOG(INFO) << "\t\t\t k1: " << intri.distortion_coeffs[0];
-  LOG(INFO) << "\t\t\t k2: " << intri.distortion_coeffs[1];
-  LOG(INFO) << "\t\t\t p1: " << intri.distortion_coeffs[2];
-  LOG(INFO) << "\t\t\t p2: " << intri.distortion_coeffs[3];
-  LOG(INFO) << "\t\t\t k3: " << intri.distortion_coeffs[4];
+  RCLCPP_DEBUG(node_->get_logger(), "\t\t Resolution:");
+  RCLCPP_DEBUG(node_->get_logger(), "\t\t\t Rows:%d", intri.rows);
+  RCLCPP_DEBUG(node_->get_logger(), "\t\t\t Cols:%d", intri.cols);
+  RCLCPP_DEBUG(node_->get_logger(), "\t\t Intrinsics:");
+  RCLCPP_DEBUG(node_->get_logger(), "\t\t\t fx: %f", intri.focal_length[0]);
+  RCLCPP_DEBUG(node_->get_logger(), "\t\t\t fy: %f", intri.focal_length[1]);
+  RCLCPP_DEBUG(node_->get_logger(), "\t\t\t cx: %f", intri.principal_point[0]);
+  RCLCPP_DEBUG(node_->get_logger(), "\t\t\t cy: %f", intri.principal_point[1]);
+  RCLCPP_DEBUG(node_->get_logger(), "\t\t\t k1: %f", intri.distortion_coeffs[0]);
+  RCLCPP_DEBUG(node_->get_logger(), "\t\t\t k2: %f", intri.distortion_coeffs[1]);
+  RCLCPP_DEBUG(node_->get_logger(), "\t\t\t p1: %f", intri.distortion_coeffs[2]);
+  RCLCPP_DEBUG(node_->get_logger(), "\t\t\t p2: %f", intri.distortion_coeffs[3]);
+  RCLCPP_DEBUG(node_->get_logger(), "\t\t\t k3: %f", intri.distortion_coeffs[4]);
 }
 
 void StreamCameraParameters::PrintCameraExtrinsicParameters(const deptrum::Extrinsic& ext) {
-  LOG(INFO) << "\t\t Extrinsics:";
-  LOG(INFO) << "\t\t\t Rotation[0]: " << ext.rotation_matrix[0] << ", " << ext.rotation_matrix[1]
-            << ", " << ext.rotation_matrix[2];
-  LOG(INFO) << "\t\t\t Rotation[1]: " << ext.rotation_matrix[3] << ", " << ext.rotation_matrix[4]
-            << ", " << ext.rotation_matrix[5];
-  LOG(INFO) << "\t\t\t Rotation[2]: " << ext.rotation_matrix[6] << ", " << ext.rotation_matrix[7]
-            << ", " << ext.rotation_matrix[8];
-  LOG(INFO) << "\t\t\t Translation: " << ext.translation_vector[0] << ", "
-            << ext.translation_vector[1] << ", " << ext.translation_vector[2];
+  RCLCPP_DEBUG(node_->get_logger(), "\t\t Extrinsics:");
+  RCLCPP_DEBUG(node_->get_logger(), "\t\t\t Rotation[0]: %f, %f, %f", ext.rotation_matrix[0], ext.rotation_matrix[1], ext.rotation_matrix[2]);
+  RCLCPP_DEBUG(node_->get_logger(), "\t\t\t Rotation[1]: %f, %f, %f", ext.rotation_matrix[3], ext.rotation_matrix[4], ext.rotation_matrix[5]);
+  RCLCPP_DEBUG(node_->get_logger(), "\t\t\t Rotation[2]: %f, %f, %f", ext.rotation_matrix[6], ext.rotation_matrix[7], ext.rotation_matrix[8]);
+  RCLCPP_DEBUG(node_->get_logger(), "\t\t\t Translation: %f, %f, %f", ext.translation_vector[0], ext.translation_vector[1], ext.translation_vector[2]);
 }
 
 void StreamCameraParameters::PublishDepthToRgbTf() {

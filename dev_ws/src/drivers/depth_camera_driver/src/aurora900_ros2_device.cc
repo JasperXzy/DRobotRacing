@@ -29,7 +29,7 @@ Aurora900RosDevice::~Aurora900RosDevice() {
 }
 int Aurora900RosDevice::Start() {
   if (running_ == true) {
-    LOG(INFO) << "BOOT_ORDER_" << params_.boot_order << "::Device already started";
+    RCLCPP_DEBUG(node_->get_logger(), "BOOT_ORDER_%d::Device already started", params_.boot_order);
     return 0;
   }
 
@@ -61,15 +61,13 @@ int Aurora900RosDevice::Start() {
   if (types.size() != 0) {
     status = device_->CreateStream(streams_, types);
     if (0 != status) {
-      LOG(ERROR) << "BOOT_ORDER_" << params_.boot_order << "::Create stream failed, error code "
-                 << status;
+      RCLCPP_ERROR(node_->get_logger(), "BOOT_ORDER_%d::Create stream failed, error code %d", params_.boot_order, status);
       return status;
     }
 
     status = streams_->Start();
     if (0 != status) {
-      LOG(ERROR) << "BOOT_ORDER_" << params_.boot_order << "::Start stream failed, error code "
-                 << status;
+      RCLCPP_ERROR(node_->get_logger(), "BOOT_ORDER_%d::Start stream failed, error code %d", params_.boot_order, status);
       return status;
     }
 
@@ -80,15 +78,15 @@ int Aurora900RosDevice::Start() {
 }
 
 void Aurora900RosDevice::Stop() {
-  LOG(INFO) << "begin stop()";
+  RCLCPP_DEBUG(node_->get_logger(), "begin stop()");
   if (running_ == false) {
-    LOG(INFO) << "BOOT_ORDER_" << params_.boot_order << "::Cameras not started";
+    RCLCPP_DEBUG(node_->get_logger(), "BOOT_ORDER_%d::Cameras not started", params_.boot_order);
     return;
   }
   running_ = false;
   if (device_ != nullptr) {
     if (params_.heart_enable) {
-      LOG(INFO) << "close heart ...";
+      RCLCPP_DEBUG(node_->get_logger(), "close heart ...");
       dynamic_pointer_cast<deptrum::stream::Aurora900>(device_)->StopHeartbeat();
     }
     // if (detector_thread_.joinable())
@@ -100,15 +98,13 @@ void Aurora900RosDevice::Stop() {
     }
 
     if (streams_ != nullptr) {
-      LOG(INFO) << "stop stream";
+      RCLCPP_DEBUG(node_->get_logger(), "stop stream");
       streams_->Stop();
-      LOG(INFO) << "destroy stream";
+      RCLCPP_DEBUG(node_->get_logger(), "destroy stream");
       device_->DestroyStream(streams_);
       streams_ = nullptr;
     }
   }
-  LOG(INFO) << "close glog";
-  google::ShutdownGoogleLogging();
 }
 
 void Aurora900RosDevice::InitDevice() {
@@ -116,51 +112,46 @@ void Aurora900RosDevice::InitDevice() {
   std::vector<deptrum::DeviceInformation> device_list;
   status = deptrum::stream::DeviceManager::GetInstance()->GetDeviceList(device_list);
   if (status != 0) {
-    LOG(ERROR) << "BOOT_ORDER_" << params_.boot_order << "::GetDeviceList failed, error code"
-               << status;
+    RCLCPP_ERROR(node_->get_logger(), "BOOT_ORDER_%d::GetDeviceList failed, error code %d", params_.boot_order, status);
   }
   int device_count = device_list.size();
-  std::cout << "device_count==========" << device_count << std::endl;
+  RCLCPP_DEBUG(node_->get_logger(), "device_count==========%d", device_count);
   if (device_count == 0) {
     // 等待设备插入
     unsigned int wait_num = 0;
     while (1) {
       wait_num++;
       if (hot_plug_num == 0) {
-        LOG(INFO) << "wait device insert...";
+        RCLCPP_DEBUG(node_->get_logger(), "wait device insert...");
         std::this_thread::sleep_for(std::chrono::seconds(1));
       } else {
         status = deptrum::stream::DeviceManager::GetInstance()->GetDeviceList(device_list);
         if (status != 0) {
-          LOG(ERROR) << "BOOT_ORDER_" << params_.boot_order << "::GetDeviceList failed, error code"
-                     << status;
+          RCLCPP_ERROR(node_->get_logger(), "BOOT_ORDER_%d::GetDeviceList failed, error code %d", params_.boot_order, status);
         }
         if (device_list.size() > 0) {
-          LOG(INFO) << "has device insert";
+          RCLCPP_INFO(node_->get_logger(), "has device insert");
           device_count = device_list.size();
           break;
         }
       }
       if (wait_num == 30) {
-        LOG(ERROR) << "device quit force with timeout......";
-        LOG(ERROR) << "BOOT_ORDER_" << params_.boot_order
-                   << "::No deptrum device connected! It's going to quit...";
+        RCLCPP_ERROR(node_->get_logger(), "device quit force with timeout......");
+        RCLCPP_ERROR(node_->get_logger(), "BOOT_ORDER_%d::No deptrum device connected! It's going to quit...", params_.boot_order);
         rclcpp::shutdown();
         exit(-1);
       }
     }
   }
-  LOG(INFO) << "BOOT_ORDER_" << params_.boot_order << "::Found " << device_count
-            << " deptrum device";
+  RCLCPP_DEBUG(node_->get_logger(), "BOOT_ORDER_%d::Found %d deptrum device", params_.boot_order, device_count);
   if (device_ != nullptr) {
-    LOG(WARNING) << "BOOT_ORDER_" << params_.boot_order << "::device_ is already init.";
+    RCLCPP_WARN(node_->get_logger(), "BOOT_ORDER_%d::device_ is already init.", params_.boot_order);
   }
 
   if (params_.serial_number != "") {
-    LOG(INFO) << "Searching for device with serial number: " << params_.serial_number;
+    RCLCPP_INFO(node_->get_logger(), "Searching for device with serial number: %s", params_.serial_number.c_str());
   } else {
-    LOG(INFO) << "BOOT_ORDER_" << params_.boot_order
-              << "::No serial number provided: picking first device";
+    RCLCPP_DEBUG(node_->get_logger(), "BOOT_ORDER_%d::No serial number provided: picking first device", params_.boot_order);
     // ROS_INFO_COND(device_count > 1,
     //               "BOOT_ORDER_%d::Multiple device connected! Openning first device.",
     //               params_.boot_order);
@@ -168,8 +159,7 @@ void Aurora900RosDevice::InitDevice() {
 
   if (params_.usb_port_number.size()) {
     for (int i = 0; i < device_count; i++) {
-      LOG(INFO) << "BOOT_ORDER_" << params_.boot_order << "::" << device_count
-                << "deptrum device usb port" << device_list[i].ir_camera.port_path;
+      RCLCPP_DEBUG(node_->get_logger(), "BOOT_ORDER_%d::%d deptrum device usb port %s", params_.boot_order, device_count, device_list[i].ir_camera.port_path.c_str());
     }
     device_count = 1;
   }
@@ -178,21 +168,20 @@ void Aurora900RosDevice::InitDevice() {
   for (; i < device_count; i++) {
     std::shared_ptr<deptrum::stream::Device> device = nullptr;
     if (params_.usb_port_number.size()) {
-      LOG(INFO) << "BOOT_ORDER_" << params_.boot_order
-                << "::USB port number:" << params_.usb_port_number;
+      RCLCPP_INFO(node_->get_logger(), "BOOT_ORDER_%d::USB port number:%s", params_.boot_order, params_.usb_port_number.c_str());
       device = deptrum::stream::DeviceManager::GetInstance()->CreateDeviceByUsbPort(
           params_.usb_port_number);
     } else {
       device = deptrum::stream::DeviceManager::GetInstance()->CreateDevice(device_list[i]);
     }
     if (device == nullptr) {
-      LOG(ERROR) << "BOOT_ORDER_" << params_.boot_order << "::Failed to create device";
+      RCLCPP_ERROR(node_->get_logger(), "BOOT_ORDER_%d::Failed to create device", params_.boot_order);
 
       rclcpp::shutdown();
       exit(-1);
     }
     if (params_.stream_sdk_log_enable) {
-      LOG(INFO) << "open sdk log";
+      RCLCPP_DEBUG(node_->get_logger(), "open sdk log");
       deptrum::stream::DeviceManager::EnableLogging(params_.log_dir + "deptrum-stream.log",
                                                     params_.stream_sdk_log_enable);
     }
@@ -203,11 +192,11 @@ void Aurora900RosDevice::InitDevice() {
     deptrum::FrameDecodeMode ir_decode_mode{deptrum::FrameDecodeMode::kSoftwareDecode};
     deptrum::FrameDecodeMode rgb_decode_mode{deptrum::FrameDecodeMode::kSoftwareDecode};
 
-    LOG(INFO) << "BOOT_ORDER_" << params_.boot_order << "::" << i << ":device start opening";
+    RCLCPP_INFO(node_->get_logger(), "BOOT_ORDER_%d::%d:device start opening", params_.boot_order, i);
     status = device->Open();
     if (status != 0) {
       device->Close();
-      LOG(ERROR) << "BOOT_ORDER_" << params_.boot_order << "::open failed, error code " << status;
+      RCLCPP_ERROR(node_->get_logger(), "BOOT_ORDER_%d::open failed, error code %d", params_.boot_order, status);
       continue;
     }
     // after open device
@@ -240,20 +229,20 @@ void Aurora900RosDevice::InitDevice() {
     device->GetSupportedFrameMode(device_resolution_vec);
     if (device_resolution_vec.empty()) {
       device->Close();
-      LOG(ERROR) << "GetSupportedFrameMode is empty";
+      RCLCPP_ERROR(node_->get_logger(), "GetSupportedFrameMode is empty");
       rclcpp::shutdown();
       exit(-1);
     }
-    LOG(INFO) << "device supported frame_mode:";
+    RCLCPP_DEBUG(node_->get_logger(), "device supported frame_mode:");
     for (auto device_resolution : device_resolution_vec) {
       ir_mode_ref = std::get<0>(device_resolution);
       rgb_mode_ref = std::get<1>(device_resolution);
       depth_mode_ref = std::get<2>(device_resolution);
-      LOG(INFO) << "[" << num++ << "]:"
-                << "ir_mode:=" << int(ir_mode_ref) << " " << FrameModeToString(ir_mode_ref)
-                << " rgb_mode:=" << int(rgb_mode_ref) << " " << FrameModeToString(rgb_mode_ref)
-                << " depth_mode:=" << int(depth_mode_ref) << " "
-                << FrameModeToString(depth_mode_ref).c_str();
+      RCLCPP_DEBUG(node_->get_logger(), "[%d]: ir_mode:=%d %s rgb_mode:=%d %s depth_mode:=%d %s",
+                num++,
+                int(ir_mode_ref), FrameModeToString(ir_mode_ref).c_str(),
+                int(rgb_mode_ref), FrameModeToString(rgb_mode_ref).c_str(),
+                int(depth_mode_ref), FrameModeToString(depth_mode_ref).c_str());
     }
     /*400device rgb version 2.2.0->resolution_mode_index->2   2.1.0->resolution_mode_index->0*/
     // dynamic_pointer_cast<deptrum::stream::Stellar400>(device)->GetDeviceInfo(device_information_);
@@ -263,27 +252,25 @@ void Aurora900RosDevice::InitDevice() {
     // }
     ir_mode = std::get<0>(device_resolution_vec[params_.resolution_mode_index]);
     rgb_mode = std::get<1>(device_resolution_vec[params_.resolution_mode_index]);
-    LOG(INFO) << "current set mode "
-              << "ir_mode:" << (int) ir_mode << ":" << FrameModeToString(ir_mode)
-              << ",rgb_mode:" << (int) rgb_mode << ":" << FrameModeToString(rgb_mode);
+    RCLCPP_INFO(node_->get_logger(), "current set mode ir_mode:%d:%s,rgb_mode:%d:%s",
+                (int) ir_mode, FrameModeToString(ir_mode).c_str(),
+                (int) rgb_mode, FrameModeToString(rgb_mode).c_str());
     if (params_.output_compressed_rgb) {
       rgb_decode_mode = deptrum::FrameDecodeMode::kNoDecode;
     }
 
     status = device->SetMode(ir_mode, rgb_mode, depth_mode);
     if (status != 0) {
-      LOG(ERROR) << "BOOT_ORDER_" << params_.boot_order << "::SetMode failed, error code "
-                 << status;
+      RCLCPP_ERROR(node_->get_logger(), "BOOT_ORDER_%d::SetMode failed, error code %d", params_.boot_order, status);
       continue;
     }
     if (!SetDeviceParams(device)) {
-      LOG(WARNING) << "set device params error";
+      RCLCPP_WARN(node_->get_logger(), "set device params error");
     }
 
     status = dynamic_pointer_cast<deptrum::stream::Aurora900>(device)->SetIrFps(params_.ir_fps);
     if (status != 0) {
-      LOG(ERROR) << "set ir fps error,set it only 5 or 10 or 12 or 15 fps, try check it"
-                 << " error_code=" << status;
+      RCLCPP_ERROR(node_->get_logger(), "set ir fps error,set it only 5 or 10 or 12 or 15 fps, try check it error_code=%d", status);
       rclcpp::shutdown();
       exit(-1);
     }
@@ -295,24 +282,22 @@ void Aurora900RosDevice::InitDevice() {
         camera_information);
     if (status != 0) {
       // ROS_WARN("BOOT_ORDER_%d::GetDeviceInfo failed, error code %x", params_.boot_order, status);
-      LOG(WARNING) << "BOOT_ORDER_" << params_.boot_order << ":GetDeviceInfo failed, error code "
-                   << status;
+      RCLCPP_WARN(node_->get_logger(), "BOOT_ORDER_%d:GetDeviceInfo failed, error code %d", params_.boot_order, status);
       device->Close();
       continue;
     } else if (params_.serial_number == "" ||
                device_information.ir_camera.serial_number == params_.serial_number) {
-      LOG(INFO) << "BOOT_ORDER_" << params_.boot_order << "::Device information: ";
-      LOG(INFO) << "\t sdk version: " << camera_information.stream_sdk_version;
-      LOG(INFO) << "\t device name: " << camera_information.device_name;
-      LOG(INFO) << "\t serial number: " << camera_information.serial_num;
-      LOG(INFO) << "\t firmware version: " << camera_information.ir_firmware_version;
+      RCLCPP_DEBUG(node_->get_logger(), "BOOT_ORDER_%d::Device information: ", params_.boot_order);
+      RCLCPP_DEBUG(node_->get_logger(), "\t sdk version: %s", camera_information.stream_sdk_version.c_str());
+      RCLCPP_DEBUG(node_->get_logger(), "\t device name: %s", camera_information.device_name.c_str());
+      RCLCPP_DEBUG(node_->get_logger(), "\t serial number: %s", camera_information.serial_num.c_str());
+      RCLCPP_DEBUG(node_->get_logger(), "\t firmware version: %s", camera_information.ir_firmware_version.c_str());
 
       if (device_ != nullptr) {
         // ROS_WARN("BOOT_ORDER_%d::Device Number: %d, device_ is already init.",
         //          params_.boot_order,
         //          i);
-        LOG(WARNING) << "BOOT_ORDER_" << params_.boot_order << "::Device Number: " << i
-                     << ", device_ is already init.";
+        RCLCPP_WARN(node_->get_logger(), "BOOT_ORDER_%d::Device Number: %d, device_ is already init.", params_.boot_order, i);
       }
       device_ = device;
       break;
@@ -326,9 +311,7 @@ void Aurora900RosDevice::InitDevice() {
     // ROS_ERROR("BOOT_ORDER_%d::All %d devices have attempted to connect, Failed to open device",
     //           params_.boot_order,
     //           device_count);
-    LOG(ERROR) << "BOOT_ORDER_" << params_.boot_order << "::"
-               << "All " << device_count
-               << "devices have attempted to connect, Failed to open device ";
+    RCLCPP_ERROR(node_->get_logger(), "BOOT_ORDER_%d::All %d devices have attempted to connect, Failed to open device ", params_.boot_order, device_count);
     rclcpp::shutdown();
     exit(-1);
   }
@@ -342,10 +325,10 @@ bool Aurora900RosDevice::SetDeviceParams(std::shared_ptr<deptrum::stream::Device
         params_.update_file_path,
         upgrade_handle_);
     if (status != 0) {
-      LOG(WARNING) << "update firmware failed, error code " << status;
+      RCLCPP_WARN(node_->get_logger(), "update firmware failed, error code %d", status);
       exit(-1);
     } else {
-      LOG(INFO) << "update firmware succeed";
+      RCLCPP_INFO(node_->get_logger(), "update firmware succeed");
       rclcpp::shutdown();
       exit(0);
     }
@@ -355,27 +338,26 @@ bool Aurora900RosDevice::SetDeviceParams(std::shared_ptr<deptrum::stream::Device
       params_.depth_ir_mirroring);
   if (status != 0) {
     // ROS_WARN("EnableDepthIrMirroring failed, error code %x", status);
-    LOG(WARNING) << "EnableDepthIrMirroring failed, error code " << status;
+    RCLCPP_WARN(node_->get_logger(), "EnableDepthIrMirroring failed, error code %d", status);
     return false;
   }
   if (params_.exposure_enable) {
     if (params_.exposure_time < 1 || params_.exposure_time > 31)
-      LOG(WARNING) << "current exposure time is " << params_.exposure_time
-                   << " please input [1-31],单位为0.1ms";
+      RCLCPP_WARN(node_->get_logger(), "current exposure time is %d please input [1-31],单位为0.1ms", params_.exposure_time);
     else {
       status = dynamic_pointer_cast<deptrum::stream::Aurora900>(device)->SwitchAutoExposure(false);
       if (status != 0) {
-        LOG(WARNING) << "SwitchAutoExposure failed, error code " << status;
+        RCLCPP_WARN(node_->get_logger(), "SwitchAutoExposure failed, error code %d", status);
         return false;
       }
       status = dynamic_pointer_cast<deptrum::stream::Aurora900>(device)->SetExposure(
           kIrCamera,
           params_.exposure_time);
       if (status != 0) {
-        LOG(WARNING) << "SetExposure failed, error code " << status;
+        RCLCPP_WARN(node_->get_logger(), "SetExposure failed, error code %d", status);
         return false;
       } else {
-        LOG(INFO) << "set exposure value " << params_.exposure_time << "succeed";
+        RCLCPP_DEBUG(node_->get_logger(), "set exposure value %d succeed", params_.exposure_time);
       }
       // int current_exposure_value = 0;
       // dynamic_pointer_cast<deptrum::stream::Aurora900>(device)->GetExposure(kIrCamera,
@@ -384,38 +366,36 @@ bool Aurora900RosDevice::SetDeviceParams(std::shared_ptr<deptrum::stream::Device
     }
   } else {
     if (device->GetDeviceName() == "Aurora930") {
-      LOG(INFO) << "Switch Auto Exposure";
+      RCLCPP_DEBUG(node_->get_logger(), "Switch Auto Exposure");
       dynamic_pointer_cast<deptrum::stream::Aurora900>(device)->SwitchAutoExposure(true);
     }
   }
   if (params_.gain_enable) {
     // ValidateGain(params_.gain_value); 10-160
     if (params_.gain_value < 10 || params_.gain_value >= 160)
-      LOG(WARNING) << "current gain value is " << params_.gain_value
-                   << " please input [10-160), curren is not valid";
+      RCLCPP_WARN(node_->get_logger(), "current gain value is %d please input [10-160), curren is not valid", params_.gain_value);
     else {
       status = dynamic_pointer_cast<deptrum::stream::Aurora900>(device)->SetGain(
           kIrCamera,
           params_.gain_value);
       if (status != 0) {
-        LOG(WARNING) << "SetGain failed, error code " << status;
+        RCLCPP_WARN(node_->get_logger(), "SetGain failed, error code %d", status);
         return false;
       }
       uint32_t current_gain_value = 0;
       dynamic_pointer_cast<deptrum::stream::Aurora900>(device)->GetGain(kIrCamera,
                                                                         current_gain_value);
-      LOG(INFO) << "current gain value is " << current_gain_value;
+      RCLCPP_DEBUG(node_->get_logger(), "current gain value is %d", current_gain_value);
     }
   }
   if (device->GetDeviceName() == "Aurora930") {
     if (params_.threshold_size < 30 || params_.threshold_size > 400)
-      LOG(WARNING) << "current threshold size is " << params_.threshold_size
-                   << " please input [30-400], curren is not valid";
+      RCLCPP_WARN(node_->get_logger(), "current threshold size is %d please input [30-400], curren is not valid", params_.threshold_size);
     else {
       status = dynamic_pointer_cast<deptrum::stream::Aurora900>(device)->SetRemoveFilterSize(
           params_.threshold_size);
       if (status != 0) {
-        LOG(WARNING) << "SetRemoveFilterSize failed, error code " << status;
+        RCLCPP_WARN(node_->get_logger(), "SetRemoveFilterSize failed, error code %d", status);
         return false;
       }
     }
@@ -435,9 +415,9 @@ bool Aurora900RosDevice::SetDeviceParams(std::shared_ptr<deptrum::stream::Device
     }
     dynamic_pointer_cast<deptrum::stream::Aurora900>(device)->SetHeartbeat(
         heartbeat_param,
-        [](int result) {
+        [this](int result) {
           if (0 == result) {
-            LOG(WARNING) << "heartbeat failed!!!";
+            RCLCPP_WARN(node_->get_logger(), "heartbeat failed!!!");
           }
         });
   }

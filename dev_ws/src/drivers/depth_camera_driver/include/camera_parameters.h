@@ -12,11 +12,10 @@
 #include <vector>
 // #include "deptrum/deptrum_stream.h"
 #include "deptrum/device.h"
-#include "glog/logging.h"
 #include "ros2_types.h"
 class StreamCameraParameters {
  public:
-  StreamCameraParameters(std::shared_ptr<rclcpp::Node> node) {
+  StreamCameraParameters(std::shared_ptr<rclcpp::Node> node) : node_(node) {
     static_broadcaster_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(node);
   };
   void Initialize(std::shared_ptr<deptrum::stream::Device> device,
@@ -50,6 +49,7 @@ class StreamCameraParameters {
   std::shared_ptr<tf2_ros::StaticTransformBroadcaster> static_broadcaster_;
 
  private:
+  std::shared_ptr<rclcpp::Node> node_;
   int boot_order_;
 };
 
