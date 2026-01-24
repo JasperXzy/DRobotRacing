@@ -15,7 +15,7 @@ def generate_launch_description():
                      
     driver_node = LifecycleNode(package='lidar_driver',
                                 executable='lidar_driver_node',
-                                name='lidar_driver_node',		#设置激光数据topic名称
+                                name='lidar_driver_node',		
                                 output='screen',
                                 emulate_tty=True,
                                 namespace='',

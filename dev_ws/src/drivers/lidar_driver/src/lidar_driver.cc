@@ -68,8 +68,8 @@ namespace lidar_driver
 		pubscan_thread_ = new boost::thread(boost::bind(&LidarDriver::pubScanThread, this));
 		interface_selection = std::string("net");
 		frame_id = std::string("laser_link");
-		scan_topic = std::string("/scan");
-		pointcloud_topic = std::string("/lslidar_point_cloud");
+		scan_topic = std::string("/lidar/scan");
+		pointcloud_topic = std::string("/lidar/point_cloud");
 		is_start = true;
 		min_range = 0.3;
 		max_range = 100.0;
@@ -79,8 +79,8 @@ namespace lidar_driver
 		angle_disable_max = 0.0;
 
 		this->declare_parameter<std::string>("frame_id", "laser_link");
-		this->declare_parameter<std::string>("scan_topic", "/scan");
-		this->declare_parameter<std::string>("pointcloud_topic", "/lslidar_point_cloud");
+		this->declare_parameter<std::string>("scan_topic", "/lidar/scan");
+		this->declare_parameter<std::string>("pointcloud_topic", "/lidar/point_cloud");
 		this->declare_parameter<double>("min_range", 0.3);
 		this->declare_parameter<double>("max_range", 100.0);
 		this->declare_parameter<bool>("pubScan", true);
@@ -149,7 +149,7 @@ namespace lidar_driver
 			scan_pub = this->create_publisher<sensor_msgs::msg::LaserScan>(scan_topic, 10);
 		if (pubPointCloud2)
 			point_cloud_pub = this->create_publisher<sensor_msgs::msg::PointCloud2>(pointcloud_topic, 10);
-		difop_switch = this->create_subscription<std_msgs::msg::Int8>("lslidar_order", 1, std::bind(&LidarDriver::lidar_order, this, std::placeholders::_1)); // 转速输入
+		difop_switch = this->create_subscription<std_msgs::msg::Int8>("/lidar/order", 1, std::bind(&LidarDriver::lidar_order, this, std::placeholders::_1)); // Becomes /lidar/order
 		return true;
 	}
 
