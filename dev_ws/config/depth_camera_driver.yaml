@@ -1,5 +1,5 @@
 # Parameter configuration for Aurora930 Camera
-/aurora/aurora:
+/depth_camera/depth_camera_node:
   ros__parameters:
     # --- Stream Enablers ---
     rgb_enable: true

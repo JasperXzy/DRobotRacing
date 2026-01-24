@@ -10,7 +10,7 @@ def generate_launch_description():
             PathJoinSubstitution([
                 FindPackageShare('depth_camera_driver'),
                 'launch',
-                'aurora930_launch.py'
+                'depth_camera.launch.py'
             ])
         )
     )
