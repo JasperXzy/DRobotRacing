@@ -13,7 +13,7 @@ def generate_launch_description():
     default_params_file = os.path.join(ws_root, 'config', 'depth_camera_driver.yaml')
     
     params_file_launch_arg = DeclareLaunchArgument(
-        'params_file',
+        'depth_camera_config_file',
         default_value=default_params_file,
         description='Full path to the ROS2 parameters file to use for the aurora node'
     )
@@ -26,7 +26,7 @@ def generate_launch_description():
             namespace="aurora",
             name="aurora",
             parameters=[
-                LaunchConfiguration('params_file'),
+                LaunchConfiguration('depth_camera_config_file'),
                 {
                     "rgb_enable": LaunchConfiguration('rgb_enable', default=True),
                     "ir_enable": LaunchConfiguration('ir_enable', default=True),

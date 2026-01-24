@@ -13,12 +13,12 @@ def generate_launch_description():
     default_config_path = os.path.join(ws_root, 'config', 'camera_driver.yaml')
     
     config_file_arg = DeclareLaunchArgument(
-        'config_file',
+        'camera_config_file',
         default_value=default_config_path,
         description='Path to the config file'
     )
 
-    config_file = LaunchConfiguration('config_file')
+    config_file = LaunchConfiguration('camera_config_file')
 
     return LaunchDescription([
         config_file_arg,

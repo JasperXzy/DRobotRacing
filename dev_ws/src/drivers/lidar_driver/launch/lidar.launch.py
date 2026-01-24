@@ -12,10 +12,10 @@ def generate_launch_description():
     ws_root = os.path.abspath(os.path.join(pkg_share, '..', '..', '..', '..'))
     default_config_path = os.path.join(ws_root, 'config', 'lidar_driver.yaml')
 
-    driver_dir = LaunchConfiguration('config_file')
+    driver_dir = LaunchConfiguration('lidar_config_file')
 
     declare_driver_dir = DeclareLaunchArgument(
-        'config_file',
+        'lidar_config_file',
         default_value=default_config_path,
         description='Path to the config file'
     )
