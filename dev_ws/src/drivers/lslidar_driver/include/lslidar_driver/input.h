@@ -76,19 +76,11 @@ public:
 
   virtual int getPacket(std::unique_ptr<LslidarPacket> &packet) = 0;
 
-  int getRpm(void);
-  int getReturnMode(void);
-  bool getUpdateFlag(void);
-  void clearUpdateFlag(void);
   void UDP_order(const std_msgs::msg::Int8 msg);
-  void UDP_difop();
 protected:
   rclcpp::Node*  private_nh_;
   uint16_t port_;
   std::string devip_str_;
-  std::string lidar_name;
-  int cur_rpm_;
-  int return_mode_;
   bool npkt_update_flag_;
   bool add_multicast;
   std::string group_ip;

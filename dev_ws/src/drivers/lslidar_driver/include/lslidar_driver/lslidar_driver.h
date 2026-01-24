@@ -73,11 +73,8 @@ private:
     bool loadParameters();
     bool createRosIO();
     void open_serial();
-    void lidar_difop();
     void lidar_order(const std_msgs::msg::Int8::SharedPtr msg);
-    void data_processing(unsigned char *packet_bytes,int len);
-    void data_processing_2(unsigned char *packet_bytes,int len);
-    void difop_processing(unsigned char *packet_bytes);
+    void data_processing(unsigned char *packet_bytes);
     void pubScanThread();
     void recvThread_crc(int &count,int &link_time);
     int receive_data(unsigned char *packet_bytes);
@@ -94,17 +91,12 @@ private:
     int data_bits_start;
     int degree_bits_start;
     int end_degree_bits_start;
-    int rpm_bits_start;
 	int baud_rate_;
     int points_size_;
     int idx = 0;
     int link_time = 0;
 
-    bool use_gps_ts;   
     bool is_start;
-    bool high_reflection;
-    bool compensation;
-    bool first_compensation = true;
     bool pubScan;
     bool pubPointCloud2;
 
@@ -115,17 +107,12 @@ private:
     double angle_able_min;
     double angle_able_max;
     double last_degree = 0.0;	
-    double degree_compensation = 0.0;
 
     uint16_t PACKET_SIZE ;
-    uint64_t sweep_end_time_gps;
-    uint64_t sweep_end_time_hardware;
-    uint64_t sub_second;
 
     std::string frame_id;
     std::string interface_selection;
     std::string scan_topic;
-    std::string lidar_name;
     std::string serial_port_;
     std::string dump_file;
     std::string pointcloud_topic;

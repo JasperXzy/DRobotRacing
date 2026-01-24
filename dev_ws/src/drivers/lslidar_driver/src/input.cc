@@ -15,11 +15,8 @@ namespace lslidar_driver
      */
     Input::Input(rclcpp::Node *private_nh, uint16_t port) : private_nh_(private_nh), port_(port) {
         npkt_update_flag_ = false;
-        cur_rpm_ = 0;
-        return_mode_ = 1;
         devip_str_difop = std::string("192.168.1.200");
         devip_str_ = std::string("192.168.1.102");
-        lidar_name = std::string("M10");
         add_multicast = false;
         group_ip = std::string("224.1.1.2");
         UDP_PORT_NUMBER_DIFOP = 2369;
@@ -32,7 +29,6 @@ namespace lslidar_driver
         private_nh->declare_parameter<int>("difop_port",2369);
 
 
-        private_nh->get_parameter("lidar_name", lidar_name);
         private_nh->get_parameter("device_ip", devip_str_);
         private_nh->get_parameter("add_multicast", add_multicast);
         private_nh->get_parameter("group_ip", group_ip);
@@ -103,29 +99,6 @@ namespace lslidar_driver
     InputSocket::~InputSocket(void) {
         (void) close(sockfd_);
     }
-
-    void Input::UDP_difop()
-    {
-        sockaddr_in server_sai;
-        server_sai.sin_family = AF_INET; // IPV4 协议族
-        server_sai.sin_port = htons(UDP_PORT_NUMBER_DIFOP);
-        server_sai.sin_addr.s_addr = inet_addr(devip_str_.c_str());
-        for (int k = 0; k < 10; k++)
-        {
-            unsigned char data[188]= {0x00};
-            data[0] = 0xA5;
-            data[1] = 0x5A;
-            data[2] = 0x55;
-            data[184] = 0x08;
-            data[185] = 0x01;
-            data[186] = 0xFA;
-            data[187] = 0xFB;
-            int rtn = sendto(sockfd_, data, 188, 0, (struct sockaddr *)&server_sai, sizeof(struct sockaddr));
-            if (rtn < 0)    printf("start scan error !\n");
-            else return; 
-        }
-        return; 
-    }
     
     void Input::UDP_order(const std_msgs::msg::Int8 msg)
     {
@@ -142,86 +115,20 @@ namespace lslidar_driver
             data[1] = 0x5A;
             data[2] = 0x55;
             data[186] = 0xFA;
-            data[187] = 0xFB;  
-            if(lidar_name == "M10" || lidar_name == "M10_GPS" || lidar_name == "M10_P"){
-                if (i <= 1){				    //雷达启停
-                    data[184] = 0x01;
-                    data[185] = char(i);
-                }
-                else if (i == 2){			    //雷达点云不滤波
-                    data[181] = 0x0A;
-                    data[184] = 0x06;
-                    data[185] = 0x01;
-                }
-                else if (i == 3){				//雷达点云正常滤波
-                    data[181] = 0x0B;
-                    data[184] = 0x06;
-                    data[185] = 0x01;
-                }
-                else if (i == 4){				//雷达近距离滤波
-                    data[181] = 0x0C;
-                    data[184] = 0x06;
-                    data[185] = 0x01;
-                }    
-                else if (i == 100){				//接收设备包
-                    data[184] = 0x08;
-                    data[185] = 0x01;
-                }      
-                else return;    
-            }
-            else if (lidar_name == "M10_PLUS"){   
-                data[184] = 0x0A;
-                data[185] = 0x01;           
-                if(i == 5)       {
-                data[141] = 0x01;
-                data[142] = 0x2c;
-                }
-                else if(i == 6)  {
-                data[141] = 0x01;
-                data[142] = 0x68;
-                }
-                else if(i == 8)  {
-                data[141] = 0x01;
-                data[142] = 0xe0;
-                }
-                else if(i == 10) {
-                data[141] = 0x02;
-                data[142] = 0x58;
-                }
-                else if(i == 12) {
-                data[141] = 0x02;
-                data[142] = 0xd0;
-                }
-                else if(i == 15) {
-                data[141] = 0x03;
-                data[142] = 0x84;
-                }
-                else if(i == 20) {
-                data[141] = 0x04;
-                data[142] = 0xb0;
-                }
-                else if(i <= 1)  {
-                data[184] = 0x01;
-                data[185] = char(i);
-                }
-                else if(i == 100) {				//接收设备包
-                    data[184] = 0x08;
-                    data[185] = 0x01;
-                }      
-                else return;
-            }
-            else if(lidar_name == "N10"){
-                if(i <= 1){
+            data[187] = 0xFB;
+
+            // N10 Specific Order Logic
+            if(i <= 1){
                 data[185] = char(i);
                 data[184] = 0x01;
-                }
-                else if(i>=6 && i<=12){
+            }
+            else if(i>=6 && i<=12){
                 data[172] = char(i);
                 data[184] = 0x0a;
                 data[185] = 0X01;
-                }
-                else return; 
             }
+            else return;
+
             rtn = sendto(sockfd_, data, 188, 0, (struct sockaddr *)&server_sai, sizeof(struct sockaddr));
             if (rtn < 0)
             {
