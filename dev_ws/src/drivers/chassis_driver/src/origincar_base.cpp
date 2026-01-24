@@ -311,8 +311,8 @@ chassis_driver::chassis_driver()
   int serial_baud_rate = 115200;
 
   this->declare_parameter<std::string>("usart_port_name", "/dev/ttyCH343USB0");
-  this->declare_parameter<std::string>("cmd_vel", "cmd_vel");
-  this->declare_parameter<std::string>("akm_cmd_vel", "ackermann_cmd");
+  this->declare_parameter<std::string>("cmd_vel", "chassis/cmd_vel");
+  this->declare_parameter<std::string>("akm_cmd_vel", "chassis/ackermann_cmd");
   this->declare_parameter<std::string>("odom_frame_id", "odom");
   this->declare_parameter<std::string>("robot_frame_id", "base_link");
   this->declare_parameter<std::string>("gyro_frame_id", "gyro_link");
@@ -325,15 +325,15 @@ chassis_driver::chassis_driver()
   this->get_parameter("robot_frame_id", robot_frame_id);
   this->get_parameter("gyro_frame_id", gyro_frame_id);
 
-  odom_publisher = create_publisher<nav_msgs::msg::Odometry>("odom", 10);
+  odom_publisher = create_publisher<nav_msgs::msg::Odometry>("chassis/odom", 10);
 
-  imu_publisher = create_publisher<sensor_msgs::msg::Imu>("imu/data_raw", 10);
+  imu_publisher = create_publisher<sensor_msgs::msg::Imu>("chassis/imu/data_raw", 10);
 
-  voltage_publisher = create_publisher<std_msgs::msg::Float32>("PowerVoltage", 1);
+  voltage_publisher = create_publisher<std_msgs::msg::Float32>("chassis/power_voltage", 1);
 
-  robotpose_publisher = create_publisher<geometry_msgs::msg::Vector3>("robotpose", 10);
+  robotpose_publisher = create_publisher<geometry_msgs::msg::Vector3>("chassis/robot_pose", 10);
 
-  robotvel_publisher = create_publisher<geometry_msgs::msg::Vector3>("robotvel", 10);
+  robotvel_publisher = create_publisher<geometry_msgs::msg::Vector3>("chassis/robot_vel", 10);
 
   tf_bro = std::make_shared<tf2_ros::TransformBroadcaster>(this);
 
