@@ -41,7 +41,7 @@ target_link_libraries(lidar_driver_node ${rclcpp_LIBRARIES} ${libpcap_LIBRARIES}
 ament_target_dependencies(lidar_driver_node rclcpp std_msgs sensor_msgs diagnostic_updater pcl_conversions)
 
 
-install(DIRECTORY launch params rviz
+install(DIRECTORY launch rviz
 		DESTINATION share/${PROJECT_NAME})
 
 install(TARGETS
