@@ -30,7 +30,6 @@
 #include <thread>
 #include "diagnostic_updater/diagnostic_updater.hpp"
 #include "diagnostic_updater/publisher.hpp"
-#include "lslidar_msgs/msg/lslidar_packet.hpp"
 #include "std_msgs/msg/byte.hpp"
 
 #include "sensor_msgs/msg/point_cloud2.hpp"

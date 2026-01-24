@@ -32,7 +32,6 @@
 #include <pcap.h>
 #include <netinet/in.h>
 #include "rclcpp/rclcpp.hpp"
-#include <lslidar_msgs/msg/lslidar_packet.hpp>
 #include <string>
 #include <sstream>
 #include <sys/socket.h>
@@ -45,9 +44,16 @@
 #include <sensor_msgs/msg/time_reference.hpp>
 #include <std_msgs/msg/int8.hpp>
 #include <cmath>
+#include <memory>
 
 namespace lslidar_driver
 {
+struct LslidarPacket
+{
+  rclcpp::Time stamp;
+  uint8_t data[2000];
+};
+
 static uint16_t MSOP_DATA_PORT_NUMBER = 2368;   // lslidar default data port on PC
 /**
  *  从在线的网络数据或离线的网络抓包数据（pcap文件）中提取出lidar的原始数据，即packet数据包
@@ -68,7 +74,7 @@ public:
   {
   }
 
-  virtual int getPacket(lslidar_msgs::msg::LslidarPacket::UniquePtr &packet) = 0;
+  virtual int getPacket(std::unique_ptr<LslidarPacket> &packet) = 0;
 
   int getRpm(void);
   int getReturnMode(void);
@@ -100,7 +106,7 @@ public:
 
   virtual ~InputSocket();
 
-  virtual int getPacket(lslidar_msgs::msg::LslidarPacket::UniquePtr &packet);
+  virtual int getPacket(std::unique_ptr<LslidarPacket> &packet);
 
 private:
 private:
@@ -116,7 +122,7 @@ public:
     InputPCAP(rclcpp::Node* private_nh,uint16_t port = MSOP_DATA_PORT_NUMBER, double packet_rate = 0.0,
             std::string filename="");
     virtual ~InputPCAP();
-    virtual int getPacket(lslidar_msgs::msg::LslidarPacket::UniquePtr &pkt);
+    virtual int getPacket(std::unique_ptr<LslidarPacket> &pkt);
 private:
 
     rclcpp::Rate packet_rate_;

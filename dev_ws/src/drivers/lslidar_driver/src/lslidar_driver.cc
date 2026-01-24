@@ -720,14 +720,14 @@ namespace lslidar_driver
 		}
 		invalidValue = package_points - invalidValue;
 		if (lidar_name == "N10" || lidar_name == "L10")
-			invalidValue--;
+		        invalidValue--;
 		if (invalidValue <= 1)
 		{
-			delete packet_bytes;
-			return;
+		    delete packet_bytes;
+		    return;
 		}
-
-		for (int num = 0; num < package_points; num++)
+		
+		for (int num = 0; num < package_points; num++)		
 		{
 			int s = packet_bytes[num * point_len + data_bits_start];
 			int z = packet_bytes[num * point_len + data_bits_start + 1];
@@ -1272,8 +1272,7 @@ namespace lslidar_driver
 		bool difop = false;
 		if (interface_selection == "net")
 		{
-			auto packet = lslidar_msgs::msg::LslidarPacket::UniquePtr(
-				new lslidar_msgs::msg::LslidarPacket());
+			auto packet = std::make_unique<LslidarPacket>();
 
 			std_msgs::msg::Byte msg;
 			while (true)

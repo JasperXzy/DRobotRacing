@@ -239,7 +239,7 @@ namespace lslidar_driver
 
 
 
-    int InputSocket::getPacket(lslidar_msgs::msg::LslidarPacket::UniquePtr &packet)
+    int InputSocket::getPacket(std::unique_ptr<LslidarPacket> &packet)
     {
         int q = 0;
         struct pollfd fds[1];
@@ -348,7 +348,7 @@ namespace lslidar_driver
         pcap_close(pcap_);
     }
 
-    int InputPCAP::getPacket(lslidar_msgs::msg::LslidarPacket::UniquePtr &pkt)
+    int InputPCAP::getPacket(std::unique_ptr<LslidarPacket> &pkt)
     {
         struct pcap_pkthdr *header;
         const u_char *pkt_data;
