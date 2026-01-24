@@ -1,0 +1,46 @@
+# Parameter configuration for OriginCar USB Camera
+
+# USB Camera Node Configuration
+usb_cam_node:
+  ros__parameters:
+    # --- Camera Settings ---
+    video_device: "/dev/video8"   # Device path
+    framerate: 30                 # Frames per second
+    image_width: 1920             # Resolution width
+    image_height: 1080            # Resolution height
+    pixel_format: "mjpeg"         # Output format from camera
+    io_method: "mmap"             # I/O method
+    
+    # --- Frame & Calibration ---
+    frame_id: "usb_cam"           # Frame ID
+    camera_calibration_file_path: ""
+    zero_copy: false              # Zero copy
+
+# MJPEG -> NV12 Codec Configuration
+usb_cam_nv12_codec_node:
+  ros__parameters:
+    # --- Codec Settings ---
+    channel: 0                # Channel ID
+    in_mode: "ros"            # Input from ROS topic
+    in_format: "jpeg"         # Input format
+    out_mode: "shared_mem"    # Output to Shared Memory
+    out_format: "nv12"        # Output format
+    
+    # --- Topics ---
+    sub_topic: "/camera/image"       # Subscribe to raw camera image
+    pub_topic: "/camera/image_hbmem" # Publish shared memory handle
+
+# NV12 -> JPEG Codec Configuration
+usb_cam_preview_codec_node:
+  ros__parameters:
+    # --- Codec Settings ---
+    channel: 1                # Channel ID
+    in_mode: "shared_mem"     # Input from Shared Memory
+    in_format: "nv12"         # Input format
+    out_mode: "ros"           # Output to ROS topic
+    out_format: "jpeg"        # Output format
+    jpg_quality: 15.0         # Compress ratio
+
+    # --- Topics ---
+    sub_topic: "/camera/image_hbmem"      # Subscribe to raw camera image
+    pub_topic: "/camera/image_compressed" # Publish compressed image
