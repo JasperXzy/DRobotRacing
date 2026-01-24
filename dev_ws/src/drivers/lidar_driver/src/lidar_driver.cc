@@ -28,7 +28,7 @@
 #include <stdlib.h>
 
 #include "rclcpp/rclcpp.hpp"
-#include "lidar_driver/lidar_driver.h"
+#include "lidar_driver.h"
 #include <functional>
 
 int truncated_mode_=0;          //多角度屏蔽开关：默认为0，如果需要屏蔽多个角度，则truncated_mode_赋值为1。

@@ -1,4 +1,4 @@
-#include "lidar_driver/input.h"
+#include "input.h"
 
 extern volatile sig_atomic_t flag;
 namespace lidar_driver

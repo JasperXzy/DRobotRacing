@@ -6,7 +6,7 @@
 @version:       date:       author:     comments:
 @v1.0           21-2-4      yao          new
 *******************************************************/
-#include "lidar_driver/lsiosr.h"
+#include "lsiosr.h"
 
 namespace lidar_driver {
 

@@ -16,7 +16,7 @@
  */
 
 #include "rclcpp/rclcpp.hpp"
-#include "lidar_driver/lidar_driver.h"
+#include "lidar_driver.h"
 
 using namespace lidar_driver;
 volatile sig_atomic_t flag = 1;
