@@ -35,8 +35,19 @@ def generate_launch_description():
         )
     )
 
+    chassis_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([
+                FindPackageShare('chassis_driver'),
+                'launch',
+                'chassis.launch.py'
+            ])
+        )
+    )
+
     return LaunchDescription([
         depth_camera_launch,
         camera_launch,
         lidar_launch,
+        chassis_launch,
     ])
