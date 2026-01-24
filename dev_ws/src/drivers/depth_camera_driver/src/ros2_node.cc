@@ -9,8 +9,8 @@
 int main(int argc, char** argv) {
   rclcpp::init(argc, argv);
 
-  auto node = std::make_shared<rclcpp::Node>("aurora");
-  RCLCPP_DEBUG(node->get_logger(), "hello aurora 900/930");
+  auto node = std::make_shared<rclcpp::Node>("depth_camera_node");
+  RCLCPP_DEBUG(node->get_logger(), "hello depth_camera");
   std::shared_ptr<RosDevice> device(new Aurora900RosDevice(node));
 
   DeptrumRosDeviceParams param = {};

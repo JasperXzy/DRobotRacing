@@ -23,8 +23,8 @@ def generate_launch_description():
         Node(
             package="depth_camera_driver",
             executable="aurora930_node",
-            namespace="aurora",
-            name="aurora",
+            namespace="depth_camera",
+            name="depth_camera_node",
             parameters=[
                 LaunchConfiguration('depth_camera_config_file'),
                 {
