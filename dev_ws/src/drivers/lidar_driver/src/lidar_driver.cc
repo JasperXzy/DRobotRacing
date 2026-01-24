@@ -28,7 +28,7 @@
 #include <stdlib.h>
 
 #include "rclcpp/rclcpp.hpp"
-#include "lslidar_driver/lslidar_driver.h"
+#include "lidar_driver/lidar_driver.h"
 #include <functional>
 
 int truncated_mode_=0;          //多角度屏蔽开关：默认为0，如果需要屏蔽多个角度，则truncated_mode_赋值为1。
@@ -39,7 +39,7 @@ int scan_crop_min[]={0,180}; 	//雷达屏蔽角度，这里屏蔽角度为135°�
 int scan_crop_max[]={90,270};     //修改后编译即可
 
 
-namespace lslidar_driver
+namespace lidar_driver
 {
 
 	static void my_hander(int sig)
@@ -47,8 +47,8 @@ namespace lslidar_driver
 		printf("sig: %d", sig);
 		abort();
 	}
-	LslidarDriver::LslidarDriver() : LslidarDriver(rclcpp::NodeOptions()) {}
-	LslidarDriver::LslidarDriver(const rclcpp::NodeOptions &options) : Node("lslidar_driver_node", options), diagnostics(this)
+	LidarDriver::LidarDriver() : LidarDriver(rclcpp::NodeOptions()) {}
+	LidarDriver::LidarDriver(const rclcpp::NodeOptions &options) : Node("lidar_driver_node", options), diagnostics(this)
 	{
 		signal(SIGINT, my_hander);
 
@@ -58,14 +58,14 @@ namespace lslidar_driver
 			RCLCPP_INFO(this->get_logger(), "Successfully initialize driver...");
 	}
 
-	LslidarDriver::~LslidarDriver()
+	LidarDriver::~LidarDriver()
 	{
 		return;
 	}
 
-	bool LslidarDriver::loadParameters()
+	bool LidarDriver::loadParameters()
 	{
-		pubscan_thread_ = new boost::thread(boost::bind(&LslidarDriver::pubScanThread, this));
+		pubscan_thread_ = new boost::thread(boost::bind(&LidarDriver::pubScanThread, this));
 		interface_selection = std::string("net");
 		frame_id = std::string("laser_link");
 		scan_topic = std::string("/scan");
@@ -149,13 +149,13 @@ namespace lslidar_driver
 			scan_pub = this->create_publisher<sensor_msgs::msg::LaserScan>(scan_topic, 10);
 		if (pubPointCloud2)
 			point_cloud_pub = this->create_publisher<sensor_msgs::msg::PointCloud2>(pointcloud_topic, 10);
-		difop_switch = this->create_subscription<std_msgs::msg::Int8>("lslidar_order", 1, std::bind(&LslidarDriver::lidar_order, this, std::placeholders::_1)); // 转速输入
+		difop_switch = this->create_subscription<std_msgs::msg::Int8>("lslidar_order", 1, std::bind(&LidarDriver::lidar_order, this, std::placeholders::_1)); // 转速输入
 		return true;
 	}
 
 
 
-	void LslidarDriver::lidar_order(const std_msgs::msg::Int8::SharedPtr msg)
+	void LidarDriver::lidar_order(const std_msgs::msg::Int8::SharedPtr msg)
 	{
 		int i = msg->data;
 		if (i == 0)
@@ -210,7 +210,7 @@ namespace lslidar_driver
 		}
 	}
 
-	void LslidarDriver::open_serial()
+	void LidarDriver::open_serial()
 	{
 		diagnostics.setHardwareID("Lslidar");
 		int code = 0;
@@ -228,7 +228,7 @@ namespace lslidar_driver
 		printf("open_port %s OK !\n", serial_port_.c_str());
 	}
 
-	bool LslidarDriver::createRosIO()
+	bool LidarDriver::createRosIO()
 	{
 		UDP_PORT_NUMBER = 2368;
 		this->declare_parameter<int>("msop_port", 2368);
@@ -257,18 +257,18 @@ namespace lslidar_driver
 		double packet_rate = hz * 24;
 		if (dump_file != "")
 		{
-			msop_input_.reset(new lslidar_driver::InputPCAP(this, UDP_PORT_NUMBER, packet_rate, dump_file));
+			msop_input_.reset(new lidar_driver::InputPCAP(this, UDP_PORT_NUMBER, packet_rate, dump_file));
 		}
 		else
 		{
-			msop_input_.reset(new lslidar_driver::InputSocket(this, UDP_PORT_NUMBER));
+			msop_input_.reset(new lidar_driver::InputSocket(this, UDP_PORT_NUMBER));
 		}
 
 		// Output
 		return true;
 	}
 
-	int LslidarDriver::getScan(std::vector<ScanPoint> &points, rclcpp::Time &scan_time, float &scan_duration)
+	int LidarDriver::getScan(std::vector<ScanPoint> &points, rclcpp::Time &scan_time, float &scan_duration)
 	{
 		boost::unique_lock<boost::mutex> lock(mutex_);
 		points.assign(scan_points_bak_.begin(), scan_points_bak_.end());
@@ -277,14 +277,14 @@ namespace lslidar_driver
 		return 1;
 	}
 
-	uint64_t LslidarDriver::get_gps_stamp(struct tm t)
+	uint64_t LidarDriver::get_gps_stamp(struct tm t)
 	{
 
 		uint64_t ptime = static_cast<uint64_t>(timegm(&t));
 		return ptime;
 	}
 
-	bool LslidarDriver::initialize()
+	bool LidarDriver::initialize()
 	{
 		if (!loadParameters())
 		{
@@ -321,7 +321,7 @@ namespace lslidar_driver
 		return true;
 	}
 
-	void LslidarDriver::recvThread_crc(int &count, int &link_time)
+	void LidarDriver::recvThread_crc(int &count, int &link_time)
 	{
 		if (count <= 0)
 			link_time++;
@@ -341,7 +341,7 @@ namespace lslidar_driver
 		}
 	}
 
-	int LslidarDriver::receive_data(unsigned char *packet_bytes)
+	int LidarDriver::receive_data(unsigned char *packet_bytes)
 	{
 		int link_time = 0;
 		int len = 0;
@@ -350,7 +350,7 @@ namespace lslidar_driver
 		while (count <= 0)
 		{
 			count = serial_->read(packet_bytes, 1);
-			LslidarDriver::recvThread_crc(count, link_time);
+			LidarDriver::recvThread_crc(count, link_time);
 		}
 		if (packet_bytes[0] != 0xA5)
 			return 0;
@@ -360,7 +360,7 @@ namespace lslidar_driver
 			count_2 = serial_->read(packet_bytes + count, 1);
 			if (count_2 >= 0)
 				count += count_2;
-			LslidarDriver::recvThread_crc(count_2, link_time);
+			LidarDriver::recvThread_crc(count_2, link_time);
 		}
 
 		count_2 = 0;
@@ -371,7 +371,7 @@ namespace lslidar_driver
 			count_2 = serial_->read(packet_bytes + count, 2);
 			if (count_2 >= 0)
 				count += count_2;
-			LslidarDriver::recvThread_crc(count_2, link_time);
+			LidarDriver::recvThread_crc(count_2, link_time);
 		}
 
 		count_2 = 0;
@@ -384,7 +384,7 @@ namespace lslidar_driver
 			count_2 = serial_->read(packet_bytes + count, len - count);
 			if (count_2 >= 0)
 				count += count_2;
-			LslidarDriver::recvThread_crc(count_2, link_time);
+			LidarDriver::recvThread_crc(count_2, link_time);
 		}
         
         // N10 CRC check
@@ -394,7 +394,7 @@ namespace lslidar_driver
 		return len;
 	}
 
-	uint8_t LslidarDriver::N10_CalCRC8(unsigned char *p, int len)
+	uint8_t LidarDriver::N10_CalCRC8(unsigned char *p, int len)
 	{
 		uint8_t crc = 0;
 		int sum = 0;
@@ -407,7 +407,7 @@ namespace lslidar_driver
 		return crc;
 	}
 
-			void LslidarDriver::data_processing(unsigned char *packet_bytes) // 处理每一包的数据
+			void LidarDriver::data_processing(unsigned char *packet_bytes) // 处理每一包的数据
 			{
 				double degree;			double end_degree;
 			double degree_interval = 15.0;
@@ -515,7 +515,7 @@ namespace lslidar_driver
 					}
 				}
 			
-				void LslidarDriver::pubScanThread()
+				void LidarDriver::pubScanThread()
 	{
 		bool wait_for_wake = true;
 		boost::unique_lock<boost::mutex> lock(pubscan_mutex_);
@@ -651,7 +651,7 @@ namespace lslidar_driver
 		}
 	}
 
-	bool LslidarDriver::polling()
+	bool LidarDriver::polling()
 	{
 		if (!is_start)
 			return true;
@@ -718,7 +718,7 @@ namespace lslidar_driver
 						
                         len = 58; // N10 Fixed Length
 
-						LslidarDriver::data_processing(packet_bytes);
+						LidarDriver::data_processing(packet_bytes);
 						usleep(usleep_time);
 					}
 				}
@@ -729,7 +729,7 @@ namespace lslidar_driver
 				while (true)
 				{
 					len = 0;
-					len = LslidarDriver::receive_data(packet_bytes);
+					len = LidarDriver::receive_data(packet_bytes);
 					if (len == 0)
 						continue;
 					break;
@@ -737,10 +737,10 @@ namespace lslidar_driver
 			}
 		}
         
-        LslidarDriver::data_processing(packet_bytes);
+        LidarDriver::data_processing(packet_bytes);
         
 		delete packet_bytes;
 		return true;
 	}
 
-} // namespace lslidar_driver
+} // namespace lidar_driver

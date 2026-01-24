@@ -1,7 +1,7 @@
-#include "lslidar_driver/input.h"
+#include "lidar_driver/input.h"
 
 extern volatile sig_atomic_t flag;
-namespace lslidar_driver
+namespace lidar_driver
 {
     static const size_t packet_size_input = 400;
     ////////////////////////////////////////////////////////////////////////

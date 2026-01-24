@@ -16,15 +16,15 @@
  */
 
 #include "rclcpp/rclcpp.hpp"
-#include "lslidar_driver/lslidar_driver.h"
+#include "lidar_driver/lidar_driver.h"
 
-using namespace lslidar_driver;
+using namespace lidar_driver;
 volatile sig_atomic_t flag = 1;
 
 int main(int argc, char* argv[])
 {
   rclcpp::init(argc, argv);
-  auto node = std::make_shared<lslidar_driver::LslidarDriver>();
+  auto node = std::make_shared<lidar_driver::LidarDriver>();
   
   while (rclcpp::ok() && node->polling()) {
         rclcpp::spin_some(node);

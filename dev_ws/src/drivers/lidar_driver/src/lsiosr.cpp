@@ -6,9 +6,9 @@
 @version:       date:       author:     comments:
 @v1.0           21-2-4      yao          new
 *******************************************************/
-#include "lslidar_driver/lsiosr.h"
+#include "lidar_driver/lsiosr.h"
 
-namespace lslidar_driver {
+namespace lidar_driver {
 
 LSIOSR * LSIOSR::instance(std::string name, int speed, int fd)
 {

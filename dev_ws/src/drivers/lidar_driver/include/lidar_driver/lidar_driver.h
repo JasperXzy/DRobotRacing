@@ -40,7 +40,7 @@
 #include "input.h"
 #include "lsiosr.h"
 #include "sensor_msgs/msg/laser_scan.hpp"
-namespace lslidar_driver {
+namespace lidar_driver {
 
 struct PointXYZIT {
     PCL_ADD_POINT4D;
@@ -55,17 +55,17 @@ typedef struct {
     double intensity;
 } ScanPoint;
 
-class LslidarDriver: public rclcpp::Node {
+class LidarDriver: public rclcpp::Node {
 public:
-	LslidarDriver();
-	LslidarDriver(const rclcpp::NodeOptions& options);
-	~LslidarDriver();
+	LidarDriver();
+	LidarDriver(const rclcpp::NodeOptions& options);
+	~LidarDriver();
 
     bool initialize();
     bool polling();
 
-    typedef std::shared_ptr<LslidarDriver> LslidarDriverPtr;
-    typedef std::shared_ptr<const LslidarDriver> LslidarDriverConstPtr;
+    typedef std::shared_ptr<LidarDriver> LidarDriverPtr;
+    typedef std::shared_ptr<const LidarDriver> LidarDriverConstPtr;
 
 private:    
     uint64_t get_gps_stamp(struct tm t);
@@ -136,9 +136,9 @@ private:
 typedef PointXYZIT VPoint;
 typedef pcl::PointCloud<VPoint> VPointCloud;
 
-} // namespace lslidar_driver
-POINT_CLOUD_REGISTER_POINT_STRUCT(lslidar_driver::PointXYZIT,
+} // namespace lidar_driver
+POINT_CLOUD_REGISTER_POINT_STRUCT(lidar_driver::PointXYZIT,
                                   (float, x, x)(float, y, y)(float, z, z)(
                                           std::uint8_t, intensity,
                                           intensity)(double, timestamp, timestamp))
-#endif // _LSLIDAR_DRIVER_H_
+#endif // LIDAR_DRIVER_H_

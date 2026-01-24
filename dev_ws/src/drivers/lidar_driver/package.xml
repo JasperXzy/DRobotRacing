@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>lslidar_driver</name>
+  <name>lidar_driver</name>
   <version>1.2.0</version>
   <description>ROS device driver for Leishen lidar.</description>
   <maintainer email="shaohuashu@lslidar.com">Nick Shu</maintainer>

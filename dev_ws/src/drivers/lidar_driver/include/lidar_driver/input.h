@@ -46,7 +46,7 @@
 #include <cmath>
 #include <memory>
 
-namespace lslidar_driver
+namespace lidar_driver
 {
 struct LslidarPacket
 {
@@ -129,4 +129,4 @@ private:
   };
 }
 
-#endif  // __LSLIDAR_INPUT_H
+#endif  // __LIDAR_INPUT_H

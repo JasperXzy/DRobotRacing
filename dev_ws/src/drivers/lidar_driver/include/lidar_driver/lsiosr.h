@@ -41,7 +41,7 @@
 #define     DATA_BIT_7     	7
 #define     DATA_BIT_8     	8
 
-namespace lslidar_driver
+namespace lidar_driver
 {
 class LSIOSR{
 public:

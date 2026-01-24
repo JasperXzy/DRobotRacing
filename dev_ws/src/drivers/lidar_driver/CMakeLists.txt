@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(lslidar_driver)
+project(lidar_driver)
 
 # Default to C++14
 if(NOT CMAKE_CXX_STANDARD)
@@ -36,16 +36,16 @@ include_directories(
 )
 
 # Node
-add_executable(lslidar_driver_node src/lslidar_driver_node.cc src/lslidar_driver.cc src/input.cc src/lsiosr.cpp)
-target_link_libraries(lslidar_driver_node ${rclcpp_LIBRARIES} ${libpcap_LIBRARIES} ${Boost_LIBRARIES} Boost::thread)
-ament_target_dependencies(lslidar_driver_node rclcpp std_msgs sensor_msgs diagnostic_updater pcl_conversions)
+add_executable(lidar_driver_node src/lidar_driver_node.cc src/lidar_driver.cc src/input.cc src/lsiosr.cpp)
+target_link_libraries(lidar_driver_node ${rclcpp_LIBRARIES} ${libpcap_LIBRARIES} ${Boost_LIBRARIES} Boost::thread)
+ament_target_dependencies(lidar_driver_node rclcpp std_msgs sensor_msgs diagnostic_updater pcl_conversions)
 
 
 install(DIRECTORY launch params rviz
 		DESTINATION share/${PROJECT_NAME})
 
 install(TARGETS
-  lslidar_driver_node
+  lidar_driver_node
   DESTINATION lib/${PROJECT_NAME}
 )
 
