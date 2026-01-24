@@ -450,9 +450,14 @@ void RosDevice::FramePublisherThread() {
       }
     }
 
-    if (params_.ir_enable || params_.depth_enable || params_.point_cloud_enable) {
+    if (params_.ir_enable) {
       ir_camera_info.header.stamp = capture_time;
       ir_camerainfo_publisher_->publish(ir_camera_info);
+    }
+
+    if (params_.depth_enable) {
+      ir_camera_info.header.stamp = capture_time;
+      depth_camerainfo_publisher_->publish(ir_camera_info);
     }
 
     if (params_.rgb_enable) {

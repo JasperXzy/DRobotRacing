@@ -3,10 +3,10 @@
   ros__parameters:
     # --- Stream Enablers ---
     rgb_enable: true
-    ir_enable: true
+    ir_enable: false
     depth_enable: true
     rgbd_enable: false
-    point_cloud_enable: true
+    point_cloud_enable: false
 
     # --- Hardware/SDK Configuration ---
     resolution_mode_index: 2

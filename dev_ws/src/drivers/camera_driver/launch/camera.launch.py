@@ -2,7 +2,8 @@ import os
 from launch import LaunchDescription
 from launch_ros.actions import Node
 from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, EnvironmentVariable
+from launch.conditions import IfCondition
 from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
@@ -54,6 +55,7 @@ def generate_launch_description():
             name='usb_cam_preview_codec_node',
             output='screen',
             parameters=[config_file],
-            arguments=['--ros-args', '--log-level', 'error']
+            arguments=['--ros-args', '--log-level', 'error'],
+            condition=IfCondition(EnvironmentVariable('DEBUG_SHOW', default_value='false'))
         )
     ])
