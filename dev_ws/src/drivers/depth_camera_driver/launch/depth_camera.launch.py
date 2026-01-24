@@ -3,7 +3,7 @@ from ament_index_python.packages import get_package_share_directory
 from launch_ros.actions import Node
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, EnvironmentVariable
 
 def generate_launch_description():
     pkg_share = get_package_share_directory('depth_camera_driver')
@@ -28,10 +28,11 @@ def generate_launch_description():
             parameters=[
                 LaunchConfiguration('depth_camera_config_file'),
                 {
-                    "rgb_enable": LaunchConfiguration('rgb_enable', default=True),
-                    "ir_enable": LaunchConfiguration('ir_enable', default=True),
-                    "depth_enable": LaunchConfiguration('depth_enable', default=True),
-                    "resolution_mode_index": LaunchConfiguration('resolution_mode_index', default=2),
+                    "rgb_enable": LaunchConfiguration('rgb_enable', default='true'),
+                    "ir_enable": LaunchConfiguration('ir_enable', default='false'),
+                    "depth_enable": LaunchConfiguration('depth_enable', default='true'),
+                    "point_cloud_enable": LaunchConfiguration('point_cloud_enable', default=EnvironmentVariable('DEBUG_SHOW', default_value='false')),
+                    "resolution_mode_index": LaunchConfiguration('resolution_mode_index', default='2'),
                 }
             ],
             output="screen",   

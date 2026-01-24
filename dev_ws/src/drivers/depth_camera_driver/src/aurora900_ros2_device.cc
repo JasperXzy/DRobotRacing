@@ -11,17 +11,14 @@ Aurora900RosDevice::Aurora900RosDevice(std::shared_ptr<rclcpp::Node> node) : Ros
   }
   if (params_.ir_enable) {
     ir_pub_ = node_->create_publisher<sensor_msgs::msg::Image>("ir/image_raw", 1);
+    ir_camerainfo_publisher_ = node_->create_publisher<sensor_msgs::msg::CameraInfo>("ir/camera_info", 1);
   }
   if (params_.depth_enable) {
     depth_pub_ = node_->create_publisher<sensor_msgs::msg::Image>("depth/image_raw", 1);
+    depth_camerainfo_publisher_ = node_->create_publisher<sensor_msgs::msg::CameraInfo>("depth/camera_info", 1);
   }
   if (params_.point_cloud_enable) {
     pointcloud_publisher_ = node_->create_publisher<sensor_msgs::msg::PointCloud2>("points2", 1);
-  }
-  if (params_.depth_enable || params_.ir_enable || params_.point_cloud_enable) {
-    ir_camerainfo_publisher_ = node_->create_publisher<sensor_msgs::msg::CameraInfo>(
-        "ir/camera_info",
-        1);
   }
 }
 Aurora900RosDevice::~Aurora900RosDevice() {
