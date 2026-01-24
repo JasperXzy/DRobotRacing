@@ -25,7 +25,18 @@ def generate_launch_description():
         )
     )
 
+    lidar_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([
+                FindPackageShare('lidar_driver'),
+                'launch',
+                'lidar.launch.py'
+            ])
+        )
+    )
+
     return LaunchDescription([
         depth_camera_launch,
         camera_launch,
+        lidar_launch,
     ])
