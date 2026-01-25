@@ -335,8 +335,6 @@ chassis_driver::chassis_driver()
 
   robotvel_publisher = create_publisher<geometry_msgs::msg::Vector3>("chassis/robot_vel", 10);
 
-  tf_bro = std::make_shared<tf2_ros::TransformBroadcaster>(this);
-
   Cmd_Vel_Sub = create_subscription<geometry_msgs::msg::Twist>(
       cmd_vel, 1, std::bind(&chassis_driver::Cmd_Vel_Callback, this, _1));
   Akm_Cmd_Vel_Sub = create_subscription<ackermann_msgs::msg::AckermannDriveStamped>(
