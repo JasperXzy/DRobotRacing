@@ -32,7 +32,6 @@
 #include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 #include "tf2/LinearMath/Transform.h"
 #include "tf2/LinearMath/Quaternion.h"
-#include <tf2_ros/transform_broadcaster.h>
 #include "ackermann_msgs/msg/ackermann_drive_stamped.hpp"
 #include <geometry_msgs/msg/vector3.hpp>
 #include <std_msgs/msg/int32.hpp>
@@ -167,11 +166,6 @@ private:
 
 	rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr robotpose_publisher;
 	rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr robotvel_publisher;
-	// rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr tf_pub_;
-
-	std::shared_ptr<tf2_ros::TransformBroadcaster> tf_bro;
-	rclcpp::Publisher<tf2_msgs::msg::TFMessage>::SharedPtr tf_pub_;
-	rclcpp::TimerBase::SharedPtr test_timer;
 
 	rclcpp::TimerBase::SharedPtr odom_timer;
 	rclcpp::TimerBase::SharedPtr imu_timer;
@@ -179,8 +173,6 @@ private:
 
 	rclcpp::TimerBase::SharedPtr robotpose_timer;
 	rclcpp::TimerBase::SharedPtr robotvel_timer;
-
-	std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
 	rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr Sign_Switch_Sub;
 

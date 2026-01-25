@@ -11,7 +11,7 @@ def generate_launch_description():
     
     ws_root = os.path.abspath(os.path.join(pkg_share, '..', '..', '..', '..'))
     
-    default_config_path = os.path.join(ws_root, 'config', 'camera_driver.yaml')
+    default_config_path = os.path.join(ws_root, 'config', 'drivers', 'camera_driver.yaml')
     
     config_file_arg = DeclareLaunchArgument(
         'camera_config_file',
