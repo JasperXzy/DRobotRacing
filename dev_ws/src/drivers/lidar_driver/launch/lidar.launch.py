@@ -10,7 +10,7 @@ def generate_launch_description():
     pkg_share = get_package_share_directory('lidar_driver')
     
     ws_root = os.path.abspath(os.path.join(pkg_share, '..', '..', '..', '..'))
-    default_config_path = os.path.join(ws_root, 'config', 'lidar_driver.yaml')
+    default_config_path = os.path.join(ws_root, 'config', 'drivers', 'lidar_driver.yaml')
 
     driver_dir = LaunchConfiguration('lidar_config_file')
 

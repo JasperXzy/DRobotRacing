@@ -10,7 +10,7 @@ def generate_launch_description():
     
     ws_root = os.path.abspath(os.path.join(pkg_share, '..', '..', '..', '..'))
     
-    default_params_file = os.path.join(ws_root, 'config', 'depth_camera_driver.yaml')
+    default_params_file = os.path.join(ws_root, 'config', 'drivers', 'depth_camera_driver.yaml')
     
     params_file_launch_arg = DeclareLaunchArgument(
         'depth_camera_config_file',
