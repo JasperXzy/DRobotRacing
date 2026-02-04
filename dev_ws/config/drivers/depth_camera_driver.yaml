@@ -34,3 +34,17 @@
     stream_sdk_log_enable: true
     heart_enable: false
     update_file_path: ""
+
+# RGB to NV12 Codec Configuration
+depth_camera_rgb_nv12_codec_node:
+  ros__parameters:
+    # --- Codec Settings ---
+    channel: 2                # Channel ID
+    in_mode: "ros"            # Input from ROS topic
+    in_format: "bgr8"         # Input format
+    out_mode: "shared_mem"    # Output to Shared Memory
+    out_format: "nv12"        # Output format
+    
+    # --- Topics ---
+    sub_topic: "/depth_camera/rgb/image_raw"       # Subscribe to depth camera RGB
+    pub_topic: "/depth_camera/rgb/image_hbmem"     # Publish shared memory handle
