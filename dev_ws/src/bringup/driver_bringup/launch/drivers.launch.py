@@ -44,10 +44,20 @@ def generate_launch_description():
             ])
         )
     )
+    origincar_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([
+                FindPackageShare('origincar_description'),
+                'launch',
+                'display.launch.py'
+            ])
+        )
+    )
 
     return LaunchDescription([
         depth_camera_launch,
         camera_launch,
         lidar_launch,
         chassis_launch,
+        origincar_launch,
     ])

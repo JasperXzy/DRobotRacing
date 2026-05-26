@@ -1,10 +1,10 @@
 # Parameter configuration for Chassis Driver
 /chassis_driver_node:
   ros__parameters:
-    usart_port_name: "/dev/chassis"
+    usart_port_name: "/dev/ttyACM0"
     serial_baud_rate: 115200
     cmd_vel: "chassis/cmd_vel"
-    akm_cmd_vel: "chassis/ackermann_cmd"
+    akm_cmd_vel: "none"
     odom_frame_id: "odom"
     robot_frame_id: "base_link"
     gyro_frame_id: "gyro_link"

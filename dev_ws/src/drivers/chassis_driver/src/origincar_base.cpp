@@ -310,7 +310,7 @@ chassis_driver::chassis_driver()
 
   int serial_baud_rate = 115200;
 
-  this->declare_parameter<std::string>("usart_port_name", "/dev/ttyCH343USB0");
+  this->declare_parameter<std::string>("usart_port_name", "/dev/ttyACM0");
   this->declare_parameter<std::string>("cmd_vel", "chassis/cmd_vel");
   this->declare_parameter<std::string>("akm_cmd_vel", "chassis/ackermann_cmd");
   this->declare_parameter<std::string>("odom_frame_id", "odom");

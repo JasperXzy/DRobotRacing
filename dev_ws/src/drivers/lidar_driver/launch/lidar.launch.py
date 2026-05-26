@@ -41,6 +41,6 @@ def generate_launch_description():
     return LaunchDescription([
         declare_driver_dir,
         driver_node,
-        tf_laser_node,
+        #tf_laser_node,
     ])
 

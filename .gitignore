@@ -2,6 +2,10 @@ dev_ws/build/
 dev_ws/install/
 dev_ws/log/
 
+# 模型文件过大，不上传Git
+dev_ws/src/drivers/vlm_tts_demo/model/
+test/hobot_vlm_test/model/
+
 .DS_Store
 .vscode/
 .idea/
