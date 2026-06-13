@@ -6,8 +6,8 @@ usb_cam_node:
     # --- Camera Settings ---
     video_device: "/dev/video8"   # Device path
     framerate: 30                 # Frames per second
-    image_width: 1920             # Resolution width
-    image_height: 1080            # Resolution height
+    image_width: 1920              # Resolution width
+    image_height: 1080          # Resolution height
     pixel_format: "mjpeg"         # Output format from camera
     io_method: "mmap"             # I/O method
     

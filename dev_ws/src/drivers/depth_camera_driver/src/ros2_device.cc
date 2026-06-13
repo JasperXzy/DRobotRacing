@@ -1,12 +1,13 @@
-#include <tf2_ros/transform_broadcaster.h>
+#include "ros2_device.h"
+#include "camera_parameters.h"
+#include "opencv2/highgui/highgui.hpp"
 #include <chrono>
 #include <geometry_msgs/msg/transform_stamped.hpp>
-#include "camera_parameters.h"
-#include "ros2_device.h"
-#include "opencv2/highgui/highgui.hpp"
+#include <tf2_ros/transform_broadcaster.h>
 using namespace std;
 using namespace deptrum;
-RosDevice::RosDevice(std::shared_ptr<rclcpp::Node> node) : node_(node), camera_parameters_(node) {
+RosDevice::RosDevice(std::shared_ptr<rclcpp::Node> node)
+    : node_(node), camera_parameters_(node) {
   running_.store(false);
   node_->declare_parameter<bool>("rgb_enable", true);
   node_->declare_parameter<bool>("ir_enable", true);
@@ -51,6 +52,7 @@ RosDevice::RosDevice(std::shared_ptr<rclcpp::Node> node) : node_(node), camera_p
   node_->declare_parameter<int>("mtof_crop_down", 80);
   node_->declare_parameter<int>("ext_rgb_mode", 0);
   node_->declare_parameter<bool>("enable_imu", 1);
+  node_->declare_parameter<bool>("output_compressed_rgb", false);
 
   node_->get_parameter<bool>("rgb_enable", params_.rgb_enable);
   node_->get_parameter<bool>("ir_enable", params_.ir_enable);
@@ -58,36 +60,45 @@ RosDevice::RosDevice(std::shared_ptr<rclcpp::Node> node) : node_(node), camera_p
   node_->get_parameter<bool>("point_cloud_enable", params_.point_cloud_enable);
   node_->get_parameter<bool>("rgbd_enable", params_.rgbd_enable);
   node_->get_parameter<bool>("flag_enable", params_.flag_enable);
-  node_->get_parameter<bool>("outlier_point_removal_flag", params_.outlier_point_removal_flag);
+  node_->get_parameter<bool>("outlier_point_removal_flag",
+                             params_.outlier_point_removal_flag);
   node_->get_parameter<bool>("shuffle_enable", params_.shuffle_enable);
-  node_->get_parameter<bool>("undistortion_enable", params_.undistortion_enable);
+  node_->get_parameter<bool>("undistortion_enable",
+                             params_.undistortion_enable);
   node_->get_parameter<bool>("exposure_enable", params_.exposure_enable);
   node_->get_parameter<bool>("gain_enable", params_.gain_enable);
   node_->get_parameter<bool>("heart_enable", params_.heart_enable);
-  node_->get_parameter<bool>("stream_sdk_log_enable", params_.stream_sdk_log_enable);
+  node_->get_parameter<bool>("stream_sdk_log_enable",
+                             params_.stream_sdk_log_enable);
   node_->get_parameter<bool>("depth_correction", params_.depth_correction);
   node_->get_parameter<bool>("align_mode", params_.align_mode);
 
   node_->get_parameter<int>("boot_order", params_.boot_order);
   node_->get_parameter<int>("ir_fps", params_.ir_fps);
   node_->get_parameter<int>("rgb_fps", params_.rgb_fps);
-  node_->get_parameter<int>("resolution_mode_index", params_.resolution_mode_index);
+  node_->get_parameter<int>("resolution_mode_index",
+                            params_.resolution_mode_index);
   node_->get_parameter<int>("device_numbers", params_.device_numbers);
   node_->get_parameter<int>("heart_timeout_times", params_.heart_timeout_times);
   node_->get_parameter<int>("exposure_time", params_.exposure_time);
   node_->get_parameter<int>("gain_value", params_.gain_value);
   node_->get_parameter<int>("filter_type", params_.filter_type);
   node_->get_parameter<int>("ir_frequency_fusion_threshold", params_.ir_th);
-  node_->get_parameter<float>("depth_frequency_fusion_threshold", params_.depth_th);
-  node_->get_parameter<float>("ratio_scatter_filter_threshold", params_.ratio_th);
+  node_->get_parameter<float>("depth_frequency_fusion_threshold",
+                              params_.depth_th);
+  node_->get_parameter<float>("ratio_scatter_filter_threshold",
+                              params_.ratio_th);
   node_->get_parameter<int>("threshold_size", params_.threshold_size);
   node_->get_parameter<std::string>("serial_number", params_.serial_number);
-  node_->get_parameter<std::string>("update_file_path", params_.update_file_path);
+  node_->get_parameter<std::string>("update_file_path",
+                                    params_.update_file_path);
   node_->get_parameter<std::string>("usb_port_number", params_.usb_port_number);
   node_->get_parameter<std::string>("log_dir", params_.log_dir);
   node_->get_parameter<float>("laser_power", params_.laser_power);
-  node_->get_parameter<int>("minimum_filter_depth_value", params_.minimum_filter_depth_value);
-  node_->get_parameter<int>("maximum_filter_depth_value", params_.maximum_filter_depth_value);
+  node_->get_parameter<int>("minimum_filter_depth_value",
+                            params_.minimum_filter_depth_value);
+  node_->get_parameter<int>("maximum_filter_depth_value",
+                            params_.maximum_filter_depth_value);
   node_->get_parameter<int>("slam_mode", params_.slam_mode);
   node_->get_parameter<int>("mtof_filter_level", params_.mtof_filter_level);
   node_->get_parameter<int>("stof_filter_level", params_.stof_filter_level);
@@ -95,17 +106,19 @@ RosDevice::RosDevice(std::shared_ptr<rclcpp::Node> node) : node_(node), camera_p
   node_->get_parameter<int>("mtof_crop_down", params_.mtof_crop_down);
   node_->get_parameter<int>("ext_rgb_mode", params_.ext_rgb_mode);
   node_->get_parameter<bool>("enable_imu", params_.enable_imu);
+  node_->get_parameter<bool>("output_compressed_rgb",
+                             params_.output_compressed_rgb);
 
   node_->get_parameter<int>("stof_minimum_range", params_.stof_minimum_range);
   // std::string info_log = params_.log_dir + "deptrum_ros_driver_";
   // google::SetLogDestination(0, info_log.c_str());
 
-  handle_ = std::bind(&RosDevice::DeviceConnectCb,
-                      this,
-                      std::placeholders::_1,
+  handle_ = std::bind(&RosDevice::DeviceConnectCb, this, std::placeholders::_1,
                       std::placeholders::_2);
-  deptrum::stream::DeviceManager::GetInstance()->RegisterDeviceConnectedCallback(handle_);
-  upgrade_handle_ = std::bind(&RosDevice::UpgradeProgress, this, std::placeholders::_1);
+  deptrum::stream::DeviceManager::GetInstance()
+      ->RegisterDeviceConnectedCallback(handle_);
+  upgrade_handle_ =
+      std::bind(&RosDevice::UpgradeProgress, this, std::placeholders::_1);
 }
 RosDevice::~RosDevice() {
   if (device_ != nullptr) {
@@ -114,10 +127,60 @@ RosDevice::~RosDevice() {
   }
   RCLCPP_INFO(node_->get_logger(), "quit succeed");
 }
-
-int RosDevice::rgb_frame_publish(const deptrum::stream::StreamFrame& rgb_frame,
-                                 const builtin_interfaces::msg::Time& capture_time) {
-  sensor_msgs::msg::Image::UniquePtr rgb_raw_frame(new sensor_msgs::msg::Image());
+/*
+int RosDevice::rgb_frame_publish(
+    const deptrum::stream::StreamFrame &rgb_frame,
+    const builtin_interfaces::msg::Time &capture_time) {
+  // If output_compressed_rgb is enabled and we have JPEG data, publish
+  // compressed image
+  if (params_.output_compressed_rgb && rgb_compressed_pub_) {
+    // Check if the frame data is JPEG (compressed format from camera)
+    // JPEG data typically starts with 0xFFD8 marker
+    if (rgb_frame.size > 2 && rgb_frame.data.get()[0] == 0xFF &&
+        rgb_frame.data.get()[1] == 0xD8) {
+      sensor_msgs::msg::CompressedImage::UniquePtr compressed_msg(
+          new sensor_msgs::msg::CompressedImage());
+      compressed_msg->header.stamp = capture_time;
+      compressed_msg->header.frame_id = camera_parameters_.rgb_camera_frame_;
+      compressed_msg->format = "jpeg";
+      compressed_msg->data.resize(rgb_frame.size);
+      std::memcpy(compressed_msg->data.data(), rgb_frame.data.get(),
+                  rgb_frame.size);
+      rgb_compressed_pub_->publish(std::move(compressed_msg));
+      return 0;
+    }
+  }
+*/
+int RosDevice::rgb_frame_publish(
+    const deptrum::stream::StreamFrame &rgb_frame,
+    const builtin_interfaces::msg::Time &capture_time) {
+  // If output_compressed_rgb is enabled and we have JPEG data, publish
+  // compressed image
+  if (params_.output_compressed_rgb && rgb_compressed_pub_) {
+    // Check if the frame data is JPEG (compressed format from camera)
+    // JPEG data typically starts with 0xFFD8 marker
+    
+    // 关键修改：将 void* 转换为 const uint8_t* 以便进行数组索引提取字节
+    const uint8_t* raw_data = static_cast<const uint8_t*>(rgb_frame.data.get());
+    
+    // 使用转换后的 raw_data 进行判断
+    if (rgb_frame.size > 2 && raw_data[0] == 0xFF && raw_data[1] == 0xD8) {
+      sensor_msgs::msg::CompressedImage::UniquePtr compressed_msg(
+          new sensor_msgs::msg::CompressedImage());
+      compressed_msg->header.stamp = capture_time;
+      compressed_msg->header.frame_id = camera_parameters_.rgb_camera_frame_;
+      compressed_msg->format = "jpeg";
+      compressed_msg->data.resize(rgb_frame.size);
+      
+      // std::memcpy 本身接受 void*，所以这里直接用 rgb_frame.data.get() 没问题
+      std::memcpy(compressed_msg->data.data(), rgb_frame.data.get(),
+                  rgb_frame.size);
+      rgb_compressed_pub_->publish(std::move(compressed_msg));
+      return 0;
+    }
+  }
+  sensor_msgs::msg::Image::UniquePtr rgb_raw_frame(
+      new sensor_msgs::msg::Image());
   // int status = RgbFrameToRos(rgb_raw_frame, rgb_frame);
   // if (status != 0)
   //   return -1;
@@ -125,7 +188,8 @@ int RosDevice::rgb_frame_publish(const deptrum::stream::StreamFrame& rgb_frame,
   cv_bridge::CvImage cvi_rgb;
 
   if (rgb_frame.rows * 1.5f * rgb_frame.cols == rgb_frame.size) {
-    cv::Mat yuvimg(rgb_frame.rows * 1.5f, rgb_frame.cols, CV_8UC1, rgb_frame.data.get());
+    cv::Mat yuvimg(rgb_frame.rows * 1.5f, rgb_frame.cols, CV_8UC1,
+                   rgb_frame.data.get());
     cv::Mat rgb_mat(rgb_frame.rows, rgb_frame.cols, CV_8UC3);
     cv::cvtColor(yuvimg, rgb_mat, cv::COLOR_YUV2BGR_NV12);
     cvi_rgb.header.stamp = capture_time;
@@ -139,7 +203,8 @@ int RosDevice::rgb_frame_publish(const deptrum::stream::StreamFrame& rgb_frame,
     cvi_rgb.toImageMsg(im_rgb);
     rgb_pub_->publish(im_rgb);
   } else {
-    cv::Mat cv_rgb(rgb_frame.rows, rgb_frame.cols, CV_8UC3, rgb_frame.data.get());
+    cv::Mat cv_rgb(rgb_frame.rows, rgb_frame.cols, CV_8UC3,
+                   rgb_frame.data.get());
     cvi_rgb.header.stamp = capture_time;
     cvi_rgb.header.frame_id = camera_parameters_.rgb_camera_frame_;
     // rgb_raw_frame->height = rgb_frame.rows;
@@ -155,9 +220,11 @@ int RosDevice::rgb_frame_publish(const deptrum::stream::StreamFrame& rgb_frame,
   return 0;
 }
 
-int RosDevice::ir_frame_publish(const deptrum::stream::StreamFrame& ir_frame,
-                                const builtin_interfaces::msg::Time& capture_time) {
-  sensor_msgs::msg::Image::UniquePtr ir_raw_frame(new sensor_msgs::msg::Image());
+int RosDevice::ir_frame_publish(
+    const deptrum::stream::StreamFrame &ir_frame,
+    const builtin_interfaces::msg::Time &capture_time) {
+  sensor_msgs::msg::Image::UniquePtr ir_raw_frame(
+      new sensor_msgs::msg::Image());
   cv::Mat cv_ir(ir_frame.rows, ir_frame.cols, CV_8UC1, ir_frame.data.get());
 
   cv_bridge::CvImage cvi_ir;
@@ -171,13 +238,16 @@ int RosDevice::ir_frame_publish(const deptrum::stream::StreamFrame& ir_frame,
   ir_pub_->publish(im_ir);
   return 0;
 }
-int RosDevice::depth_frame_publish(const deptrum::stream::StreamFrame& depth_frame,
-                                   const builtin_interfaces::msg::Time& capture_time) {
-  sensor_msgs::msg::Image::UniquePtr depth_raw_frame(new sensor_msgs::msg::Image());
+int RosDevice::depth_frame_publish(
+    const deptrum::stream::StreamFrame &depth_frame,
+    const builtin_interfaces::msg::Time &capture_time) {
+  sensor_msgs::msg::Image::UniquePtr depth_raw_frame(
+      new sensor_msgs::msg::Image());
   // int status = RgbFrameToRos(rgb_raw_frame, rgb_frame);
   // if (status != 0)
   //   return -1;
-  cv::Mat cv_depth(depth_frame.rows, depth_frame.cols, CV_16UC1, depth_frame.data.get());
+  cv::Mat cv_depth(depth_frame.rows, depth_frame.cols, CV_16UC1,
+                   depth_frame.data.get());
 
   cv_bridge::CvImage cvi_depth;
 
@@ -194,126 +264,127 @@ int RosDevice::depth_frame_publish(const deptrum::stream::StreamFrame& depth_fra
 std::string RosDevice::FrameModeToString(deptrum::FrameMode mode) {
   std::string mode_str = {};
   switch (mode) {
-    case kInvalid:
-      mode_str = "kInvalid";
-      break;
-    case kRes320x240RgbJpeg:
-      mode_str = "kRes320x240RgbJpeg";
-      break;
-    case kRes400x256RgbJpeg:
-      mode_str = "kRes400x256RgbJpeg";
-      break;
-    case kRes480x640RgbJpeg:
-      mode_str = "kRes480x640RgbJpeg";
-      break;
-    case kRes640x480RgbJpeg:
-      mode_str = "kRes640x480RgbJpeg";
-      break;
-    case kRes800x512RgbJpeg:
-      mode_str = "kRes800x512RgbJpeg";
-      break;
-    case kRes960x1280RgbJpeg:
-      mode_str = "kRes960x1280RgbJpeg";
-      break;
-    case kRes1280x960RgbJpeg:
-      mode_str = "kRes1280x960RgbJpeg";
-      break;
-    case kRes1600x1080RgbJpeg:
-      mode_str = "kRes1600x1080RgbJpeg";
-      break;
-    case kRes320x240Ir8Bit:
-      mode_str = "kRes320x240Ir8Bit";
-      break;
-    case kRes400x640Ir8Bit:
-      mode_str = "kRes400x640Ir8Bit";
-      break;
-    case kRes400x640Ir16Bit:
-      mode_str = "kRes400x640Ir16Bit";
-      break;
-    case kRes480x640Ir8Bit:
-      mode_str = "kRes480x640Ir8Bit";
-      break;
-    case kRes480x640Ir16Bit:
-      mode_str = "kRes480x640Ir16Bit";
-      break;
-    case kRes640x480Ir8Bit:
-      mode_str = "kRes640x480Ir8Bit";
-      break;
-    case kRes800x1280Ir8Bit:
-      mode_str = "kRes800x1280Ir8Bit";
-      break;
-    case kRes800x1280Ir16Bit:
-      mode_str = "kRes800x1280Ir16Bit";
-      break;
-    case kRes240x180Depth16Bit:
-      mode_str = "kRes240x180Depth16Bit";
-      break;
-    case kRes640x480Depth16Bit:
-      mode_str = "kRes640x480Depth16Bit";
-      break;
-    case kRes400x640Depth16Bit:
-      mode_str = "kRes400x640Depth16Bit";
-      break;
-    case kRes480x640Depth16Bit:
-      mode_str = "kRes480x640Depth16Bit";
-      break;
-    case kRes800x1280Depth16Bit:
-      mode_str = "kRes800x1280Depth16Bit";
-      break;
-    case kRes640x400RgbYuv:
-      mode_str = "kRes640x400RgbYuv";
-      break;
-    case kRes480x300RgbYuv:
-      mode_str = "kRes480x300RgbYuv";
-      break;
-    case kRes320x200RgbYuv:
-      mode_str = "kRes320x200RgbYuv";
-      break;
-    case kRes650x800Ir8Bit:
-      mode_str = "kRes650x800Ir8Bit";
-      break;
-    case kRes736x480Ir8Bit:
-      mode_str = "kRes736x480Ir8Bit";
-      break;
-    case kRes640x400Ir8Bit:
-      mode_str = "kRes640x400Ir8Bit";
-      break;
-    case kRes480x300Ir8Bit:
-      mode_str = "kRes480x300Depth16Bit";
-      break;
-    case kRes1080x1920RgbJpeg:
-      mode_str = "kRes1080x1920RgbJpeg";
-      break;
-    case kRes320x200Ir8Bit:
-      mode_str = "kRes320x200Ir8Bit";
-      break;
+  case kInvalid:
+    mode_str = "kInvalid";
+    break;
+  case kRes320x240RgbJpeg:
+    mode_str = "kRes320x240RgbJpeg";
+    break;
+  case kRes400x256RgbJpeg:
+    mode_str = "kRes400x256RgbJpeg";
+    break;
+  case kRes480x640RgbJpeg:
+    mode_str = "kRes480x640RgbJpeg";
+    break;
+  case kRes640x480RgbJpeg:
+    mode_str = "kRes640x480RgbJpeg";
+    break;
+  case kRes800x512RgbJpeg:
+    mode_str = "kRes800x512RgbJpeg";
+    break;
+  case kRes960x1280RgbJpeg:
+    mode_str = "kRes960x1280RgbJpeg";
+    break;
+  case kRes1280x960RgbJpeg:
+    mode_str = "kRes1280x960RgbJpeg";
+    break;
+  case kRes1600x1080RgbJpeg:
+    mode_str = "kRes1600x1080RgbJpeg";
+    break;
+  case kRes320x240Ir8Bit:
+    mode_str = "kRes320x240Ir8Bit";
+    break;
+  case kRes400x640Ir8Bit:
+    mode_str = "kRes400x640Ir8Bit";
+    break;
+  case kRes400x640Ir16Bit:
+    mode_str = "kRes400x640Ir16Bit";
+    break;
+  case kRes480x640Ir8Bit:
+    mode_str = "kRes480x640Ir8Bit";
+    break;
+  case kRes480x640Ir16Bit:
+    mode_str = "kRes480x640Ir16Bit";
+    break;
+  case kRes640x480Ir8Bit:
+    mode_str = "kRes640x480Ir8Bit";
+    break;
+  case kRes800x1280Ir8Bit:
+    mode_str = "kRes800x1280Ir8Bit";
+    break;
+  case kRes800x1280Ir16Bit:
+    mode_str = "kRes800x1280Ir16Bit";
+    break;
+  case kRes240x180Depth16Bit:
+    mode_str = "kRes240x180Depth16Bit";
+    break;
+  case kRes640x480Depth16Bit:
+    mode_str = "kRes640x480Depth16Bit";
+    break;
+  case kRes400x640Depth16Bit:
+    mode_str = "kRes400x640Depth16Bit";
+    break;
+  case kRes480x640Depth16Bit:
+    mode_str = "kRes480x640Depth16Bit";
+    break;
+  case kRes800x1280Depth16Bit:
+    mode_str = "kRes800x1280Depth16Bit";
+    break;
+  case kRes640x400RgbYuv:
+    mode_str = "kRes640x400RgbYuv";
+    break;
+  case kRes480x300RgbYuv:
+    mode_str = "kRes480x300RgbYuv";
+    break;
+  case kRes320x200RgbYuv:
+    mode_str = "kRes320x200RgbYuv";
+    break;
+  case kRes650x800Ir8Bit:
+    mode_str = "kRes650x800Ir8Bit";
+    break;
+  case kRes736x480Ir8Bit:
+    mode_str = "kRes736x480Ir8Bit";
+    break;
+  case kRes640x400Ir8Bit:
+    mode_str = "kRes640x400Ir8Bit";
+    break;
+  case kRes480x300Ir8Bit:
+    mode_str = "kRes480x300Depth16Bit";
+    break;
+  case kRes1080x1920RgbJpeg:
+    mode_str = "kRes1080x1920RgbJpeg";
+    break;
+  case kRes320x200Ir8Bit:
+    mode_str = "kRes320x200Ir8Bit";
+    break;
 
-    default:
-      RCLCPP_WARN(node_->get_logger(), "unknown frame mode!! mode=%d", (int) mode);
+  default:
+    RCLCPP_WARN(node_->get_logger(), "unknown frame mode!! mode=%d", (int)mode);
   }
   return mode_str;
 }
 
 std::string RosDevice::mat_type2encoding(int mat_type) {
   switch (mat_type) {
-    case CV_8UC1:
-      return "mono8";
-    case CV_8UC3:
-      return "bgr8";
-    case CV_16SC1:
-      return "mono16";
-    case CV_8UC4:
-      return "rgba8";
-    default:
-      throw std::runtime_error("Unsupported encoding type");
+  case CV_8UC1:
+    return "mono8";
+  case CV_8UC3:
+    return "bgr8";
+  case CV_16SC1:
+    return "mono16";
+  case CV_8UC4:
+    return "rgba8";
+  default:
+    throw std::runtime_error("Unsupported encoding type");
   }
 }
 
-void RosDevice::TimestampToRos(const uint64_t& frame_timestamp_us,
-                               builtin_interfaces::msg::Time& ros_time) {
-  // double frame_timestamp_sec = static_cast<double>(frame_timestamp_ms) / 1000.0;
-  ros_time.sec = static_cast<builtin_interfaces::msg::Time::_sec_type>(frame_timestamp_us /
-                                                                       1000000);
+void RosDevice::TimestampToRos(const uint64_t &frame_timestamp_us,
+                               builtin_interfaces::msg::Time &ros_time) {
+  // double frame_timestamp_sec = static_cast<double>(frame_timestamp_ms) /
+  // 1000.0;
+  ros_time.sec = static_cast<builtin_interfaces::msg::Time::_sec_type>(
+      frame_timestamp_us / 1000000);
   ros_time.nanosec = frame_timestamp_us % 1000000 * 1000;
 }
 
@@ -324,7 +395,8 @@ void RosDevice::PrintFPS() {
 
   if (count % 10 == 0) {
     auto end_getframe = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::micro> tm = end_getframe - start_getframe;
+    std::chrono::duration<double, std::micro> tm =
+        end_getframe - start_getframe;
 
     RCLCPP_INFO(node_->get_logger(), "fps = %f", 10000000 / tm.count());
 
@@ -332,9 +404,12 @@ void RosDevice::PrintFPS() {
   }
 }
 
-void RosDevice::DeviceConnectCb(int flag, const deptrum::DeviceInformation& device_information) {
+void RosDevice::DeviceConnectCb(
+    int flag, const deptrum::DeviceInformation &device_information) {
   if (1 == flag) {
-    RCLCPP_INFO(node_->get_logger(), "Device [model=%s, ir_camera.serial_num=%s, ir_camera.pid=%d] connected",
+    RCLCPP_INFO(node_->get_logger(),
+                "Device [model=%s, ir_camera.serial_num=%s, ir_camera.pid=%d] "
+                "connected",
                 device_information.model.c_str(),
                 device_information.ir_camera.serial_number.c_str(),
                 device_information.ir_camera.pid);
@@ -346,12 +421,15 @@ void RosDevice::DeviceConnectCb(int flag, const deptrum::DeviceInformation& devi
     }
     hot_plug_num++;
   } else if (2 == flag) {
-    RCLCPP_INFO(node_->get_logger(), "Device [model=%s, ir_camera.serial_num=%s, ir_camera.pid=%d] disconnected",
+    RCLCPP_INFO(node_->get_logger(),
+                "Device [model=%s, ir_camera.serial_num=%s, ir_camera.pid=%d] "
+                "disconnected",
                 device_information.model.c_str(),
                 device_information.ir_camera.serial_number.c_str(),
                 device_information.ir_camera.pid);
   } else {
-    RCLCPP_WARN(node_->get_logger(), "not known (dis)connect flag, flag=%d", flag);
+    RCLCPP_WARN(node_->get_logger(), "not known (dis)connect flag, flag=%d",
+                flag);
   }
 #ifdef SYSTEM_STATUS_TRANSFORM
   if (device_ != nullptr) {
@@ -386,14 +464,17 @@ void RosDevice::FramePublisherThread() {
     status = streams_->GetFrames(frames, 2000);
     if (status != 0) {
       if (status == 0x42005) {
-        RCLCPP_WARN(node_->get_logger(), "BOOT_ORDER_%d::Get frames timeout!", params_.boot_order);
+        RCLCPP_WARN(node_->get_logger(), "BOOT_ORDER_%d::Get frames timeout!",
+                    params_.boot_order);
         continue;
       } else if (status == 0x2100c) {
-        RCLCPP_WARN(node_->get_logger(), "BOOT_ORDER_%d::Device disconnect!", params_.boot_order);
+        RCLCPP_WARN(node_->get_logger(), "BOOT_ORDER_%d::Device disconnect!",
+                    params_.boot_order);
         std::this_thread::sleep_for(std::chrono::milliseconds(2000));
         continue;
       } else {
-        RCLCPP_ERROR(node_->get_logger(), "BOOT_ORDER_%d::Get frames error, %d", params_.boot_order, status);
+        RCLCPP_ERROR(node_->get_logger(), "BOOT_ORDER_%d::Get frames error, %d",
+                     params_.boot_order, status);
         // rclcpp::shutdown();
         // exit(status);
         continue;
@@ -403,26 +484,35 @@ void RosDevice::FramePublisherThread() {
     for (int i = 0; i < frames.count; i++) {
       auto frame = frames.frame_ptr[i];
       TimestampToRos(frame->timestamp * 1000, capture_time);
-      if (frame->frame_type == deptrum::FrameType::kRgbFrame && params_.rgb_enable) {
+      if (frame->frame_type == deptrum::FrameType::kRgbFrame &&
+          params_.rgb_enable) {
         status = rgb_frame_publish(*frame, capture_time);
         if (status != 0) {
-          RCLCPP_ERROR(node_->get_logger(), "BOOT_ORDER_%d::Failed to get rgb frame", params_.boot_order);
+          RCLCPP_ERROR(node_->get_logger(),
+                       "BOOT_ORDER_%d::Failed to get rgb frame",
+                       params_.boot_order);
           rclcpp::shutdown();
           exit(status);
         }
       }
-      if (frame->frame_type == deptrum::FrameType::kDepthFrame && params_.depth_enable) {
+      if (frame->frame_type == deptrum::FrameType::kDepthFrame &&
+          params_.depth_enable) {
         status = depth_frame_publish(*frame, capture_time);
         if (status != 0) {
-          RCLCPP_ERROR(node_->get_logger(), "BOOT_ORDER_%d::Failed to get depth frame", params_.boot_order);
+          RCLCPP_ERROR(node_->get_logger(),
+                       "BOOT_ORDER_%d::Failed to get depth frame",
+                       params_.boot_order);
           rclcpp::shutdown();
           exit(status);
         }
       }
-      if (frame->frame_type == deptrum::FrameType::kIrFrame && params_.ir_enable) {
+      if (frame->frame_type == deptrum::FrameType::kIrFrame &&
+          params_.ir_enable) {
         status = ir_frame_publish(*frame, capture_time);
         if (status != 0) {
-          RCLCPP_ERROR(node_->get_logger(), "BOOT_ORDER_%d::Failed to get ir frame", params_.boot_order);
+          RCLCPP_ERROR(node_->get_logger(),
+                       "BOOT_ORDER_%d::Failed to get ir frame",
+                       params_.boot_order);
           rclcpp::shutdown();
           exit(status);
         }
@@ -434,7 +524,8 @@ void RosDevice::FramePublisherThread() {
         sensor_msgs::msg::PointCloud2 tmp_point_cloud;
         if (frame->frame_type == deptrum::FrameType::kPointCloudFrame) {
           status = PointCloudFrameToRos(tmp_point_cloud, *frame);
-        } else if (frame->frame_type == deptrum::FrameType::kRgbdPointCloudFrame) {
+        } else if (frame->frame_type ==
+                   deptrum::FrameType::kRgbdPointCloudFrame) {
           status = PointCloudFrameToColorRos(tmp_point_cloud, *frame);
         } else {
           continue;
@@ -445,7 +536,8 @@ void RosDevice::FramePublisherThread() {
           exit(status);
         }
         tmp_point_cloud.header.stamp = capture_time;
-        tmp_point_cloud.header.frame_id = camera_parameters_.depth_camera_frame_;
+        tmp_point_cloud.header.frame_id =
+            camera_parameters_.depth_camera_frame_;
         pointcloud_publisher_->publish(tmp_point_cloud);
       }
     }
@@ -469,8 +561,9 @@ void RosDevice::FramePublisherThread() {
   }
 }
 
-int RosDevice::PointCloudFrameToRos(sensor_msgs::msg::PointCloud2& point_cloud,
-                                    const deptrum::stream::StreamFrame& point_frame) {
+int RosDevice::PointCloudFrameToRos(
+    sensor_msgs::msg::PointCloud2 &point_cloud,
+    const deptrum::stream::StreamFrame &point_frame) {
   point_cloud.height = point_frame.rows;
   point_cloud.width = point_frame.cols;
 
@@ -489,8 +582,8 @@ int RosDevice::PointCloudFrameToRos(sensor_msgs::msg::PointCloud2& point_cloud,
   sensor_msgs::PointCloud2Iterator<float> iter_y(point_cloud, "y");
   sensor_msgs::PointCloud2Iterator<float> iter_z(point_cloud, "z");
   pcd_modifier.resize(point_count);
-  deptrum::PointXyz<float>* current_point = static_cast<deptrum::PointXyz<float>*>(
-      point_frame.data.get());
+  deptrum::PointXyz<float> *current_point =
+      static_cast<deptrum::PointXyz<float> *>(point_frame.data.get());
   deptrum::PointXyz<float> point;
   for (size_t i = 0; i < point_count; i++) {
     point = current_point[i];
@@ -508,8 +601,9 @@ int RosDevice::PointCloudFrameToRos(sensor_msgs::msg::PointCloud2& point_cloud,
   return 0;
 }
 
-int RosDevice::PointCloudFrameToColorRos(sensor_msgs::msg::PointCloud2& point_cloud,
-                                         const deptrum::stream::StreamFrame& point_frame) {
+int RosDevice::PointCloudFrameToColorRos(
+    sensor_msgs::msg::PointCloud2 &point_cloud,
+    const deptrum::stream::StreamFrame &point_frame) {
   point_cloud.height = point_frame.rows;
   point_cloud.width = point_frame.cols;
 
@@ -529,8 +623,8 @@ int RosDevice::PointCloudFrameToColorRos(sensor_msgs::msg::PointCloud2& point_cl
   sensor_msgs::PointCloud2Iterator<uint8_t> iter_b(point_cloud, "b");
   pcd_modifier.resize(point_count);
 
-  deptrum::PointXyzRgb<float>* current_point = static_cast<deptrum::PointXyzRgb<float>*>(
-      point_frame.data.get());
+  deptrum::PointXyzRgb<float> *current_point =
+      static_cast<deptrum::PointXyzRgb<float> *>(point_frame.data.get());
   deptrum::PointXyzRgb<float> point;
   for (size_t i = 0; i < point_count; i++) {
     point = current_point[i];

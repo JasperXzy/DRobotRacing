@@ -4,4 +4,8 @@ dev_ws/log/
 
 .DS_Store
 .vscode/
-.idea/
+.idea/*.gguf
+*.hbm
+costmap_converter/
+*.gguf
+*.hbm
