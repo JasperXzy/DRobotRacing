@@ -124,7 +124,7 @@ controller_server:
       max_vel_theta: 10.0                       # 最大转向角速度 (仅 cmd_angle=false 时用)
 
       # 阿克曼转弯限制
-      min_turning_radius: 0.35                 #0.20→0.35 阿克曼0.2m轴距≈0.35m最小转弯半径
+      min_turning_radius: 0.40                 #0.35→0.40 放宽转弯半径
 
       # ━━━ 加速度限制 ━━━
       acc_lim_x: 3.0                           # 线加速度 (m/s²)
@@ -138,10 +138,10 @@ controller_server:
       no_inner_iterations: 5                   # 内层迭代: 轨迹点位置优化
       no_outer_iterations: 4                   # 外层迭代: 释放被卡住的点
 
-      max_global_plan_lookahead_dist: 3.0      # 只看路径前方 3m（5m 场 = 半场视野）
+      max_global_plan_lookahead_dist: 4.0      # 只看路径前方 4m（提前看到弯道，提前拐）
       global_plan_overwrite_orientation: true  # 用路径朝向初始化轨迹点
 
-      feasibility_check_no_poses: 4            # 每次检查前 4 个轨迹点是否可执行
+      feasibility_check_no_poses: 2            # 4→2 放宽可执行检查，减少不必要停顿
       publish_feedback: false                  # 不发布调试 marker
 
       # ━━━ 代价地图 ━━━
@@ -158,17 +158,17 @@ controller_server:
       # ━━━ 优化权重（TEB 的"Critics"）━━━
       # 每一项乘以对应的代价项，总和最小化
 
-      weight_kinematics_nh: 1000.0             # ★ 阿克曼运动学约束（权重极高，强制满足）
+      weight_kinematics_nh: 800.0              # 1000→800 放松运动学约束，转弯更平滑
       weight_kinematics_forward_drive: 2.0     # 1.0→2.0 更强前进偏好，少倒车
       weight_optimaltime: 15.0                 # ★ 最短时间: 增大提速，10→15
       weight_obstacle: 25.0                    # 平衡点: 避障但不卡窄缝
-      weight_viapoint: 2.0                     # 1.0→2.0 更紧贴全局路径，不跑偏
+      weight_viapoint: 4.0                     # 3.2→4.0 再增强直线跟踪
       weight_adapt_factor: 2.0                 # 自适应权重: 窄空间自动放大避障权重
 
       # ━━━ Homotopy Class Planning（"障碍物左边绕还是右边绕"）━━━
       enable_homotopy_class_planning: true     # ★ 启动拓扑路径选择
       enable_multithreading: true              # 多条备选路径并行优化
-      max_number_classes: 3                    # 最多 3 条备选，5m场够用
+      max_number_classes: 1                    # 不纠结左右，障碍物前最快通过
       selection_cost_hysteresis: 1.0           # 切换阈值: 新路径需要显著优于当前才切换
       selection_obst_cost_scale: 2.0           # 选择时避障代价权重
       selection_viapoint_cost_scale: 1.0       # 选择时路径对齐权重
@@ -329,7 +329,7 @@ planner_server:
       max_planning_time: 5.0          # 放宽时间限制
       motion_model_for_search: "REEDS_SHEPP"   # 允许倒车但严格惩罚
       angle_quantization_bins: 24     # 15°精度，40→24 大幅加速启发式表计算
-      minimum_turning_radius: 0.35    #0.20→0.35
+      minimum_turning_radius: 0.40    #0.35→0.40 放宽转弯
       analytic_expansion_ratio: 3.5   # 分析扩展加速搜索
       cache_obstacle_heuristic: true  # 缓存启发式加速重规划
       lookup_table_size: 9.0          # 覆盖全局地图 (359×0.025≈9m)，15→9 大幅减少启动计算
