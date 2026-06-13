@@ -99,7 +99,7 @@ controller_server:
       stateful: True
       plugin: "nav2_controller::SimpleGoalChecker"
       xy_goal_tolerance: 0.40            # 0.30→0.40
-      yaw_goal_tolerance: 2.0            # ~57°, 不卡最终姿态
+      yaw_goal_tolerance: 1.5            # ~57°, 不卡最终姿态
 
     # ========================================================================
     # ★ TEB (Timed Elastic Band) 局部规划器
@@ -119,26 +119,26 @@ controller_server:
       # ━━━ 阿克曼底盘配置 ━━━
       cmd_angle_instead_rotvel: false         # false=输出Twist(angular.z)，底盘STM32自己做阿克曼转换
       wheelbase: 0.20                          # 轴距 (m)，你的车实测值
-      max_vel_x: 1.0                           # 最大前进速度 (m/s)，0.5→1.0 不再龟速
+      max_vel_x: 1.1                           # 1.0→1.1 提速10%，弯道不超调
       max_vel_x_backwards: 0.8                 # 最大倒车速度，应≤前进速度
       max_vel_theta: 10.0                       # 最大转向角速度 (仅 cmd_angle=false 时用)
 
       # 阿克曼转弯限制
-      min_turning_radius: 0.40                 #0.35→0.40 放宽转弯半径
+      min_turning_radius: 0.36                 #0.40→0.36 收紧转弯，减少超调
 
       # ━━━ 加速度限制 ━━━
       acc_lim_x: 3.0                           # 线加速度 (m/s²)
-      acc_lim_theta: 2.0                       # 角加速度 (rad/s²)
+      acc_lim_theta: 1.5                       # 2.0→1.5 限制转向角加速度，弯道更丝滑
 
       # ━━━ 轨迹优化核心参数 ━━━
       dt_ref: 0.3                              # 轨迹点时间间隔 (s)
                                                # 越小=轨迹越密=优化更精细但更慢
       dt_hysteresis: 0.1                       # 重规划滞后时间
 
-      no_inner_iterations: 5                   # 内层迭代: 轨迹点位置优化
+      no_inner_iterations: 10                  # 6→10 弯道充分优化，最大化平滑
       no_outer_iterations: 4                   # 外层迭代: 释放被卡住的点
 
-      max_global_plan_lookahead_dist: 4.0      # 只看路径前方 4m（提前看到弯道，提前拐）
+      max_global_plan_lookahead_dist: 5.0      # 4.0→5.0 更早看到弯道，更早开始拐，不急转
       global_plan_overwrite_orientation: true  # 用路径朝向初始化轨迹点
 
       feasibility_check_no_poses: 2            # 4→2 放宽可执行检查，减少不必要停顿
@@ -160,7 +160,7 @@ controller_server:
 
       weight_kinematics_nh: 800.0              # 1000→800 放松运动学约束，转弯更平滑
       weight_kinematics_forward_drive: 2.0     # 1.0→2.0 更强前进偏好，少倒车
-      weight_optimaltime: 15.0                 # ★ 最短时间: 增大提速，10→15
+      weight_optimaltime: 12.0                 # 15→12 降低急迫感，减少摆头
       weight_obstacle: 25.0                    # 平衡点: 避障但不卡窄缝
       weight_viapoint: 4.0                     # 3.2→4.0 再增强直线跟踪
       weight_adapt_factor: 2.0                 # 自适应权重: 窄空间自动放大避障权重
@@ -182,7 +182,7 @@ controller_server:
 
       # ━━━ 目标到达 ━━━
       xy_goal_tolerance: 0.40                  #避免终点卡住
-      yaw_goal_tolerance: 2.0
+      yaw_goal_tolerance: 1.5
       free_goal_vel: true                      # 中间航点不停车，TEB规划穿过目标点的轨迹
 
       # ━━━ 恢复行为（TEB 内置，无需 behavior_server 的 DriveOnHeading/Backup）━━━
@@ -329,7 +329,7 @@ planner_server:
       max_planning_time: 5.0          # 放宽时间限制
       motion_model_for_search: "REEDS_SHEPP"   # 允许倒车但严格惩罚
       angle_quantization_bins: 24     # 15°精度，40→24 大幅加速启发式表计算
-      minimum_turning_radius: 0.40    #0.35→0.40 放宽转弯
+      minimum_turning_radius: 0.36    #0.40→0.36 收紧转弯
       analytic_expansion_ratio: 3.5   # 分析扩展加速搜索
       cache_obstacle_heuristic: true  # 缓存启发式加速重规划
       lookup_table_size: 9.0          # 覆盖全局地图 (359×0.025≈9m)，15→9 大幅减少启动计算
