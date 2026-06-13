@@ -3,17 +3,12 @@
 export ROS_DOMAIN_ID=1
 export ROS_DOMAIN_ID=1 && cd ~/D_Robot/dev_ws && source /opt/ros/humble/setup.bash && source install/setup.bash
 ```
-## 编译
-```bash
-colcon build --packages-select driver_bringup   
-colcon build --packages-select origincar_nav2
-source install/setup.bash
-```
+
 # B站阿杰的跟随launch
 ```bash
 ros2 launch jie_deamon start.launch.py
-```
 Web界面: http://192.168.10.143:8080
+```
 ```bash
 # 终端1：一键启动全部
 ros2 launch driver_bringup competition_bringup.launch.py
@@ -25,7 +20,12 @@ ros2 run origincar_nav2 trigger_cruise
 ## 调参
 ```bash
 ros2 run rqt_reconfigure rqt_reconfigure
-
+```
+## 编译
+```bash
+colcon build --packages-select driver_bringup   
+colcon build --packages-select origincar_nav2
+source install/setup.bash
 ```
 # 以下是全开launch
 ```bash

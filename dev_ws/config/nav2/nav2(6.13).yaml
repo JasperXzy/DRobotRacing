@@ -1,7 +1,7 @@
 # ============================================================================
 # nav2.yaml — TEB 局部规划器版本 (2025.06.13)
 #
-# 与 MPPI 版本的区别:
+# 规划器选型:
 #   MPPI: 随机采样 1000 条轨迹 → 打分 → Softmax 加权 → 输出
 #   TEB:  全局路径初始化弹性带 → G2O 图优化变形 → 确定性输出
 #
@@ -20,7 +20,7 @@ bt_navigator:
     odom_topic: /odom
     bt_loop_duration: 10
     default_server_timeout: 20
-    # 阿克曼底盘：用自定义 BT 替代默认 BT，避免 Spin 原地旋转节点
+    # 阿克曼底盘：自定义 BT，避免 Spin 原地旋转节点（路径由 launch 文件动态注入）
     default_nav_to_pose_bt_xml: "/root/D_Robot/dev_ws/install/origincar_nav2/share/origincar_nav2/behavior_trees/ackermann_navigate_w_recovery.xml"
     default_nav_through_poses_bt_xml: "/root/D_Robot/dev_ws/install/origincar_nav2/share/origincar_nav2/behavior_trees/ackermann_navigate_w_recovery.xml"
     plugin_lib_names:
@@ -78,7 +78,7 @@ bt_navigator_rclcpp_node:
 controller_server:
   ros__parameters:
     use_sim_time:  False
-    controller_frequency: 30.0          # 20→30 对齐MPPI，与model_dt匹配
+    controller_frequency: 30.0          # 20→30，与model_dt匹配
     cmd_vel_topic: /cmd_vel
     min_x_velocity_threshold: 1.0
     min_y_velocity_threshold: 0.5
@@ -91,14 +91,14 @@ controller_server:
     # Progress checker — 5m 场放宽超时，终点允许缓慢逼近
     progress_checker:
       plugin: "nav2_controller::SimpleProgressChecker"
-      required_movement_radius: 0.5     # 0.15→0.5 对齐MPPI
-      movement_time_allowance: 10.0      # 30→10 对齐MPPI
+      required_movement_radius: 0.5     # 0.15→0.5
+      movement_time_allowance: 10.0      # 30→10
 
     # Goal checker — 阿克曼放宽朝向
     general_goal_checker:
       stateful: True
       plugin: "nav2_controller::SimpleGoalChecker"
-      xy_goal_tolerance: 0.40            # 0.30→0.40 对齐MPPI
+      xy_goal_tolerance: 0.40            # 0.30→0.40
       yaw_goal_tolerance: 2.0            # ~57°, 不卡最终姿态
 
     # ========================================================================
@@ -120,11 +120,11 @@ controller_server:
       cmd_angle_instead_rotvel: false         # false=输出Twist(angular.z)，底盘STM32自己做阿克曼转换
       wheelbase: 0.20                          # 轴距 (m)，你的车实测值
       max_vel_x: 1.0                           # 最大前进速度 (m/s)，0.5→1.0 不再龟速
-      max_vel_x_backwards: 1.5                 # 最大倒车速度
+      max_vel_x_backwards: 0.8                 # 最大倒车速度，应≤前进速度
       max_vel_theta: 10.0                       # 最大转向角速度 (仅 cmd_angle=false 时用)
 
       # 阿克曼转弯限制
-      min_turning_radius: 0.20                 # 与MPPI AckermannConstraints一致，0.50→0.20
+      min_turning_radius: 0.35                 #0.20→0.35 阿克曼0.2m轴距≈0.35m最小转弯半径
 
       # ━━━ 加速度限制 ━━━
       acc_lim_x: 3.0                           # 线加速度 (m/s²)
@@ -150,7 +150,7 @@ controller_server:
       costmap_converter_rate: 5.0
 
       # ━━━ 障碍物 ━━━
-      min_obstacle_dist: 0.20                  # 最小离障距离 (m)，0.15→0.20
+      min_obstacle_dist: 0.25                  # 0.20→0.25 适中，不擦边也不卡缝
       include_costmap_obstacles: true
       costmap_obstacles_behind_robot_dist: 2.0 # 只关心车后 2m 内障碍
       obstacle_poses_affected: 30              # 每条边关联障碍物栅格上限
@@ -159,16 +159,16 @@ controller_server:
       # 每一项乘以对应的代价项，总和最小化
 
       weight_kinematics_nh: 1000.0             # ★ 阿克曼运动学约束（权重极高，强制满足）
-      weight_kinematics_forward_drive: 1.0     # 前进偏好（>0 倾向前进，<0 倾向倒退）
+      weight_kinematics_forward_drive: 2.0     # 1.0→2.0 更强前进偏好，少倒车
       weight_optimaltime: 15.0                 # ★ 最短时间: 增大提速，10→15
-      weight_obstacle: 20.0                    # ★ 避障: 50→20，避免窄空间卡死
-      weight_viapoint: 1.0                     # 路径点跟踪: 越大越贴全局路径
+      weight_obstacle: 25.0                    # 平衡点: 避障但不卡窄缝
+      weight_viapoint: 2.0                     # 1.0→2.0 更紧贴全局路径，不跑偏
       weight_adapt_factor: 2.0                 # 自适应权重: 窄空间自动放大避障权重
 
       # ━━━ Homotopy Class Planning（"障碍物左边绕还是右边绕"）━━━
       enable_homotopy_class_planning: true     # ★ 启动拓扑路径选择
       enable_multithreading: true              # 多条备选路径并行优化
-      max_number_classes: 4                    # 最多 4 条备选
+      max_number_classes: 3                    # 最多 3 条备选，5m场够用
       selection_cost_hysteresis: 1.0           # 切换阈值: 新路径需要显著优于当前才切换
       selection_obst_cost_scale: 2.0           # 选择时避障代价权重
       selection_viapoint_cost_scale: 1.0       # 选择时路径对齐权重
@@ -181,7 +181,7 @@ controller_server:
       visualize_hc_graph: false                # 不显示 HC 图（省资源）
 
       # ━━━ 目标到达 ━━━
-      xy_goal_tolerance: 0.30                  # 0.30→0.40 对齐MPPI，避免终点卡住
+      xy_goal_tolerance: 0.40                  #避免终点卡住
       yaw_goal_tolerance: 2.0
       free_goal_vel: true                      # 中间航点不停车，TEB规划穿过目标点的轨迹
 
@@ -214,8 +214,8 @@ local_costmap:
       plugins: ["voxel_layer", "inflation_layer"]
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 5.0        # 8.0→5.0 对齐MPPI
-        inflation_radius: 0.20          # 0.12→0.25 对齐MPPI
+        cost_scaling_factor: 4.5        # 适中：障碍物可见但不臃肿
+        inflation_radius: 0.25          # 0.20→0.25 局部微胀
       voxel_layer:
         plugin: "nav2_costmap_2d::VoxelLayer"
         enabled: True
@@ -234,7 +234,7 @@ local_costmap:
           data_type: "LaserScan"
           raytrace_max_range: 5.0
           raytrace_min_range: 0.0
-          obstacle_max_range: 3.5       # 2.5→3.5 对齐MPPI，增大感知范围
+          obstacle_max_range: 3.5       # 2.5→3.5，增大感知范围
           obstacle_min_range: 0.0
       static_layer:
         map_subscribe_transient_local: True
@@ -274,15 +274,15 @@ global_costmap:
           data_type: "LaserScan"
           raytrace_max_range: 5.0
           raytrace_min_range: 0.0
-          obstacle_max_range: 5.0       # 3.0→5.0 对齐MPPI，增大感知范围
+          obstacle_max_range: 5.0       # 3.0→5.0，增大感知范围
           obstacle_min_range: 0.0
       static_layer:
         plugin: "nav2_costmap_2d::StaticLayer"
-        map_subscribe_transient_local: True       # False→True 对齐MPPI，确保收到地图
+        map_subscribe_transient_local: True       # False→True，确保收到地图
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 3.0        # 8.0→3.0 对齐MPPI
-        inflation_radius: 0.30          # 0.12→0.35 对齐MPPI
+        cost_scaling_factor: 3.0        # 回原值，更快衰减
+        inflation_radius: 0.18          # 等于车半径，刚好包住
       always_send_full_costmap: True
   global_costmap_client:
     ros__parameters:
@@ -328,15 +328,15 @@ planner_server:
       max_iterations: 5000            # 远方目标增加迭代
       max_planning_time: 5.0          # 放宽时间限制
       motion_model_for_search: "REEDS_SHEPP"   # 允许倒车但严格惩罚
-      angle_quantization_bins: 40     # 9°精度，启动快的多（64→40）
-      minimum_turning_radius: 0.20    # 与MPPI AckermannConstraints一致
+      angle_quantization_bins: 24     # 15°精度，40→24 大幅加速启发式表计算
+      minimum_turning_radius: 0.35    #0.20→0.35
       analytic_expansion_ratio: 3.5   # 分析扩展加速搜索
       cache_obstacle_heuristic: true  # 缓存启发式加速重规划
-      lookup_table_size: 15.0         # 限制启发式查找表（默认800太大了）
-      reverse_penalty: 50.0           # 极重倒车惩罚，禁止屁股朝向目标
-      change_penalty: 0.3             # 转向变化更平缓
-      non_straight_penalty: 1.45      # 路径先直走再拐弯，更平滑
-      cost_penalty: 2.0
+      lookup_table_size: 9.0          # 覆盖全局地图 (359×0.025≈9m)，15→9 大幅减少启动计算
+      reverse_penalty: 200.0          # 50→200 近乎禁止倒车入库
+      change_penalty: 1.0             # 0.6→1.0 更少转向变化
+      non_straight_penalty: 3.0       # 2.0→3.0 大幅偏向直线，拒绝绕弯
+      cost_penalty: 4.0           # 2.0→4.0 代价地图惩罚翻倍，远离障碍物
 planner_server_rclcpp_node:
   ros__parameters:
     use_sim_time:  False

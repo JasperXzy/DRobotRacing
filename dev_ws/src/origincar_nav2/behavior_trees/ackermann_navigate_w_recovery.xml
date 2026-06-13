@@ -1,12 +1,12 @@
 <!--
-  Ackermann 专用行为树：用 DriveOnHeading 替代 Spin 恢复
-  Spin（原地旋转）对阿克曼底盘不可行（有最小转弯半径）
+  Ackermann 专用行为树：去除一切倒车，只清图+盲开+等待恢复
+  RateController 3Hz 对齐 expected_planner_frequency
 -->
 <root main_tree_to_execute="MainTree">
   <BehaviorTree ID="MainTree">
     <RecoveryNode number_of_retries="6" name="NavigateRecovery">
       <PipelineSequence name="NavigateWithReplanning">
-        <RateController hz="1.0">
+        <RateController hz="3.0">
           <RecoveryNode number_of_retries="1" name="ComputePathToPose">
             <ComputePathToPose goal="{goal}" path="{path}" planner_id="GridBased"/>
             <ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>
@@ -24,10 +24,9 @@
             <ClearEntireCostmap name="ClearLocalCostmap-Subtree" service_name="local_costmap/clear_entirely_local_costmap"/>
             <ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap"/>
           </Sequence>
-          <!-- ★ 阿克曼：用 DriveOnHeading 替代 Spin 原地旋转 ★ -->
-          <DriveOnHeading speed="0.15" time_allowance="10"/>
-          <Wait wait_duration="3"/>
-          <BackUp backup_dist="0.30" backup_speed="0.15"/>
+          <DriveOnHeading speed="0.15" time_allowance="5"/>
+          <Wait wait_duration="2"/>
+          <ClearEntireCostmap name="ClearGlobal-Last" service_name="global_costmap/clear_entirely_global_costmap"/>
         </RoundRobin>
       </ReactiveFallback>
     </RecoveryNode>

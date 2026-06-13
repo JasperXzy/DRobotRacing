@@ -315,7 +315,7 @@ class WaypointCruiser(Node):
         # 创建一次性定时器，立刻发送下一个目标
         if self.next_goal_timer is not None:
             self.destroy_timer(self.next_goal_timer)
-        self.next_goal_timer = self.create_timer(0.5, self._on_next_goal_timer)
+        self.next_goal_timer = self.create_timer(0.1, self._on_next_goal_timer)  # 0.5→0.1 几乎无停顿
 
     def goal_response_callback(self, future):
         """目标被Nav2接受后的回调"""
@@ -335,22 +335,36 @@ class WaypointCruiser(Node):
         status = result.status
         arrived_wp_index = self.current_wp_index + 1  # 已到达的航点编号
 
+        wp = self.waypoints[self.current_wp_index]
+        # 判断是否为拍照点
+        is_camera = (self._state == self.POST_QR and
+                     arrived_wp_index == self.vlm_trigger_waypoint)
+        camera_tag = ' 📸拍照点' if is_camera else ''
+
         if status == 4:  # SUCCEEDED
-            self.get_logger().info(f'✅ 航点 {arrived_wp_index} 到达！')
+            self.get_logger().info(
+                f'✅ 航点 {arrived_wp_index}/{len(self.waypoints)} 到达！'
+                f'坐标=({wp[0]:.3f}, {wp[1]:.3f}, yaw={wp[2]:.3f}){camera_tag}')
         else:
-            self.get_logger().warn(f'⚠️ 航点 {arrived_wp_index} 失败, status={status}')
+            self.get_logger().warn(
+                f'⚠️ 航点 {arrived_wp_index}/{len(self.waypoints)} 失败, status={status}, '
+                f'目标=({wp[0]:.3f}, {wp[1]:.3f}, yaw={wp[2]:.3f}){camera_tag}')
 
         self.goal_active = False
         self.current_wp_index += 1
 
-        # ★ VLM触发检查：到达指定航点时拍照（不发推理） ★
+        # ★ VLM触发检查：到达指定航点时拍照（不发推理），停留0.3s ★
         if self._state == self.POST_QR and arrived_wp_index == self.vlm_trigger_waypoint:
             self._trigger_vlm_capture()
-
-        # 继续下一个航点
-        if self.next_goal_timer is not None:
-            self.destroy_timer(self.next_goal_timer)
-        self.next_goal_timer = self.create_timer(0.5, self._on_next_goal_timer)
+            # 拍照点停留0.3s再发下一个目标
+            if self.next_goal_timer is not None:
+                self.destroy_timer(self.next_goal_timer)
+            self.next_goal_timer = self.create_timer(0.3, self._on_next_goal_timer)
+        else:
+            # 其他点几乎无停顿
+            if self.next_goal_timer is not None:
+                self.destroy_timer(self.next_goal_timer)
+            self.next_goal_timer = self.create_timer(0.05, self._on_next_goal_timer)
 
     def _on_next_goal_timer(self):
         """定时器回调：发送下一个目标后销毁自身"""
