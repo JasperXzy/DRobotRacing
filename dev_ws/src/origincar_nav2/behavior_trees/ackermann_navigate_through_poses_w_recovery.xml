@@ -1,7 +1,10 @@
 <!--
   Ackermann 专用 Through-Poses 行为树：用 DriveOnHeading 替代 Spin 恢复
   Spin（原地旋转）对阿克曼底盘不可行（有最小转弯半径）
-  基于默认 navigate_through_poses_w_replanning_and_recovery.xml 改写
+
+  ★ v2 平滑巡航版：
+    ComputePathThroughPoses → RemovePassedGoals → SmoothPath → FollowPath
+    中间航点不停车，TEB free_goal_vel=true 连续穿过
 -->
 <root main_tree_to_execute="MainTree">
   <BehaviorTree ID="MainTree">
@@ -13,6 +16,10 @@
             <ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>
           </RecoveryNode>
         </RateController>
+        <!-- ★ 到达一个航点后自动从列表中移除，避免重复规划已过的点 ★ -->
+        <RemovePassedGoals input_path="{path}" output_path="{path}" radius="0.5"/>
+        <!-- ★ 对全局路径做平滑，消除航点处的尖角转弯 ★ -->
+        <SmoothPath path="{path}" smoothed_path="{path}" server_timeout="100"/>
         <RecoveryNode number_of_retries="1" name="FollowPath">
           <FollowPath path="{path}" controller_id="FollowPath"/>
           <ClearEntireCostmap name="ClearLocalCostmap-Context" service_name="local_costmap/clear_entirely_local_costmap"/>

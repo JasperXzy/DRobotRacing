@@ -4,7 +4,7 @@
 usb_cam_node:
   ros__parameters:
     # --- Camera Settings ---
-    video_device: "/dev/video8"   # Device path
+    video_device: "/dev/video0"   # Device path
     framerate: 30                 # Frames per second
     image_width: 1920              # Resolution width
     image_height: 1080          # Resolution height
