@@ -13,6 +13,7 @@ slam_toolbox:
     odom_frame: odom
     map_frame: map
     base_frame: base_link
+
     scan_topic: /scan
     mode: localization
 
@@ -29,6 +30,7 @@ slam_toolbox:
     resolution: 0.025
     restamp_tf: true
     max_laser_range: 5.5 
+
     minimum_time_interval: 0.2       # 实际处理最多 5Hz，防止 CPU 过载
     transform_timeout: 0.5           # TF 查找超时缩短，减少队列积压
     tf_buffer_duration: 60.0
@@ -38,10 +40,12 @@ slam_toolbox:
     # General Parameters
     use_scan_matching: true
     use_scan_barycenter: true
+
     minimum_travel_distance: 0.05
     minimum_travel_heading: 0.02
     scan_buffer_size: 10             # 缩小缓冲区，避免消息队列溢出
     link_match_minimum_response_fine: 0.15  
+
     link_scan_maximum_distance: 1.5
     loop_search_maximum_distance: 3.0
     do_loop_closing: true 
