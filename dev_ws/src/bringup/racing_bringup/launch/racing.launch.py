@@ -113,6 +113,8 @@ def generate_launch_description():
 
     nav2_params_file = os.path.join(ws_root, 'config', 'nav2', 'nav2(6.13).yaml')
     qr_detector_params_file = os.path.join(ws_root, 'config', 'perception', 'qr_detector.yaml')
+    racing_detector_params_file = os.path.join(
+        ws_root, 'config', 'perception', 'racing_perception_detector.yaml')
 
     # ★ 动态修正 YAML 中硬编码的路径（BT XML + 地图），避免依赖 /root/D_Robot 固定路径
     origincar_share = get_package_share_directory('origincar_nav2')
@@ -138,6 +140,15 @@ def generate_launch_description():
         name='map_server',
         output='screen',
         parameters=[nav2_params_fixed],
+    )
+
+    # YOLO26检测节点
+    racing_detector_node = Node(
+        package='racing_perception_detector',
+        executable='racing_perception_detector_node',
+        name='racing_perception_detector_node',
+        output='screen',
+        parameters=[racing_detector_params_file]
     )
 
     # 二维码检测节点
@@ -267,10 +278,13 @@ def generate_launch_description():
     # ━ t=4s ━ EKF 融合定位
     ld.add_action(TimerAction(period=4.0, actions=[ekf_launch]))
 
-    # ━ t=6s ━ 地图服务器 + 感知节点（QR + VLM）
+    # ━ t=6s ━ 地图服务器 + 感知节点（YOLO26 + QR + VLM）
     ld.add_action(TimerAction(period=6.0, actions=[map_server_node]))
-    ld.add_action(TimerAction(period=6.0, actions=[qr_node]))
-    ld.add_action(TimerAction(period=6.0, actions=[vlm_launch]))
+    ld.add_action(TimerAction(period=6.0, actions=[
+        racing_detector_node,
+        qr_node,
+        vlm_launch
+    ]))
 
     # ━ t=8s ━ AMCL 粒子滤波定位
     ld.add_action(TimerAction(period=8.0, actions=[amcl_node, amcl_lifecycle_manager]))
