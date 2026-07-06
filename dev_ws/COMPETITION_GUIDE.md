@@ -6,7 +6,7 @@
 
 | 文件 | 说明 |
 |------|------|
-| `src/bringup/driver_bringup/launch/competition_bringup.launch.py` | 比赛总启动文件，一键启动全部节点 |
+| `src/bringup/racing_bringup/launch/racing.launch.py` | 比赛总启动文件，一键启动全部节点 |
 | `src/origincar_nav2/origincar_nav2/trigger_cruise.py` | 终端发令脚本，运行一次即退出 |
 | `src/origincar_nav2/origincar_nav2/waypoints_prescan.yaml` | 扫描前航点模板 ⚠️ 需填入实际坐标 |
 | `src/origincar_nav2/origincar_nav2/waypoints_cw.yaml` | 顺时针航点模板 ⚠️ 需填入实际坐标 |
@@ -27,8 +27,8 @@
 
 ```
 ┌─────────────────────────────┐
-│ ros2 launch driver_bringup  │
-│ competition_bringup.launch  │  一键启动所有节点
+│ ros2 launch racing_bringup │
+│ racing.launch.py           │  一键启动所有节点
 └─────────────┬───────────────┘
               │ ~10秒全部就绪
               │ QR节点启动即开始持续扫描
@@ -92,7 +92,7 @@ QR扫描成功后发布：
 
 ---
 
-## 四、启动顺序（competition_bringup.launch.py 内部分阶段）
+## 四、启动顺序（racing.launch.py 内部分阶段）
 
 | 阶段 | 时间 | 启动内容 |
 |------|------|----------|
@@ -110,7 +110,7 @@ QR扫描成功后发布：
 
 ```bash
 cd ~/D_Robot/dev_ws
-colcon build --packages-select origincar_nav2 qr_detector_cpp driver_bringup --symlink-install
+colcon build --packages-select origincar_nav2 qr_detector_cpp racing_bringup --symlink-install
 source install/setup.bash
 ```
 
@@ -148,7 +148,7 @@ source install/setup.bash
 
 ```bash
 # 终端1：一键启动全部
-ros2 launch driver_bringup competition_bringup.launch.py
+ros2 launch racing_bringup racing.launch.py
 # 等待约10秒，所有节点分阶段就绪
 
 # 终端2：发令！

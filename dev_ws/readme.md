@@ -11,7 +11,7 @@ Web界面: http://192.168.10.143:8080
 ```
 ```bash
 # 终端1：一键启动全部
-ros2 launch driver_bringup competition_bringup.launch.py
+ros2 launch racing_bringup racing.launch.py
 # 等待约10秒，所有节点分阶段就绪
 
 # 终端2：发令！
@@ -23,7 +23,7 @@ ros2 run rqt_reconfigure rqt_reconfigure
 ```
 ## 编译
 ```bash
-colcon build --packages-select driver_bringup   
+colcon build --packages-select racing_bringup
 colcon build --packages-select origincar_nav2
 source install/setup.bash
 ```

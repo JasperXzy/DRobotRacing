@@ -21,7 +21,7 @@
 总启动时间: ~24秒（优化前 ~40秒）
 
 用法:
-    ros2 launch driver_bringup competition_bringup.launch.py
+    ros2 launch racing_bringup racing.launch.py
 
 启动后等待约25秒，然后在另一个终端发令:
     ros2 run origincar_nav2 trigger_cruise
@@ -46,7 +46,7 @@ def generate_launch_description():
     # 路径
     # ============================================
     ws_root = os.path.abspath(os.path.join(
-        get_package_share_directory('driver_bringup'), '..', '..', '..', '..'))
+        get_package_share_directory('racing_bringup'), '..', '..', '..', '..'))
 
     # ============================================
     # 第1阶段 (t=0s): 硬件驱动 + 静态位姿
@@ -112,6 +112,7 @@ def generate_launch_description():
     # ============================================
 
     nav2_params_file = os.path.join(ws_root, 'config', 'nav2', 'nav2(6.13).yaml')
+    qr_detector_params_file = os.path.join(ws_root, 'config', 'perception', 'qr_detector.yaml')
 
     # ★ 动态修正 YAML 中硬编码的路径（BT XML + 地图），避免依赖 /root/D_Robot 固定路径
     origincar_share = get_package_share_directory('origincar_nav2')
@@ -145,10 +146,7 @@ def generate_launch_description():
         executable='qr_detector_node',
         name='qr_detector_node',
         output='screen',
-        parameters=[{
-            'image_topic': '/camera/image',
-            'stop_on_detect': True,
-        }]
+        parameters=[qr_detector_params_file]
     )
 
     # VLM图生文节点 — 挂起状态，等 /sign4return=-1 触发
