@@ -5,6 +5,8 @@ dev_ws/log/
 build/
 install/
 log/
+D_Robot-1.0/
+drobot_manual/
 
 # Python
 __pycache__/

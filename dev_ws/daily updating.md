@@ -61,14 +61,14 @@ teb规划器代替mppi（或者mppi调参）
 
 #### 根因
 1. **底盘里程计 X/Y 缩放因子不对称** — `origincar_base.cpp:287-288`，X 轴缩放 1.03，Y 轴缩放 1.125，Y 轴累积误差比 X 轴快 ~9%
-2. **SLAM Toolbox 与激光雷达同时启动** — `competition_bringup.launch.py` 中 EKF/SLAM 的 `period=0.0`（注释写 6s 但代码未实施），SLAM 启动时 lidar 还没产出 scan，先发布恒等 `map→odom`，等 scan 到达后 scan-matching 跳变产生 Y 轴偏移
+2. **SLAM Toolbox 与激光雷达同时启动** — `racing.launch.py` 中 EKF/SLAM 的 `period=0.0`（注释写 6s 但代码未实施），SLAM 启动时 lidar 还没产出 scan，先发布恒等 `map→odom`，等 scan 到达后 scan-matching 跳变产生 Y 轴偏移
 3. **waypoint_cruiser 在 SLAM 未收敛时发布 initial_pose (0,0,0)** — 可能与 SLAM 定位冲突
 4. **EKF 对 X/Y 的过程噪声假设相同 (0.05)** — 但实际 Y 轴噪声更大
 
 #### 修复
 | 优先级 | 文件 | 改动 |
 |--------|------|------|
-| **P0** | `competition_bringup.launch.py` | EKF/SLAM: `period=0.0→6.0`，Nav2/cruiser: `period=3.0→10.0`，等 lidar 稳定 + SLAM 定位收敛后再启动 |
+| **P0** | `racing.launch.py` | EKF/SLAM: `period=0.0→6.0`，Nav2/cruiser: `period=3.0→10.0`，等 lidar 稳定 + SLAM 定位收敛后再启动 |
 | **P0** | `origincar_base.cpp:288` | `1.125→1.03`（待标定确认准确值），统一 X/Y 缩放 |
 | P1 | `waypoint_cruiser.py:138` | `publish_initial_pose()` 前加 3~5s 延时，等 SLAM 完成首次定位 |
 | P2 | `ekf.yaml:106` | `process_noise_covariance[1]` (y): `0.05→0.08` |
@@ -100,7 +100,7 @@ teb规划器代替mppi（或者mppi调参）
 #### 修改
 | 文件 | 改动 |
 |------|------|
-| `competition_bringup.launch.py` | ① 启动时序修正: Phase2 `6.0→4.0`, Phase3a `0.0→6.0`, Phase3b `3.0→10.0` ② 日志分级: t=3s 设 `RCUTILS_LOGGING_SEVERITY_THRESHOLD=WARN` 抑制 Nav2/SLAM/EKF 刷屏, cruiser 单独 `--log-level info` 保持可见 |
+| `racing.launch.py` | ① 启动时序修正: Phase2 `6.0→4.0`, Phase3a `0.0→6.0`, Phase3b `3.0→10.0` ② 日志分级: t=3s 设 `RCUTILS_LOGGING_SEVERITY_THRESHOLD=WARN` 抑制 Nav2/SLAM/EKF 刷屏, cruiser 单独 `--log-level info` 保持可见 |
 | `ekf.yaml:21` | `print_diagnostics: true→false`，关闭终端诊断刷屏 |
 
 ### 启动时序（修正后）

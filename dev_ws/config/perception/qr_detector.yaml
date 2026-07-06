@@ -1,0 +1,9 @@
+qr_detector_node:
+  ros__parameters:
+    image_topic: /camera/qr_roi/image
+    process_interval: 0.0
+    zbar_density: 3
+    small_roi_upscale: true
+    small_roi_min_size: 120
+    small_roi_upscale_factor: 2.0
+    stop_on_detect: true
