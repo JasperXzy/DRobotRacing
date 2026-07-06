@@ -17,7 +17,7 @@
 | 文件 | 改动内容 |
 |------|----------|
 | `src/origincar_nav2/origincar_nav2/waypoint_cruiser.py` | **重写** — 状态机：等发令→走prescan→QR选方向→走后续→VLM触发→结束 |
-| `src/qr_detector_cpp/src/qr_detector_node.cpp` | 启动即扫描、支持JPEG/MJPEG解码、TTS语音播报方向、扫描成功后继续运行 |
+| `src/perception/qr_detector_cpp/src/qr_detector_node.cpp` | 订阅 `/camera/qr_roi/image` 的 `mono8` ROI，ZBar 解码后发布方向与TTS，默认识别成功后退出 |
 | `src/origincar_nav2/setup.py` | 注册 trigger_cruise 入口点 + waypoints文件安装到包根目录 |
 | `config/nav2/nav2.yaml` | yaw_goal_tolerance: 0.65→1.0, GoalAngleCritic权重: 2.0→1.5, 路径改install空间 |
 
