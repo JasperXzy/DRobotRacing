@@ -21,17 +21,16 @@ def generate_launch_description():
     own_nav_pkg = 'origincar_nav2'                 # 你自己创建的 navigation 元包（或直接使用 nav2_bringup）
     robot_desc_pkg = 'origincar_description'   # 你的机器人描述包
     location_pkg = 'state_estimation'          # 你的 EKF 和 TF 启动包（可选）
-    
+
     # 路径
 
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
 
-    ws_root = os.path.abspath(os.path.join(own_nav_pkg, '..'))
     nav2_params_file = LaunchConfiguration('params_file')
-    default_config_path = os.path.join(ws_root, 'config', 'nav2', 'nav2.yaml')
-    map_file = os.path.join(ws_root, 'src', 'origincar_nav2', 'map')
-    
-    path_to_xacro = os.path.join(ws_root, 'src', 'drivers', 'origincar_description', 'urdf', 'origincar.xarco')
+    # 注意：config 路径在 dev_ws/config/nav2/ 下，不是在包内
+    default_config_path = os.path.join(
+        get_package_share_directory(own_nav_pkg), '..', '..', '..', '..', 'config', 'nav2', 'nav2.yaml')
+
     # 声明 launch 参数
     declare_params_file_cmd = DeclareLaunchArgument(
         'params_file',
@@ -39,8 +38,8 @@ def generate_launch_description():
         description='Path to the config file')
 
     declare_map_cmd = DeclareLaunchArgument(
-        'maps',
-        default_value=os.path.join(get_package_share_directory(own_nav_pkg), 'maps', 'my_map.yaml'),
+        'map',
+        default_value=os.path.join(get_package_share_directory(own_nav_pkg), 'map', 'my_map.yaml'),
         description='Full path to map file')
 
     declare_use_sim_time_cmd = DeclareLaunchArgument(
@@ -53,6 +52,8 @@ def generate_launch_description():
     # 2. 机器人状态发布器 (robot_state_publisher)
     # ------------------------------
     # 使用 xacro 处理 urdf 文件
+    path_to_xacro = os.path.join(
+        get_package_share_directory(robot_desc_pkg), 'urdf', 'origincar.urdf')
     robot_description_content = Command(['xacro ', path_to_xacro])
     robot_description_param = ParameterValue(robot_description_content, value_type=str)
 
@@ -90,74 +91,25 @@ def generate_launch_description():
     # ------------------------------
     # 4. 启动 Nav2 核心组件（使用官方 nav2_bringup 的 launch 文件）
     # ------------------------------
-    # 官方 navigation_launch.py 会启动 controller_server, planner_server, bt_navigator, amcl, map_server 等
+    # 官方 navigation_launch.py 会启动 controller_server, planner_server, bt_navigator, map_server 等
+    # use_amcl:='true' 启用 AMCL 粒子滤波定位，发布 map→odom TF
     nav2_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(get_package_share_directory(nav2_bringup_pkg), 'launch', 'navigation_launch.py')
         ),
         launch_arguments={
-            'map': map_file,
+            'map': LaunchConfiguration('map'),
             'params_file': nav2_params_file,
             'use_sim_time': use_sim_time,
+            'use_amcl': 'false',
             'autostart': 'true'
         }.items()
     )
 
     # ------------------------------
-    # 5. 键盘控制节点（适用于阿克曼转向）
-    # ------------------------------
-    # 方法：使用 teleop_twist_keyboard 发布 Twist 消息，然后通过 twist_to_ackermann 节点转换为阿克曼指令
-    # 前提：需要安装 teleop_twist_keyboard 和 ackermann_msgs
-    # sudo apt install ros-${ROS_DISTRO}-teleop-twist-keyboard
-
-    # 5.1 键盘节点 (发布 /cmd_vel Twist)
-    teleop_node = Node(
-        package='teleop_twist_keyboard',
-        executable='teleop_twist_keyboard',
-        name='teleop_twist_keyboard',
-        prefix='xterm -e',          # 在新终端中运行，方便按键输入
-        output='screen',
-        parameters=[{'use_sim_time': use_sim_time}],
-        remappings=[('cmd_vel', '/teleop_cmd_vel')]  # 先发布到中间话题
-    )
-
-    # 5.2 Twist -> AckermannDrive 转换节点 (简单 Python 节点)
-    # 如果底盘驱动直接接收 /cmd_vel (Twist) 并处理阿克曼，则不需要转换。
-    # 但通常阿克曼底盘驱动订阅的是 /ackermann_cmd (AckermannDrive)
-    # 我们提供一个内嵌脚本或外部节点。这里假设你有一个可执行节点 twist_to_ackermann。
-    # 如果没有，可以创建如下简单节点（也可以直接在 launch 中定义）
-    twist_to_ackermann_node = Node(
-        package='your_own_package',   # 请替换为实际包名，或者直接使用下面 inline 的脚本
-        executable='twist_to_ackermann',
-        name='twist_to_ackermann',
-        output='screen',
-        remappings=[
-            ('twist', '/teleop_cmd_vel'),          # 订阅键盘发布的 Twist
-            ('ackermann', '/ackermann_cmd')        # 发布给底盘驱动的阿克曼指令
-        ],
-        parameters=[{
-            'wheelbase': 0.3,        # 轴距 (m)，根据你的车调整
-            'max_steering_angle': 0.6,  # 最大转向角 (rad)，约 34 度
-            'max_speed': 1.0         # 最大线速度 (m/s)
-        }]
-    )
-
-    # 如果你没有单独编译 twist_to_ackermann 节点，可以内嵌一个 Python 脚本（需先创建）
-    # 下面提供该脚本的内容，你需要将它保存为 `twist_to_ackermann.py` 并安装到你的包中
-    # 这里为了完整性，给出了节点的定义，实际使用时需要确保该节点存在。
-
-    # 另一种简单方案：如果底盘驱动直接接受 /cmd_vel 并且内部已做阿克曼转换，则只需要 teleop_node
-    # 且 remappings 直接将 cmd_vel 映射到底盘订阅的话题，例如 /cmd_vel
-    # 根据你的实际底盘驱动，可能需要修改。
-
-    # 为了示例，我们假设底盘驱动订阅的是 /ackermann_cmd，因此添加转换节点。
-    # 如果你底盘驱动已支持 /cmd_vel，可以省略 twist_to_ackermann_node。
-
-    # ------------------------------
-    # 6. 返回 LaunchDescription
+    # 5. 返回 LaunchDescription
     # ------------------------------
     ld = LaunchDescription()
-
     # 添加声明参数
     ld.add_action(declare_params_file_cmd)
     ld.add_action(declare_map_cmd)
@@ -172,9 +124,17 @@ def generate_launch_description():
 
     # 添加 Nav2 核心
     ld.add_action(nav2_launch)
-
-    # 添加键盘控制
-    #ld.add_action(teleop_node)
-    #ld.add_action(twist_to_ackermann_node)   # 如果不需要则注释掉
+    # 添加地图 PNG 叠加发布器（RViz2 可视化用）
+    map_overlay_node = Node(
+        package='origincar_nav2',
+        executable='map_overlay_publisher',
+        name='map_overlay_publisher',
+        output='screen',
+        parameters=[{'use_sim_time': use_sim_time,
+                     'alpha': 0.5,
+                     'publish_grid': True,
+                     'publish_marker': True,
+                     'publish_image': True}]
+    )
 
     return ld

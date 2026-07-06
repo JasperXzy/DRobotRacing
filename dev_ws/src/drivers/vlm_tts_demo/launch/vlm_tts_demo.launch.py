@@ -37,6 +37,7 @@ def generate_launch_description():
     vlm_params_file = LaunchConfiguration('vlm_params_file')
     playback_device = LaunchConfiguration('playback_device')
     trigger_value = LaunchConfiguration('trigger_value')
+    infer_trigger_value = LaunchConfiguration('infer_trigger_value')
     user_prompt = LaunchConfiguration('user_prompt')
     cute_words = LaunchConfiguration('cute_words')
     llamacpp_text_topic = LaunchConfiguration('llamacpp_text_topic')
@@ -54,13 +55,18 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'playback_device',
-            default_value='plughw:1,0',
+            default_value='plughw:0,0',
             description='ALSA playback device used by hobot_tts.',
         ),
         DeclareLaunchArgument(
             'trigger_value',
             default_value='-1',
-            description='Int32 value on /sign4return that triggers VLM + TTS.',
+            description='Int32 value on /sign4return that triggers VLM capture.',
+        ),
+        DeclareLaunchArgument(
+            'infer_trigger_value',
+            default_value='0',
+            description='Int32 value on /sign4return that triggers VLM inference.',
         ),
         DeclareLaunchArgument(
             'user_prompt',
@@ -124,6 +130,8 @@ def generate_launch_description():
             executable='hobot_tts',
             name='hobot_tts_node',
             output='screen',
+            respawn=True,
+            respawn_delay=3.0,
             parameters=[{
                 'playback_device': playback_device,
                 'topic_sub': '/tts_text',
@@ -137,6 +145,7 @@ def generate_launch_description():
             output='screen',
             parameters=[{
                 'trigger_value': ParameterValue(trigger_value, value_type=int),
+                'infer_trigger_value': ParameterValue(infer_trigger_value, value_type=int),
                 'user_prompt': user_prompt,
                 'playback_device': playback_device,
                 'vlm_params_file': vlm_params_file,

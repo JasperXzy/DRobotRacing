@@ -16,6 +16,7 @@ class VlmTtsDemoNode(Node):
 
         self.declare_parameter('trigger_topic', '/sign4return')
         self.declare_parameter('trigger_value', -1)
+        self.declare_parameter('infer_trigger_value', 0)
         self.declare_parameter('prompt_topic', '/prompt_text')
         self.declare_parameter('vlm_output_topic', '/llama_cpp_node')
         self.declare_parameter('tts_topic', '/tts_text')
@@ -33,11 +34,14 @@ class VlmTtsDemoNode(Node):
         self.declare_parameter('cute_words', '')
         self.declare_parameter('llamacpp_text_topic', '/tts_text')
         self.declare_parameter('forward_vlm_output', False)
+        self.declare_parameter('llm_threads', 2)
 
         self.trigger_topic = self.get_parameter(
             'trigger_topic').get_parameter_value().string_value
         self.trigger_value = self.get_parameter(
             'trigger_value').get_parameter_value().integer_value
+        self.infer_trigger_value = self.get_parameter(
+            'infer_trigger_value').get_parameter_value().integer_value
         self.prompt_topic = self.get_parameter(
             'prompt_topic').get_parameter_value().string_value
         self.vlm_output_topic = self.get_parameter(
@@ -72,6 +76,8 @@ class VlmTtsDemoNode(Node):
             'llamacpp_text_topic').get_parameter_value().string_value
         self.forward_vlm_output = self.get_parameter(
             'forward_vlm_output').get_parameter_value().bool_value
+        self.llm_threads = self.get_parameter(
+            'llm_threads').get_parameter_value().integer_value
 
         self._lock = threading.Lock()
         self._waiting_for_vlm = False
@@ -98,39 +104,43 @@ class VlmTtsDemoNode(Node):
         )
 
     def _on_trigger(self, msg):
-        if msg.data != self.trigger_value:
-            self.get_logger().debug(
-                'Ignore trigger value %d, expected %d' % (msg.data, self.trigger_value)
-            )
+        # ★ 两步触发：拍照 ≠ 推理 ★
+        if msg.data == self.trigger_value:
+            # 第一步：只拍照，不推理
+            if self._save_latest_image():
+                self._publish_start_notice()
+                self.get_logger().info(
+                    'Capture trigger received, camera frame saved (VLM pending).')
+                return
+            # 还没收到图像帧，排队等
+            with self._lock:
+                self._waiting_for_image = True
+            self.get_logger().info('Capture trigger received, waiting for one camera frame.')
             return
 
-        if self._save_latest_image():
+        if msg.data == self.infer_trigger_value:
+            # 第二步：对已保存的图片启动推理
             self._publish_start_notice()
             self._waiting_for_vlm = True
             self._ensure_vlm_process()
             self.get_logger().info(
-                'Trigger received, camera frame saved and VLM process started.'
-            )
+                'Infer trigger received, VLM process started.')
             return
 
-        with self._lock:
-            self._waiting_for_image = True
-        self.get_logger().info('Trigger received, waiting for one camera frame.')
+        self.get_logger().debug(
+            'Ignore trigger value %d' % msg.data)
 
     def _on_camera_image(self, msg):
         with self._lock:
             self._latest_image_data = bytes(msg.data)
-            should_start = self._waiting_for_image
-            if should_start:
+            should_capture = self._waiting_for_image
+            if should_capture:
                 self._waiting_for_image = False
 
-        if should_start and self._save_latest_image():
+        if should_capture and self._save_latest_image():
             self._publish_start_notice()
-            self._waiting_for_vlm = True
-            self._ensure_vlm_process()
             self.get_logger().info(
-                'Camera frame received, saved, and VLM process started.'
-            )
+                'Camera frame saved (VLM pending).')
 
     def _on_vlm_text(self, msg):
         text = msg.data.strip()
@@ -190,6 +200,7 @@ class VlmTtsDemoNode(Node):
                 command.extend(['-p', 'user_prompt:=%s' % self.user_prompt])
             if self.cute_words:
                 command.extend(['-p', 'cute_words:=%s' % self.cute_words])
+            command.extend(['-p', 'llm_threads:=%d' % self.llm_threads])
             command.extend([
                 '-p',
                 'text_msg_pub_topic_name:=%s' % self.llamacpp_text_topic,

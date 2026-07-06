@@ -5,9 +5,9 @@
     is_shared_mem_sub: 0
     image_type: 0
     model_type: 0
-    system_prompt: "请关注画面中竖着放置的矩形卡片、矩形立牌，也就是画面里印有插画的那块板。不要纠结它的具体名称，只要描述这块板面里的内容。板面内容按医疗场景理解，请围绕人物状态、病床、输液架、医疗设备和护理场景进行中文播报。不要回答没有立牌或无法描述或一些模糊的词语。"
-    user_prompt: "用一段话描述画面中矩形展示板上的插画内容。"
+    system_prompt: "简短，清晰，准确地描述画面中卡片插画上的内容（最好在20个字以内），突出医疗场景理解。"
+    user_prompt: "用一段话描述卡片插画上的内容。"
     cute_words: ""
     text_msg_pub_topic_name: "/tts_text"
-    model_file_name: "model/InternVL3_1B/vit_model_int16_VL3_1B_Instruct.hbm"
-    llm_model_name: "model/InternVL3_1B/qwen2_5_q8_0_InternVL3_1B_Instruct.gguf"
+    model_file_name: "/root/D_Robot/model/model/InternVL3_1B/vit_model_int16_VL3_1B_Instruct.hbm"
+    llm_model_name: "/root/D_Robot/model/model/InternVL3_1B/qwen2_5_q8_0_InternVL3_1B_Instruct.gguf"

@@ -30,7 +30,7 @@ def generate_launch_description():
         executable="joint_state_publisher"
     )
 
-    # rviz2 节点
+    # rviz2 节点(不启动)
     rviz2 = Node(
         package="rviz2",
         executable="rviz2",
@@ -41,5 +41,5 @@ def generate_launch_description():
         model,
         robot_state_publisher,
         joint_state_publisher,
-        rviz2
+        #rviz2
     ])

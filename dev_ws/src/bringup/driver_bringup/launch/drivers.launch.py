@@ -54,10 +54,12 @@ def generate_launch_description():
         )
     )
 
+#不想启动什么节点就直接注释掉对应行就行
     return LaunchDescription([
-        depth_camera_launch,
+        #depth_camera_launch,
         camera_launch,
         lidar_launch,
         chassis_launch,
         origincar_launch,
+
     ])
