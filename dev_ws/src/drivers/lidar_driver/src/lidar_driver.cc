@@ -68,7 +68,7 @@ namespace lidar_driver
 		pubscan_thread_ = new boost::thread(boost::bind(&LidarDriver::pubScanThread, this));
 		interface_selection = std::string("net");
 		frame_id = std::string("laser_link");
-		scan_topic = std::string("/lidar/scan");
+		scan_topic = std::string("/scan");
 		pointcloud_topic = std::string("/lidar/point_cloud");
 		is_start = true;
 		min_range = 0.3;
@@ -79,7 +79,7 @@ namespace lidar_driver
 		angle_disable_max = 0.0;
 
 		this->declare_parameter<std::string>("frame_id", "laser_link");
-		this->declare_parameter<std::string>("scan_topic", "/lidar/scan");
+		this->declare_parameter<std::string>("scan_topic", "/scan");
 		this->declare_parameter<std::string>("pointcloud_topic", "/lidar/point_cloud");
 		this->declare_parameter<double>("min_range", 0.3);
 		this->declare_parameter<double>("max_range", 100.0);
@@ -214,8 +214,8 @@ namespace lidar_driver
 	{
 		diagnostics.setHardwareID("Lslidar");
 		int code = 0;
-		serial_port_ = std::string("/dev/ttyUSB0");
-		this->declare_parameter<std::string>("serial_port_", "/dev/ttyUSB0");
+		serial_port_ = std::string("/dev/ttyACM0");
+		this->declare_parameter<std::string>("serial_port_", "/dev/ttyACM0");
 		this->get_parameter("serial_port_", serial_port_);
 		serial_ = LSIOSR::instance(serial_port_, baud_rate_);
 		code = serial_->init();

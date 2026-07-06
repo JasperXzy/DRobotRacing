@@ -13,19 +13,26 @@ slam_toolbox:
     odom_frame: odom
     map_frame: map
     base_frame: base_link
-    scan_topic: /lidar/scan
-    mode: mapping # mapping or localization
+
+    scan_topic: /scan
+    mode: localization
+
+    # if you'd like to immediately start localizing on a map ('localization' mode)
+    # 使用 serialize_map 服务生成的 .posegraph + .data 文件
+    map_file_name: "/root/D_Robot/dev_ws/src/origincar_nav2/map/serialized/my_map"
+    map_start_pose: [0.0, 0.0, 0.0]
 
     # Mapping Params
     debug_logging: false
-    throttle_scans: 2
+    throttle_scans: 1               # 不跳帧，每帧都可用（定位精度优先）
     transform_publish_period: 0.02
     map_update_interval: 1.0
     resolution: 0.025
     restamp_tf: true
     max_laser_range: 5.5 
-    minimum_time_interval: 0.5
-    transform_timeout: 1.0
+
+    minimum_time_interval: 0.2       # 实际处理最多 5Hz，防止 CPU 过载
+    transform_timeout: 0.5           # TF 查找超时缩短，减少队列积压
     tf_buffer_duration: 60.0
     stack_size_to_use: 40000000
     enable_interactive_mode: true
@@ -33,11 +40,12 @@ slam_toolbox:
     # General Parameters
     use_scan_matching: true
     use_scan_barycenter: true
-    minimum_travel_distance: 0.01
-    minimum_travel_heading: 0.01
-    scan_buffer_size: 30
-    scan_buffer_maximum_scan_distance: 10.0
-    link_match_minimum_response_fine: 0.1  
+
+    minimum_travel_distance: 0.05
+    minimum_travel_heading: 0.02
+    scan_buffer_size: 10             # 缩小缓冲区，避免消息队列溢出
+    link_match_minimum_response_fine: 0.15  
+
     link_scan_maximum_distance: 1.5
     loop_search_maximum_distance: 3.0
     do_loop_closing: true 

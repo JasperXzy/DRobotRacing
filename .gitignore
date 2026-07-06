@@ -1,7 +1,49 @@
+# ROS 2 / colcon
 dev_ws/build/
 dev_ws/install/
 dev_ws/log/
+build/
+install/
+log/
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# C / C++ build outputs
+*.o
+*.obj
+*.a
+*.so
+*.dll
+*.dylib
+*.exe
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+
+# Logs and generated runtime diagnostics
+*.log
+dev_ws/frames_*.gv
+dev_ws/frames_*.pdf
+rosbag2_*/
+*.db3
+*.bag
+*.mcap
+
+# IDE / OS metadata
 .DS_Store
+Thumbs.db
 .vscode/
 .idea/
+
+# Large generated model artifacts
+costmap_converter/
+*.gguf
+*.hbm

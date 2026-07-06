@@ -1,0 +1,10 @@
+/**:
+  ros__parameters:
+    feed_type: 0
+    image: "config/panda.jpg"
+    image_type: 0
+    model_type: 0
+    system_prompt: "描述图片内容，只输出一句话，不要解释，不要扩展。"
+    user_prompt: "描述这张图片。"
+    model_file_name: "model/InternVL3_1B/vit_model_int16_VL3_1B_Instruct.hbm"
+    llm_model_name: "model/InternVL3_1B/qwen2_5_q8_0_InternVL3_1B_Instruct.gguf"

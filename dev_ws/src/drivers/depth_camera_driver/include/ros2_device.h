@@ -36,12 +36,18 @@ public:
   virtual void FramePublisherThread();
   //  virtual void RegisterTopic() = 0;
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr rgb_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::CompressedImage>::SharedPtr
+      rgb_compressed_pub_;
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr ir_pub_;
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr depth_pub_;
-  rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr rgb_camerainfo_publisher_;
-  rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr ir_camerainfo_publisher_;
-  rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr depth_camerainfo_publisher_;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pointcloud_publisher_;
+  rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr
+      rgb_camerainfo_publisher_;
+  rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr
+      ir_camerainfo_publisher_;
+  rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr
+      depth_camerainfo_publisher_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
+      pointcloud_publisher_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr camera_version_publisher_;
 
   std::atomic<bool> running_;

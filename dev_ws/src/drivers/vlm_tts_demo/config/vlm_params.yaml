@@ -1,0 +1,13 @@
+/**:
+  ros__parameters:
+    feed_type: 0
+    image: "captures/vlm_tts_demo_capture.jpg"
+    is_shared_mem_sub: 0
+    image_type: 0
+    model_type: 0
+    system_prompt: "简短，清晰，准确地描述画面中卡片插画上的内容（最好在20个字以内），突出医疗场景理解。"
+    user_prompt: "用一段话描述卡片插画上的内容。"
+    cute_words: ""
+    text_msg_pub_topic_name: "/tts_text"
+    model_file_name: "/root/D_Robot/model/model/InternVL3_1B/vit_model_int16_VL3_1B_Instruct.hbm"
+    llm_model_name: "/root/D_Robot/model/model/InternVL3_1B/qwen2_5_q8_0_InternVL3_1B_Instruct.gguf"

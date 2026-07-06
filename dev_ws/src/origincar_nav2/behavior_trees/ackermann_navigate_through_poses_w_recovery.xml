@@ -1,0 +1,43 @@
+<!--
+  Ackermann 专用 Through-Poses 行为树：用 DriveOnHeading 替代 Spin 恢复
+  Spin（原地旋转）对阿克曼底盘不可行（有最小转弯半径）
+
+  ★ v2 平滑巡航版：
+    ComputePathThroughPoses → RemovePassedGoals → SmoothPath → FollowPath
+    中间航点不停车，TEB free_goal_vel=true 连续穿过
+-->
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <RecoveryNode number_of_retries="6" name="NavigateRecovery">
+      <PipelineSequence name="NavigateWithReplanning">
+        <RateController hz="1.0">
+          <RecoveryNode number_of_retries="1" name="ComputePathThroughPoses">
+            <ComputePathThroughPoses goal="{goal}" path="{path}" planner_id="GridBased"/>
+            <ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>
+          </RecoveryNode>
+        </RateController>
+        <!-- ★ 到达一个航点后自动从列表中移除，避免重复规划已过的点 ★ -->
+        <RemovePassedGoals input_path="{path}" output_path="{path}" radius="0.5"/>
+        <!-- ★ 对全局路径做平滑，消除航点处的尖角转弯 ★ -->
+        <SmoothPath path="{path}" smoothed_path="{path}" server_timeout="100"/>
+        <RecoveryNode number_of_retries="1" name="FollowPath">
+          <FollowPath path="{path}" controller_id="FollowPath"/>
+          <ClearEntireCostmap name="ClearLocalCostmap-Context" service_name="local_costmap/clear_entirely_local_costmap"/>
+        </RecoveryNode>
+      </PipelineSequence>
+      <ReactiveFallback name="RecoveryFallback">
+        <GoalUpdated/>
+        <RoundRobin name="RecoveryActions">
+          <Sequence name="ClearingActions">
+            <ClearEntireCostmap name="ClearLocalCostmap-Subtree" service_name="local_costmap/clear_entirely_local_costmap"/>
+            <ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap"/>
+          </Sequence>
+          <!-- ★ 阿克曼：用 DriveOnHeading 替代 Spin 原地旋转 ★ -->
+          <DriveOnHeading dist="0.5" speed="0.15" time_allowance="10"/>
+          <Wait wait_duration="3"/>
+          <BackUp backup_dist="0.30" backup_speed="0.15"/>
+        </RoundRobin>
+      </ReactiveFallback>
+    </RecoveryNode>
+  </BehaviorTree>
+</root>

@@ -5,7 +5,7 @@ ekf_filter_node:
     # =========================================================================
     
     # EKF update frequency (Hz)
-    frequency: 50.0
+    frequency: 15.0
     
     # Sensor timeout
     sensor_timeout: 0.1
