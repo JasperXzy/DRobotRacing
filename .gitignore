@@ -7,6 +7,7 @@ install/
 log/
 D_Robot-1.0/
 drobot_manual/
+rdk_model_zoo
 
 # Python
 __pycache__/

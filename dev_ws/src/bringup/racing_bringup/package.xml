@@ -14,6 +14,7 @@
   <exec_depend>chassis_driver</exec_depend>
   <exec_depend>origincar_description</exec_depend>
   <exec_depend>state_estimation</exec_depend>
+  <exec_depend>racing_perception_detector</exec_depend>
   <exec_depend>qr_detector_cpp</exec_depend>
   <exec_depend>vlm_tts_demo</exec_depend>
   <exec_depend>origincar_nav2</exec_depend>
