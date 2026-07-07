@@ -43,6 +43,18 @@ def parse_args() -> argparse.Namespace:
         help="Calibration image directory. Use 20-50 representative jpg/png images.",
     )
     parser.add_argument(
+        "--cal-preprocess",
+        choices=("letterbox", "resize"),
+        default="resize",
+        help="Calibration preprocess. resize matches the current best RDK S100 PTQ result.",
+    )
+    parser.add_argument(
+        "--cal-pad-value",
+        type=int,
+        default=127,
+        help="Padding value for letterbox calibration images.",
+    )
+    parser.add_argument(
         "--output-dir",
         type=Path,
         default=None,
@@ -68,8 +80,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--calibration-type",
         choices=("max", "kl", "default"),
-        default="max",
-        help="Activation calibration method. Use max to avoid default modelwise search crashes.",
+        default="default",
+        help="Activation calibration method. default runs modelwise search and gave the best RDK S100 confidence.",
     )
     parser.add_argument("--jobs", type=int, default=16, help="hb_compile parallel jobs.")
     parser.add_argument(
@@ -198,7 +210,48 @@ def prepare_workspace(workspace: Path, save_cache: bool) -> tuple[Path, Path]:
     return cal_data_dir, bpu_output_dir
 
 
-def write_calibration_data(images: list[Path], cal_data_dir: Path, width: int, height: int) -> None:
+def even_at_least_two(value: int, max_value: int) -> int:
+    clipped = max(2, min(value, max_value))
+    clipped &= ~1
+    if clipped <= 0:
+        clipped = 2
+    return min(clipped, max_value & ~1)
+
+
+def preprocess_calibration_image(
+    image,
+    width: int,
+    height: int,
+    preprocess_type: str,
+    pad_value: int,
+):
+    import cv2
+    import numpy as np
+
+    rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    if preprocess_type == "resize":
+        return cv2.resize(rgb, (width, height), interpolation=cv2.INTER_LINEAR)
+
+    src_h, src_w = rgb.shape[:2]
+    scale = min(width / src_w, height / src_h)
+    new_w = even_at_least_two(int(round(src_w * scale)), width)
+    new_h = even_at_least_two(int(round(src_h * scale)), height)
+    x_shift = ((width - new_w) // 2) & ~1
+    y_shift = ((height - new_h) // 2) & ~1
+
+    canvas = np.full((height, width, 3), pad_value, dtype=np.uint8)
+    resized = cv2.resize(rgb, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
+    canvas[y_shift : y_shift + new_h, x_shift : x_shift + new_w] = resized
+    return canvas
+
+
+def write_calibration_data(
+    images: list[Path],
+    cal_data_dir: Path,
+    width: int,
+    height: int,
+    args: argparse.Namespace,
+) -> None:
     import cv2
     import numpy as np
 
@@ -208,8 +261,13 @@ def write_calibration_data(images: list[Path], cal_data_dir: Path, width: int, h
             LOGGER.warning("Skipping unreadable calibration image: %s", image_path)
             continue
 
-        tensor = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        tensor = cv2.resize(tensor, (width, height), interpolation=cv2.INTER_LINEAR)
+        tensor = preprocess_calibration_image(
+            image,
+            width,
+            height,
+            args.cal_preprocess,
+            args.cal_pad_value,
+        )
         tensor = np.transpose(tensor, (2, 0, 1))
         tensor = np.expand_dims(tensor, axis=0).astype(np.float32) / 255.0
         np.save(cal_data_dir / f"{image_path.stem}.npy", tensor)
@@ -319,10 +377,15 @@ def main() -> None:
     LOGGER.info("ONNX: %s", args.onnx)
     LOGGER.info("input: %dx%d", width, height)
     LOGGER.info("calibration images: %d from %s", len(images), args.cal_images)
+    LOGGER.info(
+        "calibration preprocess: %s%s",
+        args.cal_preprocess,
+        f", pad={args.cal_pad_value}" if args.cal_preprocess == "letterbox" else "",
+    )
     LOGGER.info("workspace: %s", args.workspace)
     LOGGER.info("output prefix: %s", output_prefix)
 
-    write_calibration_data(images, cal_data_dir, width, height)
+    write_calibration_data(images, cal_data_dir, width, height, args)
     config_path = write_config(args, cal_data_dir, bpu_output_dir, output_prefix)
     LOGGER.info("config: %s", config_path)
 
