@@ -9,7 +9,7 @@ bt_navigator:
     # 阿克曼底盘：用自定义 BT 替代默认 BT，避免 Spin 原地旋转节点
     # ★ 请根据实际工作空间修改以下路径 ★
     default_nav_to_pose_bt_xml: "/root/D_Robot/dev_ws/install/origincar_nav2/share/origincar_nav2/behavior_trees/ackermann_navigate_w_recovery.xml"
-    default_nav_through_poses_bt_xml: "/root/D_Robot/dev_ws/install/origincar_nav2/share/origincar_nav2/behavior_trees/ackermann_navigate_w_recovery.xml"
+    default_nav_through_poses_bt_xml: "/root/D_Robot/dev_ws/install/origincar_nav2/share/origincar_nav2/behavior_trees/ackermann_navigate_through_poses_w_recovery.xml"
     plugin_lib_names:
     - nav2_compute_path_to_pose_action_bt_node
     - nav2_compute_path_through_poses_action_bt_node
