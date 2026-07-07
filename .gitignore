@@ -12,3 +12,8 @@ dev_ws/src/drivers/vlm_tts_demo_old/model/InternVL3_1B/vit_model_int16_VL3_1B_In
 .vscode/
 .idea/
 racing_ws_old/
+control/OBJ/
+
+# Keil generated/user-local files
+*.uvguix.*
+*.uvoptx
