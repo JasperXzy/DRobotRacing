@@ -74,14 +74,14 @@ RacingControlNode::RacingControlNode(const std::string& node_name,const rclcpp::
   // 订阅者和发布者创建
   point_subscriber_ =
     this->create_subscription<ai_msgs::msg::PerceptionTargets>(
-      "visual_track_center_detection", 
+      "racing_track_center_detection", 
       rclcpp::SensorDataQoS(),
       std::bind(&RacingControlNode::subscription_callback_point, this, std::placeholders::_1)); 
   auto costum_qos = rclcpp::SensorDataQoS()
       .keep_last(1);
   target_subscriber_ =
     this->create_subscription<ai_msgs::msg::PerceptionTargets>(
-      "visual_obstacle_detection", 
+      "racing_obstacle_detection", 
       costum_qos,
       std::bind(&RacingControlNode::subscription_callback_target, this, std::placeholders::_1)); 
 

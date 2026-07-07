@@ -79,15 +79,17 @@ void Drive_Motor(float Vx,float Vy,float Vz)
 			// For Ackerman small car, Vz represents the front wheel steering Angle
 			//对于阿克曼小车Vz代表右前轮转向角度
 			AngleR=Vz;
-			R=Axle_spacing/tan(AngleR)-0.5f*Wheel_spacing;
+
+			AngleR=target_limit_float(AngleR,-0.55f,0.55f);
 			
 			// Front wheel steering Angle limit (front wheel steering Angle controlled by steering engine), unit: rad
 			//前轮转向角度限幅(舵机控制前轮转向角度)，单位：rad
-			AngleR=target_limit_float(AngleR,-0.55f,0.55f);
 			
 			//Inverse kinematics //运动学逆解
 			if(AngleR!=0)
 			{
+				R=Axle_spacing/tan(AngleR)-0.5f*Wheel_spacing;
+				
 				MOTOR_A.Target = Vx*(R-0.5f*Wheel_spacing)/R;
 				MOTOR_B.Target = Vx*(R+0.5f*Wheel_spacing)/R;			
 			}
@@ -115,7 +117,7 @@ void Drive_Motor(float Vx,float Vy,float Vz)
 			MOTOR_B.Target=target_limit_float(MOTOR_B.Target,-amplitude,amplitude); 
 			MOTOR_C.Target=0; //Out of use //没有使用到
 			MOTOR_D.Target=0; //Out of use //没有使用到
-			Servo=target_limit_int(Servo,1050,1950);	//Servo PWM value limit //舵机PWM值限幅
+			Servo=target_limit_int(Servo,1050,2200);	//Servo PWM value limit //舵机PWM值限幅
 		}
 		
 		//Differential car
