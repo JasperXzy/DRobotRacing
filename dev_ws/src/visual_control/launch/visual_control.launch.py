@@ -63,10 +63,6 @@ def generate_launch_description():
             default_value='0.5',
             description='confidence threshold for line following'),
         DeclareLaunchArgument(
-            'line_confidence_threshold',
-            default_value='0.5',
-            description='confidence threshold for line following'),
-        DeclareLaunchArgument(
             'obstacle_confidence_threshold',
             default_value='0.5',
             description='confidence threshold for obstacle avoidance'),
