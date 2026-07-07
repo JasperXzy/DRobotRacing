@@ -1,4 +1,4 @@
-racing_perception_detector_node:
+perception_detector_node:
   ros__parameters:
     input_topic: /camera/image_hbmem
     detection_topic: /racing_obstacle_detection

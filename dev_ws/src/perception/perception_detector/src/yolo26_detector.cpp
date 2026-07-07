@@ -1,4 +1,4 @@
-#include "racing_perception_detector/yolo26_detector.hpp"
+#include "perception_detector/yolo26_detector.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -8,9 +8,9 @@
 
 #include <opencv2/dnn/dnn.hpp>
 
-#include "racing_perception_detector/nv12_utils.hpp"
+#include "perception_detector/nv12_utils.hpp"
 
-namespace racing_perception_detector
+namespace perception_detector
 {
 
 namespace
@@ -645,4 +645,4 @@ void Yolo26Detector::release()
   initialized_ = false;
 }
 
-}  // namespace racing_perception_detector
+}  // namespace perception_detector

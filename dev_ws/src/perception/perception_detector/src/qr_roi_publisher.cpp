@@ -1,4 +1,4 @@
-#include "racing_perception_detector/qr_roi_publisher.hpp"
+#include "perception_detector/qr_roi_publisher.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -7,9 +7,9 @@
 
 #include <sensor_msgs/image_encodings.hpp>
 
-#include "racing_perception_detector/nv12_utils.hpp"
+#include "perception_detector/nv12_utils.hpp"
 
-namespace racing_perception_detector
+namespace perception_detector
 {
 
 void QrRoiPublisher::configure(
@@ -112,4 +112,4 @@ bool QrRoiPublisher::publishBestRoi(
   return true;
 }
 
-}  // namespace racing_perception_detector
+}  // namespace perception_detector

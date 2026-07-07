@@ -1,14 +1,14 @@
-# racing_perception_detector 设计说明
+# perception_detector 设计说明
 
-本文档描述目标 ROS2 包 `racing_perception_detector` 的职责、输入输出、参数、推理流程、YOLO26 后处理、二维码 ROI 发布策略和推荐代码结构。目标是按本文档可以直接开始实现包：
+本文档描述目标 ROS2 包 `perception_detector` 的职责、输入输出、参数、推理流程、YOLO26 后处理、二维码 ROI 发布策略和推荐代码结构。目标是按本文档可以直接开始实现包：
 
 ```text
-dev_ws/src/perception/racing_perception_detector
+dev_ws/src/perception/perception_detector
 ```
 
 ## 1. 包职责
 
-`racing_perception_detector` 是比赛感知检测节点，负责从相机 NV12 图像中运行 S100 BPU YOLO26 检测模型，输出障碍物/标志牌检测结果，并从停车牌或二维码提示牌检测框中裁剪二维码 ROI，发布给 `qr_detector_cpp` 做 ZBar 解码。
+`perception_detector` 是比赛感知检测节点，负责从相机 NV12 图像中运行 S100 BPU YOLO26 检测模型，输出障碍物/标志牌检测结果，并从停车牌或二维码提示牌检测框中裁剪二维码 ROI，发布给 `qr_detector_cpp` 做 ZBar 解码。
 
 它不负责二维码内容识别。二维码识别仍由 `qr_detector_cpp` 完成，`qr_detector_cpp` 只订阅：
 
@@ -33,7 +33,7 @@ flowchart LR
     A["hobot_usb_cam<br/>1920x1080 MJPEG 30 FPS"] --> B["/camera/image<br/>sensor_msgs/CompressedImage"]
     B --> C["hobot_codec_republish<br/>MJPEG -> NV12 shared memory"]
     C --> D["/camera/image_hbmem<br/>hbm_img_msgs/HbmMsg1080P"]
-    D --> E["racing_perception_detector<br/>NV12 preprocess + YOLO26 HBM inference"]
+    D --> E["perception_detector<br/>NV12 preprocess + YOLO26 HBM inference"]
     E --> F["/racing_obstacle_detection<br/>ai_msgs/PerceptionTargets"]
     E --> G["/camera/qr_roi/image<br/>sensor_msgs/Image mono8"]
     G --> H["qr_detector_cpp<br/>ZBar QR decode"]
@@ -43,27 +43,27 @@ flowchart LR
 ## 3. 推荐包结构
 
 ```text
-racing_perception_detector/
+perception_detector/
 ├── CMakeLists.txt
 ├── package.xml
-├── include/racing_perception_detector/
+├── include/perception_detector/
 │   ├── detector_types.hpp
 │   ├── nv12_utils.hpp
 │   ├── qr_roi_publisher.hpp
 │   └── yolo26_detector.hpp
 ├── src/
-│   ├── racing_perception_detector_node.cpp
+│   ├── perception_detector_node.cpp
 │   ├── nv12_utils.cpp
 │   ├── qr_roi_publisher.cpp
 │   └── yolo26_detector.cpp
 └── launch/
-    └── racing_perception_detector.launch.py
+    └── perception_detector.launch.py
 ```
 
 配置文件放在工作空间统一配置目录：
 
 ```text
-dev_ws/config/perception/racing_perception_detector.yaml
+dev_ws/config/perception/perception_detector.yaml
 ```
 
 不要把参数放进包内 `config/`，这样和已有 `qr_detector.yaml` 保持一致。
@@ -170,8 +170,8 @@ ROI 图像直接从原始 NV12 的 Y 平面裁剪，因此天然是灰度 `mono8
 
 | Topic | Type | 默认 | 用途 |
 | --- | --- | --- | --- |
-| `/racing_perception_detector/debug_image` | `sensor_msgs/msg/Image` 或 `sensor_msgs/msg/CompressedImage` | 关闭 | 绘制检测框后的预览 |
-| `/racing_perception_detector/status` | `diagnostic_msgs/msg/DiagnosticArray` 或日志 | 关闭 | 推理耗时、丢帧、模型状态 |
+| `/perception_detector/debug_image` | `sensor_msgs/msg/Image` 或 `sensor_msgs/msg/CompressedImage` | 关闭 | 绘制检测框后的预览 |
+| `/perception_detector/status` | `diagnostic_msgs/msg/DiagnosticArray` 或日志 | 关闭 | 推理耗时、丢帧、模型状态 |
 
 比赛运行时不建议发布 debug 图像，否则会增加 CPU 和总线负载。
 
@@ -180,7 +180,7 @@ ROI 图像直接从原始 NV12 的 Y 平面裁剪，因此天然是灰度 `mono8
 推荐配置文件：
 
 ```yaml
-racing_perception_detector_node:
+perception_detector_node:
   ros__parameters:
     # ROS topics
     input_topic: /camera/image_hbmem
@@ -368,7 +368,7 @@ hbUCPFree(&tensor.sysMem);
 链接库参考：
 
 ```cmake
-target_link_libraries(racing_perception_detector_node
+target_link_libraries(perception_detector_node
   ${OpenCV_LIBS}
   dnn
   hbucp
@@ -791,7 +791,7 @@ roi_publish_fps
 
 | 项 | 旧包 | 新包 |
 | --- | --- | --- |
-| 包名 | `racing_obstacle_detection` | `racing_perception_detector` |
+| 包名 | `racing_obstacle_detection` | `perception_detector` |
 | 目标平台 | RDK X5 / Bayes | RDK S100 / Nash-E |
 | 模型格式 | `.bin` | `.hbm` |
 | DNN 头文件 | `dnn/hb_dnn.h`, `dnn/hb_sys.h` | `hobot/dnn/hb_dnn.h`, `hobot/hb_ucp.h`, `hobot/hb_ucp_sys.h` |
@@ -836,7 +836,7 @@ roi_publish_fps
 
 ```cmake
 cmake_minimum_required(VERSION 3.8)
-project(racing_perception_detector)
+project(perception_detector)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -857,14 +857,14 @@ include_directories(
 
 link_directories(/usr/hobot/lib)
 
-add_executable(racing_perception_detector_node
-  src/racing_perception_detector_node.cpp
+add_executable(perception_detector_node
+  src/perception_detector_node.cpp
   src/yolo26_detector.cpp
   src/nv12_utils.cpp
   src/qr_roi_publisher.cpp
 )
 
-ament_target_dependencies(racing_perception_detector_node
+ament_target_dependencies(perception_detector_node
   rclcpp
   sensor_msgs
   hbm_img_msgs
@@ -873,7 +873,7 @@ ament_target_dependencies(racing_perception_detector_node
   OpenCV
 )
 
-target_link_libraries(racing_perception_detector_node
+target_link_libraries(perception_detector_node
   ${OpenCV_LIBS}
   dnn
   hbucp
@@ -883,7 +883,7 @@ target_link_libraries(racing_perception_detector_node
   m
 )
 
-install(TARGETS racing_perception_detector_node
+install(TARGETS perception_detector_node
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -905,11 +905,11 @@ from launch_ros.actions import Node
 def generate_launch_description():
     return LaunchDescription([
         Node(
-            package='racing_perception_detector',
-            executable='racing_perception_detector_node',
-            name='racing_perception_detector_node',
+            package='perception_detector',
+            executable='perception_detector_node',
+            name='perception_detector_node',
             output='screen',
-            parameters=['/root/D_Robot/dev_ws/config/perception/racing_perception_detector.yaml'],
+            parameters=['/root/D_Robot/dev_ws/config/perception/perception_detector.yaml'],
             arguments=['--ros-args', '--log-level', 'info'],
         )
     ])
@@ -919,7 +919,7 @@ def generate_launch_description():
 
 ```text
 t=6s:
-  racing_perception_detector_node
+  perception_detector_node
   qr_detector_node
   vlm_tts_demo
 ```
@@ -997,7 +997,7 @@ public:
 ### 17.4 Node
 
 ```cpp
-class RacingPerceptionDetectorNode : public rclcpp::Node {
+class PerceptionDetectorNode : public rclcpp::Node {
 private:
   void imageCallback(const hbm_img_msgs::msg::HbmMsg1080P::SharedPtr msg);
   void publishDetections(const std::vector<Detection>& detections,
@@ -1041,9 +1041,9 @@ ros2 topic hz /camera/image_hbmem
 ### 18.3 detector 单节点检查
 
 ```bash
-ros2 run racing_perception_detector racing_perception_detector_node \
+ros2 run perception_detector perception_detector_node \
   --ros-args \
-  --params-file /root/D_Robot/dev_ws/config/perception/racing_perception_detector.yaml
+  --params-file /root/D_Robot/dev_ws/config/perception/perception_detector.yaml
 ```
 
 另一个终端：

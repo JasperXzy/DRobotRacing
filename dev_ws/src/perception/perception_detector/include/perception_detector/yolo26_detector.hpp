@@ -1,5 +1,5 @@
-#ifndef RACING_PERCEPTION_DETECTOR_YOLO26_DETECTOR_HPP_
-#define RACING_PERCEPTION_DETECTOR_YOLO26_DETECTOR_HPP_
+#ifndef PERCEPTION_DETECTOR_YOLO26_DETECTOR_HPP_
+#define PERCEPTION_DETECTOR_YOLO26_DETECTOR_HPP_
 
 #include <array>
 #include <string>
@@ -9,9 +9,9 @@
 #include "hobot/hb_ucp.h"
 #include "hobot/hb_ucp_sys.h"
 
-#include "racing_perception_detector/detector_types.hpp"
+#include "perception_detector/detector_types.hpp"
 
-namespace racing_perception_detector
+namespace perception_detector
 {
 
 class Yolo26Detector
@@ -75,6 +75,6 @@ private:
   std::vector<uint8_t> model_nv12_;
 };
 
-}  // namespace racing_perception_detector
+}  // namespace perception_detector
 
-#endif  // RACING_PERCEPTION_DETECTOR_YOLO26_DETECTOR_HPP_
+#endif  // PERCEPTION_DETECTOR_YOLO26_DETECTOR_HPP_

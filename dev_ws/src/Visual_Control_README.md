@@ -43,7 +43,7 @@ ros2 topic echo /visual_track_center_detection --once
 
 ## 障碍物 / 停车牌检测
 ```bash
-ros2 run racing_perception_detector racing_perception_detector_node --ros-args \
+ros2 run perception_detector perception_detector_node --ros-args \
   -p input_topic:=/camera/image_hbmem \
   -p detection_topic:=/visual_obstacle_detection \
   -p model_path:=/root/D_Robot/model/Visual_Control/yolo26_det_bpu_nashe_640x640_nv12.hbm \
