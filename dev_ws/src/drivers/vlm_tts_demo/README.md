@@ -1,57 +1,65 @@
-# VLM TTS Demo 使用步骤
+# API VLM + TTS Demo
 
-## 覆盖文件夹
+这个包替代旧的本地 `hobot_llamacpp` VLM 流程：板端只抓图、请求远端视觉 API、发布 TTS 文本。
 
-把本文件夹放到：
+默认配置文件：
 
 ```bash
-/root/D_Robot/dev_ws/src/drivers/vlm_tts_demo
+/root/D_Robot/dev_ws/src/drivers/vlm_tts_demo/config/vlm_api.env
 ```
+
+这个文件保存 `VLM_API_ENDPOINT`、`VLM_API_MODEL`、`VLM_API_KEY`，已被 `.gitignore` 忽略。
 
 ## 编译
 
 ```bash
 cd /root/D_Robot/dev_ws
 source /opt/tros/humble/setup.bash
-rm -rf build/vlm_tts_demo install/vlm_tts_demo log src/drivers/vlm_tts_demo/*.egg-info
-colcon build --packages-select vlm_tts_demo
+colcon build --packages-select vlm_tts_demo --symlink-install
 source install/setup.bash
 ```
 
 ## 启动
 
 ```bash
-cd /root/D_Robot/dev_ws
-source /opt/tros/humble/setup.bash
-source install/setup.bash
-ros2 launch vlm_tts_demo vlm_tts_demo.launch.py playback_device:=plughw:0,0
+ros2 launch vlm_tts_demo vlm_tts_demo.launch.py \
+  launch_camera:=false \
+  ding_enable:=false
 ```
 
-## 触发
+## 比赛触发流程
 
-另开一个终端：
+抓图：
 
 ```bash
-cd /root/D_Robot/dev_ws
-source /opt/tros/humble/setup.bash
-source install/setup.bash
 ros2 topic pub --once /sign4return std_msgs/msg/Int32 "{data: -1}"
 ```
 
-## 查看保存图片
+调用 API 并播报：
 
 ```bash
-ls -lh /root/D_Robot/dev_ws/src/drivers/vlm_tts_demo/captures/vlm_tts_demo_capture.jpg
+ros2 topic pub --once /sign4return std_msgs/msg/Int32 "{data: 0}"
 ```
 
-## 查看输出
+抓图会保存到：
 
 ```bash
-ros2 topic echo /llama_cpp_node
+/root/D_Robot/dev_ws/install/vlm_tts_demo/share/vlm_tts_demo/captures/vlm_tts_demo_capture.jpg
 ```
+
+## 单次触发测试
+
+如果想发 `-1` 后立刻识别：
 
 ```bash
-ros2 topic echo /tts_text
+ros2 launch vlm_tts_demo vlm_tts_demo.launch.py \
+  launch_camera:=false \
+  infer_on_capture:=true \
+  ding_enable:=false
 ```
 
-如果出现 `option --uninstall not recognized` 或 `option --editable not recognized`，先执行上面的 `rm -rf ... *.egg-info` 清理命令，再重新编译。
+然后发布：
+
+```bash
+ros2 topic pub --once /sign4return std_msgs/msg/Int32 "{data: -1}"
+```

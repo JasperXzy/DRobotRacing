@@ -1,0 +1,173 @@
+视觉巡线避障移植总结
+====================
+
+当前目标
+--------
+将 racing_ws 中的 racing_control / racing_track_detection / racing_obstacle_detection 简化移植到 dev_ws，
+先实现视觉巡线、障碍物识别避障，二维码继续使用 dev_ws 里已有的 qr_detector_cpp。
+
+
+当前包位置
+----------
+D_Robot/dev_ws/src/visual_control
+D_Robot/dev_ws/src/visual_track_detection
+D_Robot/dev_ws/src/visual_obstacle_detection
+
+
+包名和话题
+----------
+racing_control            -> visual_control
+racing_track_detection    -> visual_track_detection
+racing_obstacle_detection -> visual_obstacle_detection
+
+camera_driver:
+  发布 /camera/image
+  发布 /camera/image_hbmem
+
+visual_track_detection:
+  订阅 /camera/image_hbmem
+  发布 /visual_track_center_detection
+
+visual_obstacle_detection:
+  订阅 /camera/image_hbmem
+  发布 /visual_obstacle_detection
+
+visual_control:
+  订阅 /visual_track_center_detection
+  订阅 /visual_obstacle_detection
+  发布 /cmd_vel
+
+
+图像接口状态
+------------
+板端已确认 /camera/image 存在，类型为 sensor_msgs/msg/CompressedImage，频率约 30Hz。
+后来发现还存在 /camera/image_hbmem，因此已改为直接使用 hbmem 图像。
+
+当前不再走：
+  /camera/image -> JPEG 解码 -> BGR -> NV12
+
+当前走：
+  /camera/image_hbmem -> hbm_img_msgs/msg/HbmMsg1080P -> NV12 -> 模型
+
+因此 bgr_to_nv12 / letterbox_bgr_to_nv12 已删除或不再使用。
+
+
+模型路径
+--------
+计划统一放在：
+  /root/D_Robot/model
+
+当前代码配置为：
+  /root/D_Robot/model/race_track_detection.hbm
+  /root/D_Robot/model/yolov8n.hbm
+  /root/D_Robot/model/yolov11n.hbm
+
+对应修改文件：
+  dev_ws/src/visual_track_detection/launch/visual_track_detection.launch.py
+  dev_ws/src/visual_track_detection/launch/visual_track_detection_web.launch.py
+  dev_ws/src/visual_obstacle_detection/config/yolov8.json
+  dev_ws/src/visual_obstacle_detection/config/yolo11.json
+
+注意：
+  visual_obstacle_detection/src/parser.cpp 仍读取 config/yolov8.json。
+  这个 config 是包内配置文件，不是模型文件，不需要放到 /root/D_Robot/model。
+
+
+依赖边界
+--------
+visual_track_detection:
+  需要 hbm_img_msgs / dnn_node / hobot_cv
+
+visual_obstacle_detection:
+  需要 hbm_img_msgs / dnn / OpenCV / nlohmann_json
+
+visual_control:
+  不需要 hbm_img_msgs / dnn_node
+  因为它不直接处理图像或模型，只订阅检测结果并发布 /cmd_vel。
+
+
+板端验证命令
+------------
+先确认相机和 hbmem 图像：
+
+  cd ~/D_Robot/dev_ws
+  source install/setup.bash
+  ros2 launch camera_driver camera.launch.py
+
+另开终端：
+
+  source ~/D_Robot/dev_ws/install/setup.bash
+  ros2 topic info /camera/image_hbmem -v
+  ros2 topic hz /camera/image_hbmem
+
+确认模型文件：
+
+  ls -l /root/D_Robot/model/*.hbm
+
+编译：
+
+  cd ~/D_Robot/dev_ws
+  colcon build --packages-select visual_track_detection visual_obstacle_detection visual_control
+  source install/setup.bash
+
+分别启动：
+
+  ros2 launch visual_track_detection visual_track_detection.launch.py
+  ros2 launch visual_obstacle_detection visual_obstacle_detection.launch.py
+  ros2 launch visual_control visual_control.launch.py
+
+检查输出：
+
+  ros2 topic hz /visual_track_center_detection
+  ros2 topic echo /visual_track_center_detection --once
+
+  ros2 topic hz /visual_obstacle_detection
+  ros2 topic echo /visual_obstacle_detection --once
+
+  ros2 topic echo /cmd_vel
+
+
+避障延迟问题判断
+----------------
+之前的问题表现：
+  小车速度越快，障碍物越过底部阈值越多后才触发避障。
+
+判断：
+  这不一定是单纯摄像头延迟，更可能是整条链路总延迟：
+    摄像头采集
+    -> codec 转 hbmem
+    -> YOLO 推理
+    -> postprocess
+    -> ROS 消息传输
+    -> visual_control 30Hz 控制循环
+    -> 电机响应
+
+建议后续做：
+  1. 测 /visual_obstacle_detection 的频率
+     ros2 topic hz /visual_obstacle_detection
+
+  2. 测检测消息延迟
+     ros2 topic delay /visual_obstacle_detection
+
+  3. 如果 ros2 topic delay 不可用，就在 visual_control 中打印：
+     now - current_obstacle_msg->header.stamp
+
+  4. 将 bottom_threshold_avoid 做成随速度提前触发的动态阈值。
+     速度越快，bottom_threshold_avoid 应越小。
+
+
+后续重点文件
+------------
+dev_ws/src/visual_control/src/visual_control.cpp
+dev_ws/src/visual_control/include/visual_control/visual_control.h
+dev_ws/src/visual_track_detection/src/visual_track_detection.cpp
+dev_ws/src/visual_track_detection/include/visual_track_detection/visual_track_detection.h
+dev_ws/src/visual_obstacle_detection/src/main.cpp
+dev_ws/src/visual_obstacle_detection/src/parser.cpp
+dev_ws/src/visual_obstacle_detection/config/yolov8.json
+
+
+当前限制
+--------
+本地 Windows 环境只能做静态检查和文本修改，不能完整 ROS 编译。
+最终编译、运行和模型加载结果以 S100 板端为准。
