@@ -248,19 +248,19 @@ https://github.com/JasperXzy/rdk_model_zoo_s/tree/feat/yolo26-detect-cpp-runtime
 YOLO26 Detect 需要使用 BPU 适配导出脚本：
 
 ```text
-samples/Vision/yolo26/conversion/onnx_export/export_yolo26_detect_bpu.py
+samples/Vision/ultralytics_yolo26/conversion/onnx_export/export_yolo26_detect_bpu.py
 ```
 
 该脚本会 monkey patch `Detect.forward`，把输出改成 BPU 友好的 6 个 NHWC tensor：
 
 ```text
-[Box_8, Cls_8, Box_16, Cls_16, Box_32, Cls_32]
+[Cls_8, Box_8, Cls_16, Box_16, Cls_32, Box_32]
 ```
 
 其中：
 
-- `Box_*` 是 4 通道，表示 `[l, t, r, b]`。
 - `Cls_*` 是 `class_num` 通道，表示每个类别的 raw logits。
+- `Box_*` 是 4 通道，表示 `[l, t, r, b]`。
 - 不再是 YOLOv8/YOLO11 的 DFL `4 * reg = 64` 分布输出。
 
 ### 7.2 编译 HBM
