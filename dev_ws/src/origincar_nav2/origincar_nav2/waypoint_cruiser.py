@@ -7,8 +7,8 @@ waypoint_cruiser.py — 竞赛巡航节点 (v2: NavigateThroughPoses 平滑巡�
   2. 批量发送 waypoints_prescan.yaml 全部航点 → 连续巡航，中间不停
   3. prescan走完 → 根据QR结果加载顺时针或逆时针文件
   4. 批量发送后续航点 → 连续巡航
-  5. 到达 vlm_trigger_waypoint 时触发VLM拍照（不等结果，继续走）
-  6. 走完全部航点 → 触发VLM推理 → 巡航结束
+  5. 到达 vlm_trigger_waypoint 时触发VLM拍照 → 立即启动推理（不等巡航结束）
+  6. 走完全部航点 → 巡航结束
 
 与v1的区别:
   - v1: NavigateToPose 逐点发送 → 每点到达后停0.5s → 下一帧
@@ -23,6 +23,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
 from nav2_msgs.action import NavigateThroughPoses
+from builtin_interfaces.msg import Time
 from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
 from std_msgs.msg import Empty, Int32, String
 from origincar_msg.msg import Sign
@@ -96,7 +97,9 @@ class WaypointCruiser(Node):
         self._state = self.WAITING_START
         self.waypoints = []              # 当前航点列表 [(x, y, yaw), ...]
         self.last_qr_sign = None         # 最新QR方向 (3=顺时针, 4=逆时针)
+        self.announced_qr_sign = None    # 已播报过的QR方向，避免重复播报
         self.vlm_capture_triggered = False  # VLM拍照是否已触发
+        self.feedback_schema_warned = False
 
         # ---- Nav2 NavigateThroughPoses 动作客户端 ----
         # ★ v2 核心改动：使用 navigate_through_poses 而非 navigate_to_pose
@@ -175,6 +178,8 @@ class WaypointCruiser(Node):
             self.get_logger().debug(f'忽略未知QR信号: sign={sign_data}')
             return
 
+        self._announce_qr_direction(sign_data)
+
         # ★ 如果正在等QR，扫到后立刻进入下一个阶段 ★
         if self._state == self.WAITING_QR:
             self.get_logger().info('QR已扫到，立即进入巡航阶段！')
@@ -224,7 +229,8 @@ class WaypointCruiser(Node):
         for x, y, yaw in waypoints:
             pose = PoseStamped()
             pose.header.frame_id = 'map'
-            pose.header.stamp = self.get_clock().now().to_msg()
+            # 置 0 让 Nav2 使用最新 TF，避免长时间巡航后按旧时间查 map->odom。
+            pose.header.stamp = Time(sec=0, nanosec=0)
             pose.pose.position.x = x
             pose.pose.position.y = y
             pose.pose.position.z = 0.0
@@ -281,23 +287,47 @@ class WaypointCruiser(Node):
             # prescan走完 → 根据QR方向加载后续航点
             self._switch_to_post_qr()
         elif self._state == self.POST_QR:
-            # 全部走完 → 触发 VLM 推理
-            self.get_logger().info('所有航点已完成，触发VLM推理！')
-            self._trigger_vlm_infer()
+            # 全部走完 → 巡航结束（VLM推理已在拍照时触发）
+            self.get_logger().info('所有航点已完成，巡航结束！')
             self._state = self.DONE
 
     def _feedback_callback(self, feedback_msg):
         """巡航过程中的反馈 — 用于VLM触发检测"""
         feedback = feedback_msg.feedback
-        current_idx = feedback.current_waypoint_index  # 0-based
+        current_wp_number = self._current_waypoint_number_from_feedback(feedback)
+        if current_wp_number is None:
+            return
 
-        # VLM拍照触发：在POST_QR阶段，首次到达指定航点序号时触发
+        # VLM拍照+推理触发：在POST_QR阶段，首次到达指定航点序号时触发
         if self._state == self.POST_QR and not self.vlm_capture_triggered:
-            # current_waypoint_index 是机器人正前往的航点索引 (0-based)
             # vlm_trigger_waypoint 是用户指定的航点序号 (1-based)
-            if current_idx + 1 >= self.vlm_trigger_waypoint:
+            if current_wp_number >= self.vlm_trigger_waypoint:
                 self._trigger_vlm_capture()
                 self.vlm_capture_triggered = True
+                # ★ 拍照后立即启动推理（不等巡航结束）
+                self._trigger_vlm_infer()
+
+    def _current_waypoint_number_from_feedback(self, feedback):
+        """Return the current target waypoint number as 1-based.
+
+        ROS2 Humble NavigateThroughPoses feedback does not expose
+        current_waypoint_index, only number_of_poses_remaining.
+        """
+        if hasattr(feedback, 'current_waypoint_index'):
+            return int(feedback.current_waypoint_index) + 1
+
+        if hasattr(feedback, 'number_of_poses_remaining'):
+            total = len(self.waypoints)
+            if total <= 0:
+                return None
+            remaining = max(0, min(int(feedback.number_of_poses_remaining), total))
+            return max(1, min(total - remaining + 1, total))
+
+        if not self.feedback_schema_warned:
+            self.feedback_schema_warned = True
+            self.get_logger().warn(
+                'NavigateThroughPoses feedback里没有航点进度字段，跳过VLM触发检测')
+        return None
 
     # ================================================================
     # 阶段切换
@@ -320,10 +350,11 @@ class WaypointCruiser(Node):
     def _do_switch_to_post_qr(self):
         """实际执行QR方向判断并加载后续航点，批量发送"""
         direction = 'unknown'
+        sign_data = self.last_qr_sign
 
-        if self.last_qr_sign == self.qr_sign_cw:
+        if sign_data == self.qr_sign_cw:
             direction = 'cw'
-        elif self.last_qr_sign == self.qr_sign_ccw:
+        elif sign_data == self.qr_sign_ccw:
             direction = 'ccw'
         else:
             direction = self.qr_default
@@ -339,11 +370,10 @@ class WaypointCruiser(Node):
             self.get_logger().info('>>> QR方向: 逆时针 <<<')
             tts_text = '已选择逆时针方向'
 
-        # ★ TTS语音播报方向决策 ★
-        tts_msg = String()
-        tts_msg.data = tts_text
-        self.tts_pub.publish(tts_msg)
-        self.get_logger().info(f'TTS播报: {tts_text}')
+        # 如果QR是在等待阶段才扫到，回调里已经播报；默认方向仍在这里播报。
+        if sign_data is None or self.announced_qr_sign != sign_data:
+            self._publish_tts(tts_text)
+            self.announced_qr_sign = sign_data
 
         self.waypoints = self._load_waypoints(next_file)
         if not self.waypoints:
@@ -358,6 +388,28 @@ class WaypointCruiser(Node):
 
         # 立即批量发送全部后续航点
         self._send_all_goals()
+
+    def _announce_qr_direction(self, sign_data):
+        """扫描到有效QR方向后立即播报一次。"""
+        if self.announced_qr_sign == sign_data:
+            return
+
+        if sign_data == self.qr_sign_cw:
+            tts_text = '已选择顺时针方向'
+        elif sign_data == self.qr_sign_ccw:
+            tts_text = '已选择逆时针方向'
+        else:
+            return
+
+        self._publish_tts(tts_text)
+        self.announced_qr_sign = sign_data
+
+    def _publish_tts(self, text):
+        """发布TTS文本，并在日志中保留一条可查记录。"""
+        tts_msg = String()
+        tts_msg.data = text
+        self.tts_pub.publish(tts_msg)
+        self.get_logger().info(f'TTS播报: {text}')
 
     # ================================================================
     # VLM 触发
