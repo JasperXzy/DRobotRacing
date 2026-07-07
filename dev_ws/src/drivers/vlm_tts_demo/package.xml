@@ -2,8 +2,8 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>vlm_tts_demo</name>
-  <version>0.0.0</version>
-  <description>Triggered image-to-text and TTS demo for RDK S100.</description>
+  <version>0.1.0</version>
+  <description>Triggered API vision-to-text and TTS demo for OriginCar.</description>
   <maintainer email="jasper.zhengyi.xu@gmail.com">JasperXzy</maintainer>
   <license>Apache-2.0</license>
 
@@ -15,7 +15,6 @@
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>ros2launch</exec_depend>
-  <exec_depend>hobot_llamacpp</exec_depend>
   <exec_depend>hobot_tts</exec_depend>
   <exec_depend>camera_driver</exec_depend>
 

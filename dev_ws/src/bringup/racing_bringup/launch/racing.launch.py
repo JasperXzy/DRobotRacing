@@ -118,14 +118,21 @@ def generate_launch_description():
 
     # ★ 动态修正 YAML 中硬编码的路径（BT XML + 地图），避免依赖 /root/D_Robot 固定路径
     origincar_share = get_package_share_directory('origincar_nav2')
-    bt_xml_path = os.path.join(origincar_share, 'behavior_trees', 'ackermann_navigate_w_recovery.xml')
+    bt_to_pose_xml_path = os.path.join(
+        origincar_share, 'behavior_trees', 'ackermann_navigate_w_recovery.xml')
+    bt_through_poses_xml_path = os.path.join(
+        origincar_share, 'behavior_trees',
+        'ackermann_navigate_through_poses_w_recovery.xml')
     map_yaml_path = os.path.join(origincar_share, 'map', 'my_map.yaml')
 
     with open(nav2_params_file, 'r') as f:
         params_content = f.read()
     params_content = params_content.replace(
         '/root/D_Robot/dev_ws/install/origincar_nav2/share/origincar_nav2/behavior_trees/ackermann_navigate_w_recovery.xml',
-        bt_xml_path)
+        bt_to_pose_xml_path)
+    params_content = params_content.replace(
+        '/root/D_Robot/dev_ws/install/origincar_nav2/share/origincar_nav2/behavior_trees/ackermann_navigate_through_poses_w_recovery.xml',
+        bt_through_poses_xml_path)
     params_content = params_content.replace(
         '/root/D_Robot/dev_ws/install/origincar_nav2/share/origincar_nav2/map/my_map.yaml',
         map_yaml_path)
@@ -253,7 +260,7 @@ def generate_launch_description():
             'qr_sign_cw': 3,
             'qr_sign_ccw': 4,
             'qr_default': 'cw',
-            'vlm_trigger_waypoint': 5,
+            'vlm_trigger_waypoint': 7,
             'vlm_trigger_value': -1,
             'vlm_trigger_topic': '/sign4return',
         }]
