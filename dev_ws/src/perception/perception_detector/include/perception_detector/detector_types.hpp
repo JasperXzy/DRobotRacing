@@ -1,10 +1,10 @@
-#ifndef RACING_PERCEPTION_DETECTOR_DETECTOR_TYPES_HPP_
-#define RACING_PERCEPTION_DETECTOR_DETECTOR_TYPES_HPP_
+#ifndef PERCEPTION_DETECTOR_DETECTOR_TYPES_HPP_
+#define PERCEPTION_DETECTOR_DETECTOR_TYPES_HPP_
 
 #include <string>
 #include <vector>
 
-namespace racing_perception_detector
+namespace perception_detector
 {
 
 enum class PreprocessType
@@ -70,6 +70,6 @@ struct QrRoiConfig
 
 PreprocessType parsePreprocessType(const std::string & value);
 
-}  // namespace racing_perception_detector
+}  // namespace perception_detector
 
-#endif  // RACING_PERCEPTION_DETECTOR_DETECTOR_TYPES_HPP_
+#endif  // PERCEPTION_DETECTOR_DETECTOR_TYPES_HPP_

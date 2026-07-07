@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(racing_perception_detector)
+project(perception_detector)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -25,14 +25,14 @@ include_directories(
 
 link_directories(/usr/hobot/lib)
 
-add_executable(racing_perception_detector_node
-  src/racing_perception_detector_node.cpp
+add_executable(perception_detector_node
+  src/perception_detector_node.cpp
   src/yolo26_detector.cpp
   src/nv12_utils.cpp
   src/qr_roi_publisher.cpp
 )
 
-ament_target_dependencies(racing_perception_detector_node
+ament_target_dependencies(perception_detector_node
   rclcpp
   sensor_msgs
   builtin_interfaces
@@ -41,7 +41,7 @@ ament_target_dependencies(racing_perception_detector_node
   OpenCV
 )
 
-target_link_libraries(racing_perception_detector_node
+target_link_libraries(perception_detector_node
   ${OpenCV_LIBS}
   dnn
   hbucp
@@ -51,7 +51,7 @@ target_link_libraries(racing_perception_detector_node
   m
 )
 
-install(TARGETS racing_perception_detector_node
+install(TARGETS perception_detector_node
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 

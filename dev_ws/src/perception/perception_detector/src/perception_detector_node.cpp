@@ -18,11 +18,11 @@
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
 
-#include "racing_perception_detector/nv12_utils.hpp"
-#include "racing_perception_detector/qr_roi_publisher.hpp"
-#include "racing_perception_detector/yolo26_detector.hpp"
+#include "perception_detector/nv12_utils.hpp"
+#include "perception_detector/qr_roi_publisher.hpp"
+#include "perception_detector/yolo26_detector.hpp"
 
-namespace racing_perception_detector
+namespace perception_detector
 {
 
 namespace
@@ -49,11 +49,11 @@ std::vector<int> toIntVector(const std::vector<int64_t> & values)
 
 }  // namespace
 
-class RacingPerceptionDetectorNode : public rclcpp::Node
+class PerceptionDetectorNode : public rclcpp::Node
 {
 public:
-  RacingPerceptionDetectorNode()
-  : Node("racing_perception_detector_node")
+  PerceptionDetectorNode()
+  : Node("perception_detector_node")
   {
     declareParameters();
     loadParameters();
@@ -74,12 +74,12 @@ public:
     image_sub_ = create_subscription<hbm_img_msgs::msg::HbmMsg1080P>(
       input_topic_,
       sensor_qos,
-      std::bind(&RacingPerceptionDetectorNode::imageCallback, this, std::placeholders::_1));
+      std::bind(&PerceptionDetectorNode::imageCallback, this, std::placeholders::_1));
 
     fps_window_start_ = now();
     RCLCPP_INFO(
       get_logger(),
-      "racing_perception_detector started: input=%s, detections=%s, qr_roi=%s, model=%s",
+      "perception_detector started: input=%s, detections=%s, qr_roi=%s, model=%s",
       input_topic_.c_str(),
       detection_topic_.c_str(),
       qr_roi_topic_.c_str(),
@@ -353,16 +353,16 @@ private:
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr qr_roi_pub_;
 };
 
-}  // namespace racing_perception_detector
+}  // namespace perception_detector
 
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
   try {
-    auto node = std::make_shared<racing_perception_detector::RacingPerceptionDetectorNode>();
+    auto node = std::make_shared<perception_detector::PerceptionDetectorNode>();
     rclcpp::spin(node);
   } catch (const std::exception & e) {
-    RCLCPP_FATAL(rclcpp::get_logger("racing_perception_detector_node"), "%s", e.what());
+    RCLCPP_FATAL(rclcpp::get_logger("perception_detector_node"), "%s", e.what());
     rclcpp::shutdown();
     return 1;
   }

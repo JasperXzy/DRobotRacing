@@ -1,5 +1,5 @@
-#ifndef RACING_PERCEPTION_DETECTOR_QR_ROI_PUBLISHER_HPP_
-#define RACING_PERCEPTION_DETECTOR_QR_ROI_PUBLISHER_HPP_
+#ifndef PERCEPTION_DETECTOR_QR_ROI_PUBLISHER_HPP_
+#define PERCEPTION_DETECTOR_QR_ROI_PUBLISHER_HPP_
 
 #include <memory>
 #include <string>
@@ -9,9 +9,9 @@
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
 
-#include "racing_perception_detector/detector_types.hpp"
+#include "perception_detector/detector_types.hpp"
 
-namespace racing_perception_detector
+namespace perception_detector
 {
 
 class QrRoiPublisher
@@ -36,6 +36,6 @@ private:
   QrRoiConfig config_;
 };
 
-}  // namespace racing_perception_detector
+}  // namespace perception_detector
 
-#endif  // RACING_PERCEPTION_DETECTOR_QR_ROI_PUBLISHER_HPP_
+#endif  // PERCEPTION_DETECTOR_QR_ROI_PUBLISHER_HPP_

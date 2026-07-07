@@ -1,11 +1,11 @@
-#include "racing_perception_detector/nv12_utils.hpp"
+#include "perception_detector/nv12_utils.hpp"
 
 #include <algorithm>
 #include <cmath>
 
 #include <opencv2/imgproc.hpp>
 
-namespace racing_perception_detector
+namespace perception_detector
 {
 
 namespace
@@ -107,4 +107,4 @@ int clampInt(int value, int min_value, int max_value)
   return std::max(min_value, std::min(value, max_value));
 }
 
-}  // namespace racing_perception_detector
+}  // namespace perception_detector

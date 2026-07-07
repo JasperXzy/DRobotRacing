@@ -114,7 +114,7 @@ def generate_launch_description():
     nav2_params_file = os.path.join(ws_root, 'config', 'nav2', 'nav2(6.13).yaml')
     qr_detector_params_file = os.path.join(ws_root, 'config', 'perception', 'qr_detector.yaml')
     racing_detector_params_file = os.path.join(
-        ws_root, 'config', 'perception', 'racing_perception_detector.yaml')
+        ws_root, 'config', 'perception', 'perception_detector.yaml')
 
     # ★ 动态修正 YAML 中硬编码的路径（BT XML + 地图），避免依赖 /root/D_Robot 固定路径
     origincar_share = get_package_share_directory('origincar_nav2')
@@ -151,9 +151,9 @@ def generate_launch_description():
 
     # YOLO26检测节点
     racing_detector_node = Node(
-        package='racing_perception_detector',
-        executable='racing_perception_detector_node',
-        name='racing_perception_detector_node',
+        package='perception_detector',
+        executable='perception_detector_node',
+        name='perception_detector_node',
         output='screen',
         parameters=[racing_detector_params_file]
     )
