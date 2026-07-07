@@ -11,48 +11,30 @@ from launch_ros.substitutions import FindPackageShare
 def generate_launch_description():
     pkg_share = FindPackageShare('vlm_tts_demo')
 
-    default_vlm_params_file = PathJoinSubstitution([
+    default_env_file = PathJoinSubstitution([
         pkg_share,
         'config',
-        'vlm_params.yaml',
+        'vlm_api.env',
     ])
     default_captured_image_file = PathJoinSubstitution([
         pkg_share,
         'captures',
         'vlm_tts_demo_capture.jpg',
     ])
-    default_vit_model_file = PathJoinSubstitution([
-        pkg_share,
-        'model',
-        'InternVL3_1B',
-        'vit_model_int16_VL3_1B_Instruct.hbm',
-    ])
-    default_llm_model_file = PathJoinSubstitution([
-        pkg_share,
-        'model',
-        'InternVL3_1B',
-        'qwen2_5_q8_0_InternVL3_1B_Instruct.gguf',
-    ])
 
-    vlm_params_file = LaunchConfiguration('vlm_params_file')
     playback_device = LaunchConfiguration('playback_device')
     trigger_value = LaunchConfiguration('trigger_value')
     infer_trigger_value = LaunchConfiguration('infer_trigger_value')
-    user_prompt = LaunchConfiguration('user_prompt')
-    cute_words = LaunchConfiguration('cute_words')
-    llamacpp_text_topic = LaunchConfiguration('llamacpp_text_topic')
+    infer_on_capture = LaunchConfiguration('infer_on_capture')
     camera_topic = LaunchConfiguration('camera_topic')
     launch_camera = LaunchConfiguration('launch_camera')
+    launch_tts = LaunchConfiguration('launch_tts')
     captured_image_file = LaunchConfiguration('captured_image_file')
     source_capture_file = LaunchConfiguration('source_capture_file')
     ding_enable = LaunchConfiguration('ding_enable')
+    no_auth = LaunchConfiguration('no_auth')
 
     return LaunchDescription([
-        DeclareLaunchArgument(
-            'vlm_params_file',
-            default_value=default_vlm_params_file,
-            description='Path to hobot_llamacpp parameter file.',
-        ),
         DeclareLaunchArgument(
             'playback_device',
             default_value='plughw:0,0',
@@ -61,27 +43,17 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'trigger_value',
             default_value='-1',
-            description='Int32 value on /sign4return that triggers VLM capture.',
+            description='Int32 value on /sign4return that captures one image.',
         ),
         DeclareLaunchArgument(
             'infer_trigger_value',
             default_value='0',
-            description='Int32 value on /sign4return that triggers VLM inference.',
+            description='Int32 value on /sign4return that calls the vision API.',
         ),
         DeclareLaunchArgument(
-            'user_prompt',
-            default_value='请描述画面中彩色矩形展示板上的医疗插画内容，重点说出患者、病床、输液或护理信息。',
-            description='Prompt sent to hobot_llamacpp when triggered.',
-        ),
-        DeclareLaunchArgument(
-            'cute_words',
-            default_value='',
-            description='Warm-up speech from hobot_llamacpp. Empty disables it.',
-        ),
-        DeclareLaunchArgument(
-            'llamacpp_text_topic',
-            default_value='/tts_text',
-            description='hobot_llamacpp text topic consumed by hobot_tts.',
+            'infer_on_capture',
+            default_value='false',
+            description='Call the vision API immediately after capture.',
         ),
         DeclareLaunchArgument(
             'camera_topic',
@@ -91,12 +63,12 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'captured_image_file',
             default_value=default_captured_image_file,
-            description='Path used to save one camera frame for hobot_llamacpp.',
+            description='Path used to save the captured camera frame.',
         ),
         DeclareLaunchArgument(
             'source_capture_file',
-            default_value='/root/D_Robot/dev_ws/src/drivers/vlm_tts_demo/captures/vlm_tts_demo_capture.jpg',
-            description='Optional source-tree copy of the captured image for inspection.',
+            default_value='',
+            description='Optional second copy of the captured image.',
         ),
         DeclareLaunchArgument(
             'launch_camera',
@@ -104,14 +76,74 @@ def generate_launch_description():
             description='Whether to launch camera_driver from this demo.',
         ),
         DeclareLaunchArgument(
+            'launch_tts',
+            default_value='true',
+            description='Whether to launch hobot_tts from this demo.',
+        ),
+        DeclareLaunchArgument(
             'ding_enable',
             default_value='true',
-            description='Whether to publish a short TTS start notice after capturing an image.',
+            description='Whether to publish a short TTS start notice before API inference.',
         ),
         DeclareLaunchArgument(
             'start_notice',
             default_value='开始识别',
-            description='Short TTS notice published before VLM starts.',
+            description='Short TTS notice published before API inference.',
+        ),
+        DeclareLaunchArgument(
+            'error_notice',
+            default_value='识别失败，请检查网络或接口配置',
+            description='TTS notice used when API inference fails.',
+        ),
+        DeclareLaunchArgument(
+            'user_prompt',
+            default_value='',
+            description='Prompt override. Empty uses the node default prompt.',
+        ),
+        DeclareLaunchArgument(
+            'env_file',
+            default_value=default_env_file,
+            description='Local env file for VLM_API_ENDPOINT, VLM_API_MODEL and VLM_API_KEY.',
+        ),
+        DeclareLaunchArgument(
+            'api_endpoint',
+            default_value='',
+            description='OpenAI-compatible chat-completions endpoint or base URL.',
+        ),
+        DeclareLaunchArgument(
+            'api_model',
+            default_value='',
+            description='Vision-capable model name.',
+        ),
+        DeclareLaunchArgument(
+            'api_key',
+            default_value='',
+            description='API key. Prefer env_file or environment variables.',
+        ),
+        DeclareLaunchArgument(
+            'api_timeout',
+            default_value='15.0',
+            description='API request timeout in seconds.',
+        ),
+        DeclareLaunchArgument(
+            'api_max_tokens',
+            default_value='120',
+            description='Maximum output tokens.',
+        ),
+        DeclareLaunchArgument(
+            'api_temperature',
+            default_value='0.2',
+            description='API sampling temperature.',
+        ),
+        DeclareLaunchArgument(
+            'api_image_detail',
+            default_value='auto',
+            description='Vision API image detail hint: low, high or auto.',
+        ),
+        DeclareLaunchArgument(
+            'no_auth',
+            default_value='false',
+            description='Do not send Authorization header.',
         ),
 
         IncludeLaunchDescription(
@@ -136,6 +168,7 @@ def generate_launch_description():
                 'playback_device': playback_device,
                 'topic_sub': '/tts_text',
             }],
+            condition=IfCondition(launch_tts),
         ),
 
         Node(
@@ -146,19 +179,23 @@ def generate_launch_description():
             parameters=[{
                 'trigger_value': ParameterValue(trigger_value, value_type=int),
                 'infer_trigger_value': ParameterValue(infer_trigger_value, value_type=int),
-                'user_prompt': user_prompt,
-                'playback_device': playback_device,
-                'vlm_params_file': vlm_params_file,
+                'infer_on_capture': ParameterValue(infer_on_capture, value_type=bool),
                 'camera_topic': camera_topic,
                 'captured_image_file': captured_image_file,
                 'source_capture_file': source_capture_file,
                 'ding_enable': ParameterValue(ding_enable, value_type=bool),
                 'start_notice': LaunchConfiguration('start_notice'),
-                'model_file_name': default_vit_model_file,
-                'llm_model_name': default_llm_model_file,
-                'cute_words': cute_words,
-                'llamacpp_text_topic': llamacpp_text_topic,
-                'forward_vlm_output': False,
+                'error_notice': LaunchConfiguration('error_notice'),
+                'user_prompt': LaunchConfiguration('user_prompt'),
+                'env_file': LaunchConfiguration('env_file'),
+                'api_endpoint': LaunchConfiguration('api_endpoint'),
+                'api_model': LaunchConfiguration('api_model'),
+                'api_key': LaunchConfiguration('api_key'),
+                'api_timeout': ParameterValue(LaunchConfiguration('api_timeout'), value_type=float),
+                'api_max_tokens': ParameterValue(LaunchConfiguration('api_max_tokens'), value_type=int),
+                'api_temperature': ParameterValue(LaunchConfiguration('api_temperature'), value_type=float),
+                'api_image_detail': LaunchConfiguration('api_image_detail'),
+                'no_auth': ParameterValue(no_auth, value_type=bool),
             }],
         ),
     ])
