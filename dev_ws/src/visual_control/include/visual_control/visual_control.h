@@ -61,6 +61,13 @@ private:
     void ObstaclesAvoiding(const ai_msgs::msg::Target& obstacle, 
                        float speed_modifier);
     void MessageProcess(void);
+    void PublishStopCommand();
+    int ScaleDetectionX(int x) const;
+    int ScaleDetectionY(int y) const;
+    int TargetCenterX(const ai_msgs::msg::Target& target) const;
+    int TargetCenterY(const ai_msgs::msg::Target& target) const;
+    int TargetBottomY(const ai_msgs::msg::Target& target) const;
+    int TargetHeight(const ai_msgs::msg::Target& target) const;
     bool hasValidTrackLine(const ai_msgs::msg::PerceptionTargets::SharedPtr& line_msg) const; //检查赛道线消息是否有效且置信度足够高
     std::optional<ai_msgs::msg::Target> findFollowableParkingSign(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const; //查找一个置信度足够高、适合用于跟随的停车标志
     std::optional<ai_msgs::msg::Target> findFollowableQrCode(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const;
@@ -72,7 +79,7 @@ private:
     bool isTrackLineCentered(const ai_msgs::msg::PerceptionTargets::SharedPtr& line_msg) const; //检查赛道线是否位于图像中心区域
     std::string pub_control_topic_ = "cmd_vel";
     std::mutex point_target_mutex_;
-    bool process_stop_ = false;
+    std::atomic<bool> process_stop_{false};
     std::shared_ptr<std::thread> msg_process_;
     
     // 巡线参数

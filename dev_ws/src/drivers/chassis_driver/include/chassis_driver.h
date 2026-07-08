@@ -129,6 +129,7 @@ public:
 	~chassis_driver();
 	void Control();
 	void Publish_Odom();
+	void Send_Stop_Command();
 
 public : 
 	serial::Serial Stm32_Serial;

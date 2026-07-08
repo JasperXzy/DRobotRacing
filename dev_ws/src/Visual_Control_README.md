@@ -4,7 +4,7 @@
 ```bash
 cd ~/D_Robot/dev_ws
 source /opt/tros/humble/setup.bash
-colcon build --packages-select visual_control
+colcon build --packages-select visual_control line_detector perception_detector qr_detector_cpp
 source install/setup.bash
 ```
 
@@ -30,9 +30,16 @@ ros2 launch camera_driver camera.launch.py
 ros2 topic hz /camera/image_hbmem
 ```
 
-## 检测中线
+## 启动 perception 视觉识别
+`perception` 是当前视觉识别部分的总目录，包含：
+
+- 线识别：`line_detector`
+- 二维码识别：`qr_detector_cpp`
+- 障碍物和停车位识别：`perception_detector`
+
+### 线识别
 ```bash
-ros2 launch visual_track_detection visual_track_detection.launch.py
+ros2 launch line_detector line_detector.launch.py
 ```
 
 检查输出：
@@ -41,7 +48,13 @@ ros2 topic hz /visual_track_center_detection
 ros2 topic echo /visual_track_center_detection --once
 ```
 
-## 障碍物 / 停车牌检测
+### 障碍物 / 停车位识别
+推荐使用配置文件启动：
+```bash
+ros2 launch perception_detector perception_detector.launch.py
+```
+
+如需临时覆盖参数，可直接运行节点：
 ```bash
 ros2 run perception_detector perception_detector_node --ros-args \
   -p input_topic:=/camera/image_hbmem \
@@ -59,22 +72,9 @@ ros2 topic hz /visual_obstacle_detection
 ros2 topic echo /visual_obstacle_detection --once
 ```
 
-## 扫二维码
+### 二维码识别
 ```bash
 ros2 run qr_detector_cpp qr_detector_node
-```
-
-## 启动控制
-下面参数区保留旧版调参记录。实际启动当前包时，将命令中的：
-
-```bash
-ros2 launch racing_control racing_control.launch.py
-```
-
-替换为：
-
-```bash
-ros2 launch visual_control visual_control.launch.py
 ```
 
 ## 中速_offset线性关系         //提升0.85线速度

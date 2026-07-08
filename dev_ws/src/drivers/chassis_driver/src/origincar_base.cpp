@@ -17,6 +17,7 @@ int main(int argc, char *argv[])
     signal(SIGINT, sigintHandler);
     chassis_driver Robot_Control;
     Robot_Control.Control();
+    Robot_Control.Send_Stop_Command();
     rclcpp::shutdown();
     return 0;
 }
@@ -100,6 +101,34 @@ void chassis_driver::Cmd_Vel_Callback(const geometry_msgs::msg::Twist::SharedPtr
       } 
     } catch (serial::IOException& e) {
         RCLCPP_ERROR(this->get_logger(),("Unable to send data through serial port"));
+    }
+}
+
+void chassis_driver::Send_Stop_Command()
+{
+    Send_Data.tx[0]=FRAME_HEADER;
+    Send_Data.tx[1]=0;
+    Send_Data.tx[2]=0;
+    Send_Data.tx[3]=0;
+    Send_Data.tx[4]=0;
+    Send_Data.tx[5]=0;
+    Send_Data.tx[6]=0;
+    Send_Data.tx[7]=0;
+    Send_Data.tx[8]=0;
+    Send_Data.tx[9]=Check_Sum(9,SEND_DATA_CHECK);
+    Send_Data.tx[10]=FRAME_TAIL;
+
+    if (!Stm32_Serial.isOpen()) {
+      return;
+    }
+
+    try {
+      for (int i = 0; i < 3; ++i) {
+        Stm32_Serial.write(Send_Data.tx, sizeof(Send_Data.tx));
+        usleep(10000);
+      }
+    } catch (serial::IOException& e) {
+      RCLCPP_ERROR(this->get_logger(), "Unable to send stop data through serial port");
     }
 }
 
@@ -372,5 +401,6 @@ void sigintHandler(int sig)
 
 chassis_driver::~chassis_driver()
 {
+  Send_Stop_Command();
   RCLCPP_INFO(this->get_logger(),"Shutting down");
 }
