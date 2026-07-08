@@ -46,6 +46,7 @@ public:
     RacingControlNode(const std::string& node_name,
                         const rclcpp::NodeOptions &options = rclcpp::NodeOptions());
     ~RacingControlNode() override;
+    void SuspendAndStop();
 private:
     rclcpp::Subscription<ai_msgs::msg::PerceptionTargets>::SharedPtr point_subscriber_;
     rclcpp::Subscription<ai_msgs::msg::PerceptionTargets>::SharedPtr target_subscriber_;
@@ -78,6 +79,7 @@ private:
     std::optional<ai_msgs::msg::Target> findCautionObstacleOnRecoverySide(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const; // 查找回线时同侧的谨慎区障碍物
     bool isTrackLineCentered(const ai_msgs::msg::PerceptionTargets::SharedPtr& line_msg) const; //检查赛道线是否位于图像中心区域
     std::string pub_control_topic_ = "cmd_vel";
+    bool debug_control_logs_ = false;
     std::mutex point_target_mutex_;
     std::atomic<bool> process_stop_{false};
     std::shared_ptr<std::thread> msg_process_;
