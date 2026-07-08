@@ -3,12 +3,11 @@
 waypoint_cruiser.py — 竞赛巡航节点 (v2: NavigateThroughPoses 平滑巡航版)
 
 比赛流程:
-  1. 启动后等待 /cruise_start 发令
-  2. 批量发送 waypoints_prescan.yaml 全部航点 → 连续巡航，中间不停
-  3. prescan走完 → 根据QR结果加载顺时针或逆时针文件
-  4. 批量发送后续航点 → 连续巡航
-  5. 到达 vlm_trigger_waypoint 时触发VLM拍照 → 立即启动推理（不等巡航结束）
-  6. 走完全部航点 → 巡航结束
+  1. 启动后等待QR方向信号
+  2. /sign_switch == 3/4 后直接加载顺时针或逆时针文件
+  3. 顺时针/逆时针都批量发送全部航点，由BT在规划前修正障碍内目标点
+  4. 到达拍照触发点时触发VLM拍照 → 立即启动推理（不等巡航结束）
+  5. 走完全部航点 → 恢复visual_control并结束巡航
 
 与v1的区别:
   - v1: NavigateToPose 逐点发送 → 每点到达后停0.5s → 下一帧
@@ -35,8 +34,6 @@ import yaml
 
 class WaypointCruiser(Node):
     # 巡航状态
-    WAITING_START = 'WAITING_START'
-    PRESCAN = 'PRESCAN'
     WAITING_QR = 'WAITING_QR'
     POST_QR = 'POST_QR'
     DONE = 'DONE'
@@ -47,11 +44,9 @@ class WaypointCruiser(Node):
         # ---- 参数声明 ----
         self.declare_parameter('cruise_mode', 'once')
         self.declare_parameter('waypoint_tolerance', 0.5)
-        self.declare_parameter('waypoints_file', '')
         self.declare_parameter('start_topic', '/cruise_start')
 
         # 航点文件
-        self.declare_parameter('prescan_file', '')
         self.declare_parameter('cw_file', '')
         self.declare_parameter('ccw_file', '')
 
@@ -65,13 +60,15 @@ class WaypointCruiser(Node):
         self.declare_parameter('vlm_trigger_waypoint', 8)
         self.declare_parameter('vlm_trigger_value', -1)
         self.declare_parameter('vlm_trigger_topic', '/sign4return')
+        self.declare_parameter('ccw_photo_x', 0.25)
+        self.declare_parameter('ccw_photo_y', 4.06)
+        self.declare_parameter('photo_waypoint_match_eps', 0.08)
 
         # 读取参数
         self.cruise_mode = self.get_parameter('cruise_mode').value
         self.waypoint_tolerance = self.get_parameter('waypoint_tolerance').value
         self.start_topic = self.get_parameter('start_topic').value
 
-        self.prescan_file = self.get_parameter('prescan_file').value
         self.cw_file = self.get_parameter('cw_file').value
         self.ccw_file = self.get_parameter('ccw_file').value
 
@@ -83,23 +80,30 @@ class WaypointCruiser(Node):
         self.vlm_trigger_waypoint = self.get_parameter('vlm_trigger_waypoint').value
         self.vlm_trigger_value = self.get_parameter('vlm_trigger_value').value
         self.vlm_trigger_topic = self.get_parameter('vlm_trigger_topic').value
+        self.ccw_photo_x = float(self.get_parameter('ccw_photo_x').value)
+        self.ccw_photo_y = float(self.get_parameter('ccw_photo_y').value)
+        self.photo_waypoint_match_eps = float(
+            self.get_parameter('photo_waypoint_match_eps').value)
 
         # 解析航点文件路径
         pkg_share = get_package_share_directory('origincar_nav2')
-        if not self.prescan_file:
-            self.prescan_file = os.path.join(pkg_share, 'waypoints_prescan.yaml')
         if not self.cw_file:
             self.cw_file = os.path.join(pkg_share, 'waypoints_cw.yaml')
         if not self.ccw_file:
             self.ccw_file = os.path.join(pkg_share, 'waypoints_ccw.yaml')
 
         # ---- 状态变量 ----
-        self._state = self.WAITING_START
+        self._state = self.WAITING_QR
         self.waypoints = []              # 当前航点列表 [(x, y, yaw), ...]
         self.last_qr_sign = None         # 最新QR方向 (3=顺时针, 4=逆时针)
         self.announced_qr_sign = None    # 已播报过的QR方向，避免重复播报
         self.vlm_capture_triggered = False  # VLM拍照是否已触发
+        self.active_vlm_trigger_waypoint = self.vlm_trigger_waypoint
         self.feedback_schema_warned = False
+        self.nav_goal_generation = 0
+        self.active_goal_handle = None
+        self.active_goal_generation = None
+        self.current_direction = None
 
         # ---- Nav2 NavigateThroughPoses 动作客户端 ----
         # ★ v2 核心改动：使用 navigate_through_poses 而非 navigate_to_pose
@@ -127,13 +131,14 @@ class WaypointCruiser(Node):
         self.get_logger().info('=' * 60)
         self.get_logger().info('竞赛巡航节点已启动 (NavigateThroughPoses v2)')
         self.get_logger().info(f'  状态: {self._state}')
-        self.get_logger().info(f'  发令话题: {self.start_topic}')
-        self.get_logger().info(f'  prescan: {self.prescan_file}')
+        self.get_logger().info(f'  手动兜底发令话题: {self.start_topic}')
         self.get_logger().info(f'  顺时针:  {self.cw_file}')
         self.get_logger().info(f'  逆时针:  {self.ccw_file}')
         self.get_logger().info(f'  QR话题:  {self.qr_topic}')
-        self.get_logger().info(f'  VLM触发: 第{self.vlm_trigger_waypoint}个航点')
-        self.get_logger().info('  等待发令中...')
+        self.get_logger().info(
+            f'  VLM触发: 默认第{self.vlm_trigger_waypoint}个航点，'
+            f'逆时针自动匹配({self.ccw_photo_x:.2f}, {self.ccw_photo_y:.2f})')
+        self.get_logger().info('  等待QR方向信号中...')
         self.get_logger().info('=' * 60)
 
         # ---- 等待Nav2就绪 + 发布初始位姿 ----
@@ -147,43 +152,40 @@ class WaypointCruiser(Node):
     # ================================================================
 
     def _on_start_signal(self, msg):
-        """收到发令信号，批量发送prescan全部航点"""
-        if self._state != self.WAITING_START:
+        """收到手动发令信号，按当前QR方向或默认方向直接进入waypoint巡航。"""
+        if self._state != self.WAITING_QR:
             self.get_logger().warn(f'当前状态 {self._state}，忽略发令信号')
             return
 
-        self.get_logger().info('收到发令信号！开始巡航！')
-        self._state = self.PRESCAN
-
-        # 加载prescan航点
-        self.waypoints = self._load_waypoints(self.prescan_file)
-        if not self.waypoints:
-            self.get_logger().error('prescan航点为空，无法开始巡航！')
-            return
-
-        self.get_logger().info(
-            f'已加载 prescan 航点: {len(self.waypoints)} 个点 → 批量发送，连续巡航！')
-        self._send_all_goals()
+        if self.last_qr_sign is None:
+            self.get_logger().warn(
+                f'收到手动发令但尚未收到QR方向，使用默认方向: {self.qr_default}')
+        else:
+            self.get_logger().info('收到手动发令，按已记录QR方向进入巡航')
+        self._do_switch_to_post_qr()
 
     def _on_qr_result(self, msg: Sign):
-        """QR节点扫描结果：记录方向，若正在等待则立即触发下一阶段"""
+        """QR节点扫描结果：记录方向，立即切到后续巡航。"""
         sign_data = msg.sign_data
         if sign_data == self.qr_sign_cw:
             self.last_qr_sign = sign_data
-            self.get_logger().info(f'QR方向已记录: 顺时针 (sign={sign_data})')
+            self.get_logger().warn(f'QR方向已记录: 顺时针 (sign={sign_data})')
         elif sign_data == self.qr_sign_ccw:
             self.last_qr_sign = sign_data
-            self.get_logger().info(f'QR方向已记录: 逆时针 (sign={sign_data})')
+            self.get_logger().warn(f'QR方向已记录: 逆时针 (sign={sign_data})')
         else:
             self.get_logger().debug(f'忽略未知QR信号: sign={sign_data}')
             return
 
         self._announce_qr_direction(sign_data)
 
-        # ★ 如果正在等QR，扫到后立刻进入下一个阶段 ★
         if self._state == self.WAITING_QR:
-            self.get_logger().info('QR已扫到，立即进入巡航阶段！')
+            self.get_logger().warn('QR已扫到，立即进入顺/逆时针巡航阶段！')
             self._do_switch_to_post_qr()
+        elif self._state == self.POST_QR:
+            self.get_logger().debug('已在顺/逆时针巡航阶段，忽略重复QR结果')
+        else:
+            self.get_logger().debug(f'当前状态 {self._state}，忽略QR结果')
 
     # ================================================================
     # 航点加载
@@ -201,6 +203,31 @@ class WaypointCruiser(Node):
         except Exception as e:
             self.get_logger().error(f'加载航点文件失败 ({file_path}): {e}')
             return []
+
+    def _find_waypoint_index(self, target_x: float, target_y: float):
+        for index, waypoint in enumerate(self.waypoints):
+            if (abs(waypoint[0] - target_x) <= self.photo_waypoint_match_eps and
+                    abs(waypoint[1] - target_y) <= self.photo_waypoint_match_eps):
+                return index
+        return None
+
+    def _select_vlm_trigger_waypoint(self, direction: str) -> int:
+        if direction != 'ccw':
+            return int(self.vlm_trigger_waypoint)
+
+        photo_index = self._find_waypoint_index(self.ccw_photo_x, self.ccw_photo_y)
+        if photo_index is None:
+            self.get_logger().warn(
+                '逆时针未找到配置的拍照点 '
+                f'({self.ccw_photo_x:.2f}, {self.ccw_photo_y:.2f})，'
+                f'使用默认第{self.vlm_trigger_waypoint}个航点触发')
+            return int(self.vlm_trigger_waypoint)
+
+        trigger_waypoint = photo_index + 1
+        self.get_logger().warn(
+            f'逆时针VLM拍照触发点: 第{trigger_waypoint}个航点 '
+            f'({self.ccw_photo_x:.2f}, {self.ccw_photo_y:.2f})')
+        return trigger_waypoint
 
     # ================================================================
     # 导航控制 — NavigateThroughPoses 批量发送
@@ -241,58 +268,101 @@ class WaypointCruiser(Node):
 
     def _send_all_goals(self):
         """将当前阶段全部航点打包为一个 NavigateThroughPoses 目标，一次性发送"""
+        self._send_goal_batch(self.waypoints, self.POST_QR)
+
+    def _send_goal_batch(self, waypoints: list, phase: str):
+        """发送一个 NavigateThroughPoses 批次。"""
         if self._state == self.DONE:
             return
 
-        if not self.waypoints:
+        if not waypoints:
             self.get_logger().error('航点列表为空，无法发送目标！')
             return
 
-        phase = 'PRESCAN' if self._state == self.PRESCAN else 'POST_QR'
+        batch_waypoints = list(waypoints)
+        self.waypoints = batch_waypoints
+        self.nav_goal_generation += 1
+        generation = self.nav_goal_generation
         self.get_logger().info(
-            f'[{phase}] 批量发送 {len(self.waypoints)} 个航点 → NavigateThroughPoses')
+            f'[{phase}] 批量发送 {len(batch_waypoints)} 个航点 → NavigateThroughPoses')
 
         goal_msg = NavigateThroughPoses.Goal()
-        goal_msg.poses = self._waypoints_to_poses(self.waypoints)
+        goal_msg.poses = self._waypoints_to_poses(batch_waypoints)
 
         send_goal_future = self.nav_client.send_goal_async(
-            goal_msg, feedback_callback=self._feedback_callback)
-        send_goal_future.add_done_callback(self._goal_response_callback)
+            goal_msg,
+            feedback_callback=lambda feedback_msg, generation=generation, phase=phase:
+                self._feedback_callback(feedback_msg, generation, phase))
+        send_goal_future.add_done_callback(
+            lambda future, generation=generation, phase=phase, waypoint_count=len(batch_waypoints):
+                self._goal_response_callback(future, generation, phase, waypoint_count))
 
-    def _goal_response_callback(self, future):
+    def _goal_response_callback(self, future, generation, phase, waypoint_count):
         """目标被Nav2接受后的回调"""
-        goal_handle = future.result()
-        if not goal_handle.accepted:
-            self.get_logger().error('NavigateThroughPoses 目标被拒绝！')
+        try:
+            goal_handle = future.result()
+        except Exception as e:
+            self.get_logger().error(f'NavigateThroughPoses 目标发送失败: {e}')
             return
 
-        phase = 'PRESCAN' if self._state == self.PRESCAN else 'POST_QR'
-        self.get_logger().info(
-            f'[{phase}] 全部 {len(self.waypoints)} 个航点已被 Nav2 接受，开始连续巡航...')
-        result_future = goal_handle.get_result_async()
-        result_future.add_done_callback(self._result_callback)
+        if not goal_handle.accepted:
+            self.get_logger().error(f'[{phase}] NavigateThroughPoses 目标被拒绝！')
+            self._state = self.DONE
+            return
 
-    def _result_callback(self, future):
+        if generation != self.nav_goal_generation:
+            self.get_logger().info(f'[{phase}] 取消已过期目标 generation={generation}')
+            goal_handle.cancel_goal_async()
+            return
+
+        self.active_goal_handle = goal_handle
+        self.active_goal_generation = generation
+        self.get_logger().info(
+            f'[{phase}] 全部 {waypoint_count} 个航点已被 Nav2 接受，开始连续巡航...')
+        result_future = goal_handle.get_result_async()
+        result_future.add_done_callback(
+            lambda future, generation=generation, phase=phase:
+                self._result_callback(future, generation, phase))
+
+    def _result_callback(self, future, generation, phase):
         """全部航点完成后的回调"""
-        result = future.result()
+        if generation != self.nav_goal_generation:
+            self.get_logger().debug(f'忽略旧目标结果: phase={phase}, generation={generation}')
+            return
+
+        try:
+            result = future.result()
+        except Exception as e:
+            self.get_logger().error(f'[{phase}] 获取巡航结果失败: {e}')
+            if self.active_goal_generation == generation:
+                self.active_goal_handle = None
+                self.active_goal_generation = None
+            return
+
+        if self.active_goal_generation == generation:
+            self.active_goal_handle = None
+            self.active_goal_generation = None
+
         status = result.status
 
-        phase = 'PRESCAN' if self._state == self.PRESCAN else 'POST_QR'
         if status == 4:  # SUCCEEDED
             self.get_logger().info(f'✅ [{phase}] 全部航点到达！')
         else:
             self.get_logger().warn(f'⚠️ [{phase}] 巡航结束, status={status}')
 
-        if self._state == self.PRESCAN:
-            # prescan走完 → 根据QR方向加载后续航点
-            self._switch_to_post_qr()
-        elif self._state == self.POST_QR:
-            # 全部走完 → 巡航结束（VLM推理已在拍照时触发）
+        if phase == self.POST_QR and self._state == self.POST_QR:
+            if status == 4:
+                self._resume_visual_control()
+            else:
+                self.get_logger().warn('巡航未成功完成，保持visual_control挂起，等待人工处理')
             self.get_logger().info('所有航点已完成，巡航结束！')
             self._state = self.DONE
 
-    def _feedback_callback(self, feedback_msg):
+    def _feedback_callback(self, feedback_msg, generation, phase):
         """巡航过程中的反馈 — 用于VLM触发检测"""
+        if generation != self.nav_goal_generation or phase != self.POST_QR:
+            return
+
         feedback = feedback_msg.feedback
         current_wp_number = self._current_waypoint_number_from_feedback(feedback)
         if current_wp_number is None:
@@ -300,8 +370,8 @@ class WaypointCruiser(Node):
 
         # VLM拍照+推理触发：在POST_QR阶段，首次到达指定航点序号时触发
         if self._state == self.POST_QR and not self.vlm_capture_triggered:
-            # vlm_trigger_waypoint 是用户指定的航点序号 (1-based)
-            if current_wp_number >= self.vlm_trigger_waypoint:
+            # active_vlm_trigger_waypoint 是当前方向下的航点序号 (1-based)
+            if current_wp_number >= self.active_vlm_trigger_waypoint:
                 self._trigger_vlm_capture()
                 self.vlm_capture_triggered = True
                 # ★ 拍照后立即启动推理（不等巡航结束）
@@ -329,26 +399,15 @@ class WaypointCruiser(Node):
                 'NavigateThroughPoses feedback里没有航点进度字段，跳过VLM触发检测')
         return None
 
-    # ================================================================
-    # 阶段切换
-    # ================================================================
-
-    def _switch_to_post_qr(self):
-        """prescan走完，检查QR：已扫到→继续，没扫到→原地等待"""
-        if self.last_qr_sign is not None:
-            # QR 在 prescan 过程中已扫到，直接进入
-            self._do_switch_to_post_qr()
-        else:
-            # 还没扫到，停在原地等 QR
-            self._state = self.WAITING_QR
-            self.get_logger().info('prescan已完成，原地等待QR扫描...')
-            # ★ TTS 提示等待 ★
-            tts_msg = String()
-            tts_msg.data = '等待扫描二维码'
-            self.tts_pub.publish(tts_msg)
-
     def _do_switch_to_post_qr(self):
         """实际执行QR方向判断并加载后续航点，批量发送"""
+        if self._state == self.POST_QR:
+            self.get_logger().debug('已经处于后续巡航阶段，跳过重复切换')
+            return
+        if self._state == self.DONE:
+            self.get_logger().warn('巡航已结束，忽略新的方向切换请求')
+            return
+
         direction = 'unknown'
         sign_data = self.last_qr_sign
 
@@ -363,11 +422,11 @@ class WaypointCruiser(Node):
 
         if direction == 'cw':
             next_file = self.cw_file
-            self.get_logger().info('>>> QR方向: 顺时针 <<<')
+            self.get_logger().warn('>>> QR方向: 顺时针 <<<')
             tts_text = '已选择顺时针方向'
         else:
             next_file = self.ccw_file
-            self.get_logger().info('>>> QR方向: 逆时针 <<<')
+            self.get_logger().warn('>>> QR方向: 逆时针 <<<')
             tts_text = '已选择逆时针方向'
 
         # 如果QR是在等待阶段才扫到，回调里已经播报；默认方向仍在这里播报。
@@ -382,11 +441,12 @@ class WaypointCruiser(Node):
             return
 
         self._state = self.POST_QR
+        self.current_direction = direction
+        self.active_vlm_trigger_waypoint = self._select_vlm_trigger_waypoint(direction)
         self.vlm_capture_triggered = False  # 重置VLM触发标记
-        self.get_logger().info(
-            f'已加载后续航点: {len(self.waypoints)} 个点 → 批量发送，连续巡航！')
 
-        # 立即批量发送全部后续航点
+        self.get_logger().warn(
+            f'已加载后续航点: {len(self.waypoints)} 个点 → 批量发送，连续巡航！')
         self._send_all_goals()
 
     def _announce_qr_direction(self, sign_data):
@@ -414,6 +474,13 @@ class WaypointCruiser(Node):
     # ================================================================
     # VLM 触发
     # ================================================================
+
+    def _resume_visual_control(self):
+        """顺/逆时针巡航完成后恢复visual_control。"""
+        trigger_msg = Int32()
+        trigger_msg.data = 6  # 6 = 恢复visual_control
+        self.vlm_trigger_pub.publish(trigger_msg)
+        self.get_logger().info('已发布 /sign4return=6，恢复visual_control')
 
     def _trigger_vlm_capture(self):
         """触发VLM拍照（到达指定航点，只拍照不推理）"""

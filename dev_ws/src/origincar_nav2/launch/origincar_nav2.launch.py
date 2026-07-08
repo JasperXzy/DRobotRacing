@@ -29,7 +29,7 @@ def generate_launch_description():
     nav2_params_file = LaunchConfiguration('params_file')
     # 注意：config 路径在 dev_ws/config/nav2/ 下，不是在包内
     default_config_path = os.path.join(
-        get_package_share_directory(own_nav_pkg), '..', '..', '..', '..', 'config', 'nav2', 'nav2.yaml')
+        get_package_share_directory(own_nav_pkg), '..', '..', '..', '..', 'config', 'nav2', 'nav2(6.13).yaml')
 
     # 声明 launch 参数
     declare_params_file_cmd = DeclareLaunchArgument(

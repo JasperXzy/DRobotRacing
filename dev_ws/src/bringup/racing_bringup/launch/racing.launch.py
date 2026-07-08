@@ -8,35 +8,35 @@
             底盘驱动 / 激光雷达 / 摄像头 / 静态TF
   t=3s   → 切换日志级别 (WARN，抑制后续节点刷屏)
   t=4s   → 第2阶段: EKF 融合定位（IMU+里程计）
-  t=6s   → 第3阶段: 地图服务器 + 感知节点（QR+VLM）
+  t=6s   → 第3阶段: 地图服务器 + 感知节点（线检测+YOLO+VLM）
             （摄像头6s足够稳定出图）
   t=8s   → 第4阶段: AMCL 粒子滤波定位
             （等地图加载完毕，发布 map→odom TF）
   t=12s  → 第5阶段: Nav2 导航堆栈
             （AMCL约2s完成首次定位）
   t=24s  → 第6阶段: 巡航节点
-            waypoint_cruiser
+            waypoint_cruiser等待QR方向信号
             （等Nav2 lifecycle完全激活）
+  t=25s  → 第7阶段: QR节点
+            扫到二维码后挂起手动启动的visual_control并触发waypoint巡航
 
-总启动时间: ~24秒（优化前 ~40秒）
+总启动时间: ~25秒（优化前 ~40秒）
 
 用法:
     ros2 launch racing_bringup racing.launch.py
 
-启动后等待约25秒，然后在另一个终端发令:
-    ros2 run origincar_nav2 trigger_cruise
+启动后另开终端手动启动visual_control；扫到二维码后自动切入waypoint巡航。
 """
 
 import os
 import tempfile
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import (DeclareLaunchArgument,
-                            IncludeLaunchDescription,
+from launch.actions import (IncludeLaunchDescription,
                             SetEnvironmentVariable,
                             TimerAction)
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
@@ -158,6 +158,16 @@ def generate_launch_description():
         parameters=[racing_detector_params_file]
     )
 
+    # 赛道线检测节点 — visual_control 输入
+    line_detector_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([
+                FindPackageShare('line_detector'),
+                'launch', 'line_detector.launch.py'
+            ])
+        )
+    )
+
     # 二维码检测节点
     qr_node = Node(
         package='qr_detector_cpp',
@@ -209,7 +219,7 @@ def generate_launch_description():
         }]
     )
 
-    # ============================================
+    # ==================================
     # 第5阶段 (t=12s): Nav2 导航堆栈
     # AMCL 约2s完成首次定位，map→odom TF 就绪
     # ============================================
@@ -247,9 +257,6 @@ def generate_launch_description():
         parameters=[{
             'cruise_mode': 'once',
             'start_topic': '/cruise_start',
-            'prescan_file': os.path.join(
-                get_package_share_directory('origincar_nav2'),
-                'waypoints_prescan.yaml'),
             'cw_file': os.path.join(
                 get_package_share_directory('origincar_nav2'),
                 'waypoints_cw.yaml'),
@@ -285,11 +292,11 @@ def generate_launch_description():
     # ━ t=4s ━ EKF 融合定位
     ld.add_action(TimerAction(period=4.0, actions=[ekf_launch]))
 
-    # ━ t=6s ━ 地图服务器 + 感知节点（YOLO26 + QR + VLM）
+    # ━ t=6s ━ 地图服务器 + 感知节点（线检测 + YOLO26 + VLM）
     ld.add_action(TimerAction(period=6.0, actions=[map_server_node]))
     ld.add_action(TimerAction(period=6.0, actions=[
+        line_detector_launch,
         racing_detector_node,
-        qr_node,
         vlm_launch
     ]))
 
@@ -301,5 +308,9 @@ def generate_launch_description():
 
     # ━ t=24s ━ 巡航节点
     ld.add_action(TimerAction(period=24.0, actions=[cruiser_node]))
+
+    # ━ t=25s ━ QR节点
+    # 巡航节点先订阅/sign_switch，再启动QR扫描，避免QR提前扫完导致方向消息丢失。
+    ld.add_action(TimerAction(period=25.0, actions=[qr_node]))
 
     return ld

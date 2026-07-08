@@ -1,6 +1,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/image_encodings.hpp>
 #include <sensor_msgs/msg/image.hpp>
+#include <std_msgs/msg/int32.hpp>
 #include <std_msgs/msg/string.hpp>
 #include <opencv2/opencv.hpp>
 #include <cv_bridge/cv_bridge.h>
@@ -23,10 +24,19 @@ public:
         this->declare_parameter("small_roi_upscale", true);
         this->declare_parameter("small_roi_min_size", 120);
         this->declare_parameter("small_roi_upscale_factor", 2.0);
+        this->declare_parameter("suspend_visual_control_on_detect", true);
+        this->declare_parameter("visual_control_suspend_topic", "/sign4return");
+        this->declare_parameter("visual_control_suspend_value", 5);
 
         image_topic_ = this->get_parameter("image_topic").as_string();
         process_interval_ = std::max(0.0, this->get_parameter("process_interval").as_double());
         stop_on_detect_ = this->get_parameter("stop_on_detect").as_bool();
+        suspend_visual_control_on_detect_ =
+            this->get_parameter("suspend_visual_control_on_detect").as_bool();
+        visual_control_suspend_topic_ =
+            this->get_parameter("visual_control_suspend_topic").as_string();
+        visual_control_suspend_value_ =
+            static_cast<int>(this->get_parameter("visual_control_suspend_value").as_int());
         auto requested_density = static_cast<int>(this->get_parameter("zbar_density").as_int());
         zbar_density_ = std::clamp(requested_density, 1, 5);
         small_roi_upscale_ = this->get_parameter("small_roi_upscale").as_bool();
@@ -44,6 +54,8 @@ public:
         cooldown_until_ = this->now();
 
         sign_switch_pub_ = this->create_publisher<origincar_msg::msg::Sign>("/sign_switch", 10);
+        visual_control_suspend_pub_ =
+            this->create_publisher<std_msgs::msg::Int32>(visual_control_suspend_topic_, 10);
         publisher_ = this->create_publisher<std_msgs::msg::String>("qr_code", 10);
         qr_info_pub_ = this->create_publisher<std_msgs::msg::String>("qr_info", 10);
         tts_pub_ = this->create_publisher<std_msgs::msg::String>("/tts_text", 10);
@@ -171,19 +183,24 @@ private:
             return;
         }
 
-        int qr_value = std::stoi(barcode_data);
+        const bool is_odd = ((barcode_data.back() - '0') % 2) == 1;
+        const char* parity_text = is_odd ? "奇数" : "偶数";
+        const char* direction_text = is_odd ? "顺时针" : "逆时针";
         origincar_msg::msg::Sign sign_msg;
-        sign_msg.sign_data = (qr_value % 2 == 1) ? 3 : 4;
+        sign_msg.sign_data = is_odd ? 3 : 4;
+
+        publish_visual_control_suspend();
         sign_switch_pub_->publish(sign_msg);
 
         RCLCPP_INFO(this->get_logger(), "Published direction signal: %d (QR: %s -> %s)",
             sign_msg.sign_data, barcode_data.c_str(),
-            (sign_msg.sign_data == 3) ? "clockwise" : "counterclockwise");
+            is_odd ? "clockwise" : "counterclockwise");
 
         if (!tts_spoken_)
         {
             auto tts_msg = std::make_unique<std_msgs::msg::String>();
-            tts_msg->data = (sign_msg.sign_data == 3) ? "Clockwise QR detected" : "Counterclockwise QR detected";
+            tts_msg->data = "数字：" + barcode_data + "，为" + parity_text +
+                "，进行" + direction_text + "绕行";
             tts_pub_->publish(std::move(tts_msg));
             tts_spoken_ = true;
         }
@@ -191,15 +208,29 @@ private:
         if (stop_on_detect_)
         {
             activated_ = false;
-            RCLCPP_INFO(this->get_logger(), "QR scan complete; shutting down node");
-            rclcpp::shutdown();
+            RCLCPP_INFO(this->get_logger(), "QR scan complete; stopping QR scan");
             return;
         }
 
         cooldown_until_ = current_time + rclcpp::Duration::from_seconds(3.0);
     }
 
+    void publish_visual_control_suspend()
+    {
+        if (!suspend_visual_control_on_detect_ || !visual_control_suspend_pub_)
+        {
+            return;
+        }
+
+        auto suspend_msg = std::make_unique<std_msgs::msg::Int32>();
+        suspend_msg->data = visual_control_suspend_value_;
+        visual_control_suspend_pub_->publish(std::move(suspend_msg));
+        RCLCPP_INFO(this->get_logger(), "Published visual_control suspend signal: %s=%d",
+            visual_control_suspend_topic_.c_str(), visual_control_suspend_value_);
+    }
+
     std::string image_topic_;
+    std::string visual_control_suspend_topic_;
     size_t frame_count_ = 0;
     rclcpp::Time last_fps_time_;
     rclcpp::Time last_process_time_;
@@ -207,6 +238,7 @@ private:
 
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_sub_;
     rclcpp::Publisher<origincar_msg::msg::Sign>::SharedPtr sign_switch_pub_;
+    rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr visual_control_suspend_pub_;
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr publisher_;
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr qr_info_pub_;
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr tts_pub_;
@@ -214,9 +246,11 @@ private:
     bool activated_ = true;
     bool tts_spoken_ = false;
     bool stop_on_detect_ = true;
+    bool suspend_visual_control_on_detect_ = true;
     bool small_roi_upscale_ = true;
     int zbar_density_ = 3;
     int small_roi_min_size_ = 120;
+    int visual_control_suspend_value_ = 5;
     double process_interval_ = 0.0;
     double small_roi_upscale_factor_ = 2.0;
     zbar::ImageScanner scanner_;

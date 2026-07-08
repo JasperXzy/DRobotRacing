@@ -67,6 +67,7 @@ bt_navigator:
     - nav2_spin_cancel_bt_node
     - nav2_back_up_cancel_bt_node
     - nav2_drive_on_heading_cancel_bt_node
+    - origincar_nav2_adjust_blocked_goals_bt_node
 
 bt_navigator_rclcpp_node:
   ros__parameters:
@@ -119,12 +120,12 @@ controller_server:
       # ━━━ 阿克曼底盘配置 ━━━
       cmd_angle_instead_rotvel: false
       wheelbase: 0.145                         # 轴距 (m) 
-      max_vel_x: 1.15                          # 先压低速度，减少入弯甩尾
+      max_vel_x: 2.00                          # 先压低速度，减少入弯甩尾
       max_vel_x_backwards: 1.00                # 允许半米级短倒车，但仍慢于前进
       max_vel_theta: 1.0                       # 再压一点转向角速度，消掉残余甩尾
 
       # 阿克曼转弯限制
-      min_turning_radius: 0.30                 # 略放大转弯半径，避免急弯导致后轮甩
+      min_turning_radius: 0.32                 # 略放大转弯半径，避免急弯导致后轮甩
 
       # TEB优化用车体模型，需与costmap footprint保持一致，避免优化时按点模型贴障
       footprint_model:
@@ -140,7 +141,7 @@ controller_server:
       dt_hysteresis: 0.1
       min_samples: 3                           # 冠军车 3：最少轨迹点数
       global_plan_overwrite_orientation: False # 留给3D路径规划使用的参数，改为False
-      global_plan_viapoint_sep: 0.16           # 航点约束稍放松，弯道轨迹更圆滑
+      global_plan_viapoint_sep: 0.16           # TEB按全局路径自动抽via-points，不使用自定义/via_points
 
       no_inner_iterations: 7                   # 增加内层优化，让弯道收敛更平滑
       no_outer_iterations: 3                   # 冠军车 3
@@ -176,14 +177,14 @@ controller_server:
       weight_acc_lim_theta: 30.0
 
       # 运动学约束
-      weight_kinematics_nh: 700.0              # 更严格约束非完整运动，减少横摆
-      weight_kinematics_forward_drive: 180.0   # 保留前进偏好，但不再锁死倒车
+      weight_kinematics_nh: 1000.0              # 更严格约束非完整运动，减少横摆
+      weight_kinematics_forward_drive: 500.0   # 保留前进偏好，但不再锁死倒车
       weight_kinematics_turning_radius: 1000.0 # ★冠军车 1000：硬约束转弯
 
       # 目标优化
       weight_optimaltime: 25.0                 # 降低抢时间倾向，减少急打方向
       weight_obstacle: 220.0                   # 降低障碍恐惧，减少过障前犹豫
-      weight_viapoint: 18.0                    # 少贴折线航点，减少过弯顿挫
+      weight_viapoint: 50.0                    # 少贴折线航点，减少过弯顿挫(越小越贴全局规划)
       weight_inflation: 1.2                    # 软缓冲别太强，允许靠近但不贴障，障碍物软缓冲权重
       weight_adapt_factor: 2.0
 
@@ -198,7 +199,7 @@ controller_server:
       visualize_hc_graph: false
 
       # ━━━ 目标到达 ━━━
-      xy_goal_tolerance: 0.35
+      xy_goal_tolerance: 0.15
       yaw_goal_tolerance: 1.2
       free_goal_vel: True                    # ★冠军车 false，7.7上午修改：True，允许到达点仍有残余速度，减少甩尾
 
@@ -217,7 +218,7 @@ local_costmap:
   local_costmap:
     ros__parameters:
       update_frequency: 15.0            # TEB 不需要过高更新频率
-      publish_frequency: 5.0
+      publish_frequency: 2.0
       global_frame: odom
       robot_base_frame: base_link
       use_sim_time:  False
@@ -231,7 +232,7 @@ local_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 4.5        # 障碍代价衰减放缓，让局部规划更早避开
-        inflation_radius: 0.22          # 局部障碍膨胀再小一点，过障更果断
+        inflation_radius: 0.24          # 局部障碍膨胀再小一点，过障更果断
       voxel_layer:
         plugin: "nav2_costmap_2d::VoxelLayer"
         enabled: True
@@ -268,7 +269,7 @@ local_costmap:
 global_costmap:
   global_costmap:
     ros__parameters:
-      update_frequency: 1.0
+      update_frequency: 5.0
       publish_frequency: 1.0
       global_frame: map
       robot_base_frame: base_link
@@ -298,7 +299,7 @@ global_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0        # 全局代价衰减更慢，路径别贴障碍物边
-        inflation_radius: 0.20          # 全局障碍膨胀略小，减少绕行保守度
+        inflation_radius: 0.24          # 全局障碍膨胀略小，减少绕行保守度
       always_send_full_costmap: True
   global_costmap_client:
     ros__parameters:
@@ -337,15 +338,15 @@ planner_server:
     planner_plugins: ["GridBased"]
     GridBased:
       plugin: "nav2_smac_planner/SmacPlannerHybrid"
-      tolerance: 0.5                  # 目标容差 (m)
+      tolerance: 0.4                  # 目标容差 (m)
       downsample_costmap: false       # 5m小场不下采样
       downsampling_factor: 1
       allow_unknown: false            # 不穿越未知区域
       max_iterations: 5000            # 远方目标增加迭代
       max_planning_time: 5.0          # 放宽时间限制
       motion_model_for_search: "REEDS_SHEPP"   # 允许倒车但严格惩罚
-      angle_quantization_bins: 24     # 15°精度，40→24 大幅加速启发式表计算
-      minimum_turning_radius: 0.30    # 跟 TEB 一致，避免全局路径给急弯
+      angle_quantization_bins: 3     # 15°精度，40→24 大幅加速启发式表计算（越小越宽松）
+      minimum_turning_radius: 0.32    # 跟 TEB 一致，避免全局路径给急弯
       analytic_expansion_ratio: 3.5   # 分析扩展加速搜索
       cache_obstacle_heuristic: true  # 缓存启发式加速重规划
       lookup_table_size: 9.0          # 覆盖全局地图 (359×0.025≈9m)，15→9 大幅减少启动计算

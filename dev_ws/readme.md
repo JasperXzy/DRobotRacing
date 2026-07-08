@@ -80,6 +80,7 @@ ros2 launch state_estimation ekf.launch.py
 
 # 终端 3: Nav2（内部已集成 SLAM Toolbox 定位 + map_server + 规划器 + 控制器）
 ros2 launch origincar_nav2 origincar_nav2.launch.py
+ros2 launch origincar_nav2 fixed_path_nav2_demo.launch.py
 
 ```
 在 RViz 中使用 "2D Pose Estimate" 工具设置初始位姿，SLAM Toolbox 即开始 scan-matching 定位。

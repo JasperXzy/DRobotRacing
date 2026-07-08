@@ -3,7 +3,7 @@
   Spin（原地旋转）对阿克曼底盘不可行（有最小转弯半径）
 
   ★ v2 平滑巡航版：
-    ComputePathThroughPoses → RemovePassedGoals → SmoothPath → FollowPath
+    RemovePassedGoals → AdjustBlockedGoals → ComputePathThroughPoses → SmoothPath → FollowPath
     中间航点不停车，TEB free_goal_vel=true 连续穿过
 -->
 <root main_tree_to_execute="MainTree">
@@ -13,7 +13,13 @@
         <RateController hz="1.0">
           <RecoveryNode number_of_retries="1" name="ComputePathThroughPoses">
             <ReactiveSequence>
-              <RemovePassedGoals input_goals="{goals}" output_goals="{goals}" radius="0.45"/>
+              <RemovePassedGoals input_goals="{goals}" output_goals="{goals}" radius="0.35"/>
+              <AdjustBlockedGoals input_goals="{goals}" output_goals="{goals}"
+                                  costmap_topic="/global_costmap/costmap"
+                                  blocked_cost="50"
+                                  search_radius="0.45"
+                                  clearance_radius="0.18"
+                                  unknown_is_blocked="true"/>
               <ComputePathThroughPoses goals="{goals}" path="{path}" planner_id="GridBased"/>
             </ReactiveSequence>
             <ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>

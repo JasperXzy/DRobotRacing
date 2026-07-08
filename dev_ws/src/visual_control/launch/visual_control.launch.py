@@ -7,6 +7,7 @@ from launch.substitutions import TextSubstitution
 from launch.substitutions import LaunchConfiguration
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from ament_index_python import get_package_share_directory
+from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description():
@@ -94,6 +95,14 @@ def generate_launch_description():
             'delta_x_ratio',
             default_value='0.05',
             description='delta_x_ratio for obstacle avoidance'),
+        DeclareLaunchArgument(
+            'debug_control_logs',
+            default_value='false',
+            description='enable detailed per-loop visual control debug logs'),
+        DeclareLaunchArgument(
+            'log_level',
+            default_value='warn',
+            description='ROS log level for visual_control'),
         Node(
             package='visual_control',
             executable='visual_control',
@@ -121,7 +130,9 @@ def generate_launch_description():
                 {"qr_code_speed_modifier": LaunchConfiguration('qr_code_speed_modifier')},
                 {"follow_qr_code_ratio": LaunchConfiguration('follow_qr_code_ratio')},
                 {"follow_parking_sign_ratio": LaunchConfiguration('follow_parking_sign_ratio')},
+                {"debug_control_logs": ParameterValue(
+                    LaunchConfiguration('debug_control_logs'), value_type=bool)},
             ],
-            arguments=['--ros-args', '--log-level', 'warn']
+            arguments=['--ros-args', '--log-level', LaunchConfiguration('log_level')]
         )
     ])

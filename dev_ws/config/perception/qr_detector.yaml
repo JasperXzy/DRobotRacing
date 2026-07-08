@@ -7,3 +7,6 @@ qr_detector_node:
     small_roi_min_size: 120
     small_roi_upscale_factor: 2.0
     stop_on_detect: true
+    suspend_visual_control_on_detect: true
+    visual_control_suspend_topic: /sign4return
+    visual_control_suspend_value: 5

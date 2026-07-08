@@ -7,6 +7,7 @@
 using std::placeholders::_1;
 using namespace std;
 void sigintHandler(int sig);
+volatile sig_atomic_t g_sigint_requested = 0;
 sensor_msgs::msg::Imu Mpu6050;
 rclcpp::Node::SharedPtr node_handle = nullptr;
 
@@ -16,7 +17,20 @@ int main(int argc, char *argv[])
     rclcpp::init(argc, argv);
     signal(SIGINT, sigintHandler);
     chassis_driver Robot_Control;
+    std::thread sigint_stop_thread([&Robot_Control]() {
+      while (rclcpp::ok() && !g_sigint_requested) {
+        usleep(10000);
+      }
+      if (g_sigint_requested) {
+        Robot_Control.SuspendAndStop();
+        rclcpp::shutdown();
+      }
+    });
     Robot_Control.Control();
+    Robot_Control.Send_Stop_Command();
+    if (sigint_stop_thread.joinable()) {
+      sigint_stop_thread.join();
+    }
     rclcpp::shutdown();
     return 0;
 }
@@ -43,6 +57,19 @@ float chassis_driver::Odom_Trans(uint8_t Data_High,uint8_t Data_Low)
 
 void chassis_driver::Akm_Cmd_Vel_Callback(const ackermann_msgs::msg::AckermannDriveStamped::SharedPtr akm_ctl)
 {
+    last_cmd_vel_time_ = this->now();
+    const bool has_motion =
+      fabs(akm_ctl->drive.speed) > 0.0001 ||
+      fabs(akm_ctl->drive.steering_angle) > 0.0001;
+    command_active_ = has_motion;
+    timeout_stop_sent_ = !has_motion;
+
+    if (control_suspended_) {
+      Send_Stop_Command();
+      return;
+    }
+
+    std::lock_guard<std::mutex> lock(serial_write_mutex_);
     short  transition;
   
     Send_Data.tx[0]=FRAME_HEADER;
@@ -71,6 +98,20 @@ void chassis_driver::Akm_Cmd_Vel_Callback(const ackermann_msgs::msg::AckermannDr
 
 void chassis_driver::Cmd_Vel_Callback(const geometry_msgs::msg::Twist::SharedPtr twist_aux)
 {
+    last_cmd_vel_time_ = this->now();
+    const bool has_motion =
+      fabs(twist_aux->linear.x) > 0.0001 ||
+      fabs(twist_aux->linear.y) > 0.0001 ||
+      fabs(twist_aux->angular.z) > 0.0001;
+    command_active_ = has_motion;
+    timeout_stop_sent_ = !has_motion;
+
+    if (control_suspended_) {
+      Send_Stop_Command();
+      return;
+    }
+
+    std::lock_guard<std::mutex> lock(serial_write_mutex_);
     short  transition;
     Send_Data.tx[0]=FRAME_HEADER;
     Send_Data.tx[1] = 0;
@@ -101,6 +142,43 @@ void chassis_driver::Cmd_Vel_Callback(const geometry_msgs::msg::Twist::SharedPtr
     } catch (serial::IOException& e) {
         RCLCPP_ERROR(this->get_logger(),("Unable to send data through serial port"));
     }
+}
+
+void chassis_driver::Send_Stop_Command()
+{
+    std::lock_guard<std::mutex> lock(serial_write_mutex_);
+    Send_Data.tx[0]=FRAME_HEADER;
+    Send_Data.tx[1]=0;
+    Send_Data.tx[2]=0;
+    Send_Data.tx[3]=0;
+    Send_Data.tx[4]=0;
+    Send_Data.tx[5]=0;
+    Send_Data.tx[6]=0;
+    Send_Data.tx[7]=0;
+    Send_Data.tx[8]=0;
+    Send_Data.tx[9]=Check_Sum(9,SEND_DATA_CHECK);
+    Send_Data.tx[10]=FRAME_TAIL;
+
+    if (!Stm32_Serial.isOpen()) {
+      return;
+    }
+
+    try {
+      for (int i = 0; i < 3; ++i) {
+        Stm32_Serial.write(Send_Data.tx, sizeof(Send_Data.tx));
+        usleep(10000);
+      }
+    } catch (serial::IOException& e) {
+      RCLCPP_ERROR(this->get_logger(), "Unable to send stop data through serial port");
+    }
+}
+
+void chassis_driver::SuspendAndStop()
+{
+    control_suspended_ = true;
+    command_active_ = false;
+    timeout_stop_sent_ = true;
+    Send_Stop_Command();
 }
 
 void chassis_driver::Sign_Switch_Callback(const std_msgs::msg::Int32::SharedPtr sign_switch)
@@ -293,9 +371,25 @@ void chassis_driver::Control()
         Publish_ImuSensor();
         Publish_Voltage();
         Publish_Odom();
-        rclcpp::spin_some(this->get_node_base_interface());
       }
+      rclcpp::spin_some(this->get_node_base_interface());
+      Check_Cmd_Vel_Timeout();
       last_time = current_time;
+    }
+}
+
+void chassis_driver::Check_Cmd_Vel_Timeout()
+{
+    if (cmd_vel_timeout_ms_ <= 0 || !command_active_ || timeout_stop_sent_) {
+      return;
+    }
+
+    const double elapsed_ms = (this->now() - last_cmd_vel_time_).seconds() * 1000.0;
+    if (elapsed_ms >= cmd_vel_timeout_ms_) {
+      command_active_ = false;
+      timeout_stop_sent_ = true;
+      Send_Stop_Command();
+      RCLCPP_WARN(this->get_logger(), "cmd_vel timeout, chassis stop command sent");
     }
 }
 
@@ -316,6 +410,7 @@ chassis_driver::chassis_driver()
   this->declare_parameter<std::string>("odom_frame_id", "odom");
   this->declare_parameter<std::string>("robot_frame_id", "base_link");
   this->declare_parameter<std::string>("gyro_frame_id", "gyro_link");
+  this->declare_parameter<int>("cmd_vel_timeout_ms", cmd_vel_timeout_ms_);
 
   this->get_parameter("serial_baud_rate", serial_baud_rate);
   this->get_parameter("usart_port_name", usart_port_name);
@@ -324,6 +419,8 @@ chassis_driver::chassis_driver()
   this->get_parameter("odom_frame_id", odom_frame_id);
   this->get_parameter("robot_frame_id", robot_frame_id);
   this->get_parameter("gyro_frame_id", gyro_frame_id);
+  this->get_parameter("cmd_vel_timeout_ms", cmd_vel_timeout_ms_);
+  last_cmd_vel_time_ = this->now();
 
   odom_publisher = create_publisher<nav_msgs::msg::Odometry>("chassis/odom", 10);
 
@@ -345,7 +442,7 @@ chassis_driver::chassis_driver()
   try  {
     Stm32_Serial.setPort(usart_port_name);
     Stm32_Serial.setBaudrate(serial_baud_rate);
-    serial::Timeout _time = serial::Timeout::simpleTimeout(2000);
+    serial::Timeout _time = serial::Timeout::simpleTimeout(100);
     Stm32_Serial.setTimeout(_time);
     Stm32_Serial.open();
   } catch (serial::IOException& e) {
@@ -360,17 +457,11 @@ chassis_driver::chassis_driver()
 void sigintHandler(int sig)
 {
     (void)sig;
-    printf("OriginBot shutdown...\n");
-    /* 
-    // Original code tried to open serial again, which is risky
-    serial::Serial Stm32_Serial;
-    ...
-    */
-    // 关闭ROS2接口，清除资源
-    rclcpp::shutdown();
+    g_sigint_requested = 1;
 }
 
 chassis_driver::~chassis_driver()
 {
+  SuspendAndStop();
   RCLCPP_INFO(this->get_logger(),"Shutting down");
 }

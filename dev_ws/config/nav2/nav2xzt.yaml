@@ -124,7 +124,7 @@ controller_server:
       max_vel_theta: 10.0                       # 最大转向角速度 (仅 cmd_angle=false 时用)
 
       # 阿克曼转弯限制
-      min_turning_radius: 0.20                 # 与MPPI AckermannConstraints一致，0.50→0.20
+      min_turning_radius: 0.30                 # 与MPPI AckermannConstraints一致，0.50→0.20
 
       # ━━━ 加速度限制 ━━━
       acc_lim_x: 3.0                           # 线加速度 (m/s²)

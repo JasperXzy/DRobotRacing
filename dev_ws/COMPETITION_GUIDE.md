@@ -75,7 +75,7 @@
 | 数值 | 含义 | 谁发 → 谁收 |
 |------|------|-------------|
 | -1 | 触发VLM图生文 | 巡航节点 → VLM节点 |
-| 5 | 紧急停车 | 终端手动发 |
+| 5 | 挂起视觉控制/紧急停车 | QR节点或终端手动发 → visual_control、line_detector |
 
 ### /sign_switch (origincar_msg/Sign)
 
@@ -127,6 +127,10 @@ ros2 run origincar_nav2 waypoint_recorder --ros-args -p output_file:=waypoints_c
 
 # 录制逆时针航点
 ros2 run origincar_nav2 waypoint_recorder --ros-args -p output_file:=waypoints_ccw.yaml
+ 
+#小demo
+ros2 launch origincar_nav2 fixed_path_nav2_demo.launch.py
+
 ```
 
 录制完成后，把生成的 yaml 文件复制到源码目录：
@@ -150,7 +154,6 @@ source install/setup.bash
 # 终端1：一键启动全部
 ros2 launch racing_bringup racing.launch.py
 # 等待约10秒，所有节点分阶段就绪
-
 # 终端2：发令！
 ros2 run origincar_nav2 trigger_cruise
 ```

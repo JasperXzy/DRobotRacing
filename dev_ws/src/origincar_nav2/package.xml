@@ -24,6 +24,7 @@
   <!-- 2. Nav2 核心包 -->
   <exec_depend>nav2_bringup</exec_depend>          <!-- 包含Nav2的主要启动文件 -->
   <exec_depend>navigation2</exec_depend>           <!-- Nav2的核心库 -->
+  <exec_depend>nav2_msgs</exec_depend>             <!-- NavigateThroughPoses action -->
 
   <!-- 3. 机器人模型描述与坐标变换 -->
   <exec_depend>robot_state_publisher</exec_depend> <!-- 发布机器人模型TF -->
@@ -35,6 +36,7 @@
   <!-- 4. 传感器驱动与消息 -->
   <exec_depend>ackermann_msgs</exec_depend>        <!-- 阿克曼转向消息 -->
   <exec_depend>geometry_msgs</exec_depend>         <!-- Twist等几何消息 -->
+  <exec_depend>nav_msgs</exec_depend>              <!-- OccupancyGrid等导航消息 -->
   <exec_depend>sensor_msgs</exec_depend>           <!-- LaserScan等传感器消息 -->
 
   <!-- 5. 键盘控制节点 -->
