@@ -1,6 +1,6 @@
 <launch>
   <arg name="waypoints_file" default="$(find-pkg-share origincar_system)/config/waypoints.yaml"/>
-  <arg name="linear_speed" default="0.35"/>
+  <arg name="linear_speed" default="0.9"/>
   <arg name="channel_linear_speed" default="0.45"/>
   <arg name="channel_waypoint_ranges" default=""/>
   <arg name="max_angular_z" default="1.6"/>
@@ -14,10 +14,10 @@
   <arg name="reverse_approach_nudge_waypoint" default="2"/>
   <arg name="reverse_approach_nudge_distance" default="0.35"/>
   <arg name="reverse_approach_nudge_angular_z" default="-0.35"/>
-  <arg name="lookahead_distance" default="0.55"/>
+  <arg name="lookahead_distance" default="0.65"/>
   <arg name="enable_lookahead_waypoint_selection" default="false"/>
   <arg name="enable_lookahead_progress_commit" default="true"/>
-  <arg name="pass_radius" default="0.35"/>
+  <arg name="pass_radius" default="0.5"/>
   <arg name="enable_smooth_keepout_path" default="false"/>
   <arg name="smooth_path_min_waypoint" default="4"/>
   <arg name="smooth_path_max_waypoint" default="9"/>
@@ -59,7 +59,7 @@
   <arg name="enable_image_analysis_trigger" default="true"/>
   <arg name="image_analysis_waypoint" default="7"/>
   <arg name="image_analysis_trigger_topic" default="/person_trigger"/>
-  <arg name="start_image_analyzer" default="true"/>
+  <arg name="start_image_analyzer" default="false"/>
   <arg name="image_topic" default="/image"/>
   <arg name="image_msg_type" default="compressed"/>
   <arg name="image_analysis_result_topic" default="/image_ai"/>
