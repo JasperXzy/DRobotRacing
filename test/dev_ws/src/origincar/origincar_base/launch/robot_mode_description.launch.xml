@@ -1,3 +1,0 @@
-<launch>
-  <node pkg="robot_state_publisher" exec="robot_state_publisher" name="robot_state_publisher" output="screen" args="$(find-pkg-share origincar_description)/urdf/origincar.urdf"/>
-</launch>

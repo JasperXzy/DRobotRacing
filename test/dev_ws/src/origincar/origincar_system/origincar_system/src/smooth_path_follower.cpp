@@ -185,7 +185,7 @@ public:
 
     // 路径跟随速度和前瞻参数。
     // linear_speed：普通路段目标线速度，单位 m/s。最终速度还会被转弯和避障逻辑缩放。
-    declare_parameter<double>("linear_speed", 0.9);
+    declare_parameter<double>("linear_speed", 1.5);
     // channel_linear_speed：指定航点范围内的线速度，单位 m/s，用于窄通道/特殊区域单独调速。
     declare_parameter<double>("channel_linear_speed", 0.9);
     // channel_waypoint_ranges：使用 channel_linear_speed 的航点编号范围，如 "3-10,15,20-22"。
@@ -494,6 +494,72 @@ public:
   }
 
 private:
+  enum class ControlState
+  {
+    WAITING_FOR_POSE,
+    PATH_FOLLOWING,
+    OBSTACLE_AVOIDING,
+    BACKING_UP,
+    FINISHED
+  };
+
+  struct RobotPose
+  {
+    double x{0.0};
+    double y{0.0};
+    double yaw{0.0};
+  };
+
+  struct TrackingPlan
+  {
+    std::size_t target_index{0};
+    TrackingTarget target;
+    double active_speed{0.0};
+  };
+
+  const char * control_state_name(ControlState state) const
+  {
+    switch (state) {
+      case ControlState::WAITING_FOR_POSE:
+        return "WAITING_FOR_POSE";
+      case ControlState::PATH_FOLLOWING:
+        return "PATH_FOLLOWING";
+      case ControlState::OBSTACLE_AVOIDING:
+        return "OBSTACLE_AVOIDING";
+      case ControlState::BACKING_UP:
+        return "BACKING_UP";
+      case ControlState::FINISHED:
+        return "FINISHED";
+    }
+    return "UNKNOWN";
+  }
+
+  void set_control_state(ControlState next_state)
+  {
+    if (control_state_ == next_state) {
+      return;
+    }
+    RCLCPP_INFO(
+      get_logger(), "Control state: %s -> %s",
+      control_state_name(control_state_), control_state_name(next_state));
+    control_state_ = next_state;
+  }
+
+  void begin_control_cycle()
+  {
+    next_control_state_ = ControlState::PATH_FOLLOWING;
+  }
+
+  void mark_control_state(ControlState next_state)
+  {
+    next_control_state_ = next_state;
+  }
+
+  void finish_control_cycle()
+  {
+    set_control_state(next_control_state_);
+  }
+
   // 解析航点范围字符串，例如 "3-10,15,20-22" -> [(3,10), (15,15), (20,22)]。
   // 这些范围用于 channel_linear_speed_，让某些航点段使用通道速度。
   std::vector<std::pair<int, int>> parse_waypoint_ranges(std::string value)
@@ -674,50 +740,83 @@ private:
     return waypoints;
   }
 
-  // 主控制循环。每个周期执行：
-  //   1. 查询机器人在 map 下的位姿；
-  //   2. 判断是否到终点；
-  //   3. 更新已通过航点；
-  //   4. 选择前瞻/平滑追踪目标；
-  //   5. 用类似视觉巡线的目标角度误差计算线速度和角速度；
-  //   6. 叠加真实障碍和 keepout 避障；
-  //   7. 发布 /cmd_vel。
+  // 主控制循环只保留流程骨架；具体计算分散到下面的小函数里。
+  // 这样读代码时先看状态流转，再按需跳到追点、避障或触发逻辑。
   void control_once()
   {
-    // robot_x / robot_y / robot_yaw：机器人当前在 frame_id_ 坐标系下的位置和航向。
-    double robot_x = 0.0;
-    double robot_y = 0.0;
-    double robot_yaw = 0.0;
-    if (!lookup_robot_pose(robot_x, robot_y, robot_yaw)) {
+    RobotPose pose;
+    if (!update_robot_pose(pose)) {
+      set_control_state(ControlState::WAITING_FOR_POSE);
       publish_stop();
       return;
     }
 
-    // 终点使用 goal_tolerance_ 判定，避免最后一个点因为 pass_radius 逻辑继续向后切。
+    if (stop_if_final_goal_reached(pose)) {
+      return;
+    }
+
+    begin_control_cycle();
+    update_waypoint_progress(pose);
+
+    const auto plan = build_tracking_plan(pose);
+    auto cmd = compute_tracking_command(pose, plan);
+
+    // 最后叠加避障逻辑，可能修改线速度、角速度，甚至改成倒车脱困命令。
+    cmd = apply_obstacle_avoidance(cmd, plan.target.reverse);
+    finish_control_cycle();
+    publish_cmd(cmd);
+  }
+
+  // 查询机器人当前位姿。失败时返回 false，由主循环进入 WAITING_FOR_POSE 并停车。
+  bool update_robot_pose(RobotPose & pose)
+  {
+    return lookup_robot_pose(pose.x, pose.y, pose.yaw);
+  }
+
+  // 终点使用 goal_tolerance_ 判定，避免最后一个点因为 pass_radius 逻辑继续向后切。
+  bool stop_if_final_goal_reached(const RobotPose & pose)
+  {
     const auto & final = waypoints_.back();
-    const double final_distance = std::hypot(final.x - robot_x, final.y - robot_y);
+    const double final_distance = std::hypot(final.x - pose.x, final.y - pose.y);
     if (current_index_ >= waypoints_.size() - 1 && final_distance <= goal_tolerance_) {
+      set_control_state(ControlState::FINISHED);
       RCLCPP_INFO(get_logger(), "Final waypoint reached; stopping.");
       publish_stop();
       rclcpp::shutdown();
-      return;
+      return true;
     }
+    return false;
+  }
 
-    // 更新航点进度，再选择实际追踪目标。
-    advance_passed_waypoints(robot_x, robot_y);
-    const std::size_t target_index = select_lookahead_waypoint(robot_x, robot_y);
+  // 更新航点通过状态，包括 pass_radius 通过和冲过头跳点。
+  void update_waypoint_progress(const RobotPose & pose)
+  {
+    advance_passed_waypoints(pose.x, pose.y);
+  }
+
+  // 选择本周期的追踪计划：目标航点编号、实际追踪目标点和该路段线速度。
+  TrackingPlan build_tracking_plan(const RobotPose & pose)
+  {
+    const std::size_t target_index = select_lookahead_waypoint(pose.x, pose.y);
     commit_lookahead_progress(target_index);
-    const auto tracking_target = select_tracking_target(robot_x, robot_y, target_index);
-    const double active_speed = active_linear_speed(target_index);
+    TrackingPlan plan;
+    plan.target_index = target_index;
+    plan.target = select_tracking_target(pose.x, pose.y, target_index);
+    plan.active_speed = active_linear_speed(target_index);
+    return plan;
+  }
 
+  // 根据追踪计划计算原始跟随速度，不处理避障。
+  geometry_msgs::msg::Twist compute_tracking_command(const RobotPose & pose, const TrackingPlan & plan) const
+  {
     // dx/dy：目标点相对机器人在 map 坐标系下的向量。
-    const double dx = tracking_target.x - robot_x;
-    const double dy = tracking_target.y - robot_y;
+    const double dx = plan.target.x - pose.x;
+    const double dy = plan.target.y - pose.y;
 
     // 将目标向量从 map 坐标系旋转到 base_link 坐标系。
     // target_x_base > 0 表示目标在车头前方，target_y_base 表示目标在车体左/右侧。
-    const double cos_yaw = std::cos(robot_yaw);
-    const double sin_yaw = std::sin(robot_yaw);
+    const double cos_yaw = std::cos(pose.yaw);
+    const double sin_yaw = std::sin(pose.yaw);
     const double target_x_base = cos_yaw * dx + sin_yaw * dy;
     const double target_y_base = -sin_yaw * dx + cos_yaw * dy;
     const double distance = std::max(std::hypot(target_x_base, target_y_base), 0.001);
@@ -732,22 +831,24 @@ private:
 
     geometry_msgs::msg::Twist cmd;
 
-    if (tracking_target.reverse) {
+    if (plan.target.reverse) {
       // 倒车时目标方向按车尾方向处理，linear.x 为负。
       heading_error = std::atan2(-target_y_base, -target_x_base);
       speed_scale = clamp_value(1.0 - std::abs(heading_error) / 1.8, reverse_min_speed_scale_, 1.0);
-      cmd.linear.x = -active_speed * speed_scale;
+      cmd.linear.x = -plan.active_speed * speed_scale;
       // 巡线式转向：只看目标在车体系下形成的角度误差，不再使用曲率公式。
       cmd.angular.z = reverse_angular_gain_ * heading_error;
-      cmd = apply_reverse_approach_nudge(cmd, target_index, distance);
+      cmd = apply_reverse_approach_nudge(cmd, plan.target_index, distance);
     } else {
-      cmd.linear.x = active_speed * speed_scale;
+      cmd.linear.x = plan.active_speed * speed_scale;
       // 巡线式转向：目标在左侧 heading_error 为正，目标在右侧 heading_error 为负。
       cmd.angular.z = turn_angular_gain_ * heading_error;
     }
+    return cmd;
+  }
 
-    // 最后叠加避障逻辑，可能修改线速度、角速度，甚至改成倒车脱困命令。
-    cmd = apply_obstacle_avoidance(cmd, tracking_target.reverse);
+  void publish_cmd(const geometry_msgs::msg::Twist & cmd)
+  {
     cmd_pub_->publish(cmd);
   }
 
@@ -1123,6 +1224,7 @@ private:
     // 如果已经进入倒车脱困窗口，则在 backup_until_time_ 前持续发布倒车命令。
     if (std::isfinite(backup_until_time_)) {
       if (now < backup_until_time_) {
+        mark_control_state(ControlState::BACKING_UP);
         return backup_cmd();
       }
       // 倒车窗口结束后清状态，下一周期重新按雷达距离判断。
@@ -1137,6 +1239,7 @@ private:
       if (backup_trigger_time_ <= 0.0 && rear_is_clear()) {
         backup_until_time_ = now + backup_duration_;
         backup_turn_direction_ = avoid_direction;
+        mark_control_state(ControlState::BACKING_UP);
         log_obstacle_warning("Obstacle emergency at " + std::to_string(front_min) + "m; backing up.");
         return backup_cmd();
       }
@@ -1146,6 +1249,7 @@ private:
         if (rear_is_clear()) {
           backup_until_time_ = now + backup_duration_;
           backup_turn_direction_ = avoid_direction;
+          mark_control_state(ControlState::BACKING_UP);
           log_obstacle_warning("Obstacle stuck at " + std::to_string(front_min) + "m; backing up.");
           return backup_cmd();
         }
@@ -1153,6 +1257,7 @@ private:
       }
 
       // 后方不安全或未达到倒车触发时间时，原地停下，并保留一点转向避让趋势。
+      mark_control_state(ControlState::OBSTACLE_AVOIDING);
       cmd.linear.x = 0.0;
       cmd.angular.z = avoid_direction * avoid_angular_z_;
       log_obstacle_warning("Obstacle emergency stop: " + std::to_string(front_min) + "m.");
@@ -1164,6 +1269,7 @@ private:
 
     // 减速区：距离越接近 stop_distance，速度缩放越小。
     if (front_min <= obstacle_slow_distance_) {
+      mark_control_state(ControlState::OBSTACLE_AVOIDING);
       const double slow_scale = clamp_value(
         (front_min - obstacle_stop_distance_) /
           std::max(obstacle_slow_distance_ - obstacle_stop_distance_, 0.01),
@@ -1173,6 +1279,7 @@ private:
 
     // 避让区：在原始跟随角速度上叠加朝空旷侧转的角速度。
     if (front_min <= obstacle_avoid_distance_) {
+      mark_control_state(ControlState::OBSTACLE_AVOIDING);
       const double avoid_direction = avoid_direction_from_ranges(left_min, right_min);
       const double avoid_gain = clamp_value(
         (obstacle_avoid_distance_ - front_min) /
@@ -1211,6 +1318,7 @@ private:
     if (!std::isfinite(front_min)) {
       return cmd;
     }
+    mark_control_state(ControlState::OBSTACLE_AVOIDING);
 
     // 在运动方向左右两侧各采一个点，判断哪边被 keepout 挡住，用于决定避让方向。
     const double left_heading = normalize_angle(heading + M_PI / 2.0);
@@ -1555,6 +1663,10 @@ private:
   std::vector<Waypoint> waypoints_;
   // current_index_：当前正在处理的航点下标，从 0 开始；日志里显示时会 +1。
   std::size_t current_index_{0};
+  // control_state_：当前控制状态，只用于把隐式流程显式化，方便日志和后续维护。
+  ControlState control_state_{ControlState::PATH_FOLLOWING};
+  // next_control_state_：单个控制周期内先记录最终状态，周期末再统一提交，避免日志抖动。
+  ControlState next_control_state_{ControlState::PATH_FOLLOWING};
   // latest_scan_：最近一次收到的 LaserScan，用于真实障碍避让。
   sensor_msgs::msg::LaserScan::SharedPtr latest_scan_;
   // latest_keepout_mask_：最近一次收到的 keepout OccupancyGrid，用于虚拟障碍避让。
