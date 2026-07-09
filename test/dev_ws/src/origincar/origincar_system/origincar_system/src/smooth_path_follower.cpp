@@ -234,13 +234,11 @@ public:
     // 终点判定、正向/倒车控制增益和速度缩放参数。
     // goal_tolerance：最后一个航点的到达容差，单位米。到终点小于该距离就停车并关闭节点。
     declare_parameter<double>("goal_tolerance", 0.25);
-    // max_angular_z：角速度绝对值上限，单位 rad/s，所有转向命令都会被限制在这个范围内。
-    declare_parameter<double>("max_angular_z", 1.6);
-    // turn_angular_gain：正向行驶时 pure pursuit 曲率转角速度的增益；越大转向越积极。
+    // turn_angular_gain：正向行驶时巡线式角度误差转角速度的增益；越大转向越积极。
     declare_parameter<double>("turn_angular_gain", 1.4);
     // turn_min_speed_scale：正向大转角时的最低速度比例，防止一转弯就降到太慢。
     declare_parameter<double>("turn_min_speed_scale", 0.45);
-    // reverse_angular_gain：倒车时 pure pursuit 曲率转角速度的增益。
+    // reverse_angular_gain：倒车时巡线式角度误差转角速度的增益。
     declare_parameter<double>("reverse_angular_gain", 1.1);
     // reverse_min_speed_scale：倒车大转角时的最低速度比例。
     declare_parameter<double>("reverse_min_speed_scale", 0.30);
@@ -373,7 +371,6 @@ public:
 
     // 读取正向、倒车和终点控制参数。
     goal_tolerance_ = get_parameter("goal_tolerance").as_double();
-    max_angular_z_ = get_parameter("max_angular_z").as_double();
     turn_angular_gain_ = get_parameter("turn_angular_gain").as_double();
     turn_min_speed_scale_ = get_parameter("turn_min_speed_scale").as_double();
     reverse_angular_gain_ = get_parameter("reverse_angular_gain").as_double();
@@ -682,7 +679,7 @@ private:
   //   2. 判断是否到终点；
   //   3. 更新已通过航点；
   //   4. 选择前瞻/平滑追踪目标；
-  //   5. 用纯追踪思路计算线速度和角速度；
+  //   5. 用类似视觉巡线的目标角度误差计算线速度和角速度；
   //   6. 叠加真实障碍和 keepout 避障；
   //   7. 发布 /cmd_vel。
   void control_once()
@@ -735,19 +732,18 @@ private:
 
     geometry_msgs::msg::Twist cmd;
 
-    // 纯追踪曲率，近似公式：curvature = 2*y / L^2。
-    // target_y_base 越大，角速度越大；distance 越小，转向越激进。
-    const double curvature = 2.0 * target_y_base / (distance * distance);
     if (tracking_target.reverse) {
       // 倒车时目标方向按车尾方向处理，linear.x 为负。
       heading_error = std::atan2(-target_y_base, -target_x_base);
       speed_scale = clamp_value(1.0 - std::abs(heading_error) / 1.8, reverse_min_speed_scale_, 1.0);
       cmd.linear.x = -active_speed * speed_scale;
-      cmd.angular.z = clamp_value(cmd.linear.x * curvature * reverse_angular_gain_, -max_angular_z_, max_angular_z_);
+      // 巡线式转向：只看目标在车体系下形成的角度误差，不再使用曲率公式。
+      cmd.angular.z = reverse_angular_gain_ * heading_error;
       cmd = apply_reverse_approach_nudge(cmd, target_index, distance);
     } else {
       cmd.linear.x = active_speed * speed_scale;
-      cmd.angular.z = clamp_value(active_speed * curvature * turn_angular_gain_, -max_angular_z_, max_angular_z_);
+      // 巡线式转向：目标在左侧 heading_error 为正，目标在右侧 heading_error 为负。
+      cmd.angular.z = turn_angular_gain_ * heading_error;
     }
 
     // 最后叠加避障逻辑，可能修改线速度、角速度，甚至改成倒车脱困命令。
@@ -767,7 +763,7 @@ private:
       return cmd;
     }
 
-    cmd.angular.z = clamp_value(reverse_approach_nudge_angular_z_, -max_angular_z_, max_angular_z_);
+    cmd.angular.z = reverse_approach_nudge_angular_z_;
     return cmd;
   }
 
@@ -963,7 +959,7 @@ private:
     }
   }
 
-  // 选择真正用于 pure pursuit 控制的目标点。
+  // 选择真正用于转向控制的目标点。
   // 默认直接返回目标航点；如果开启平滑 keepout 路径，则会在航点之间的曲线上采样，
   // 并选择“距离合适、离 keepout 较远”的临时目标点。
   TrackingTarget select_tracking_target(double robot_x, double robot_y, std::size_t target_index) const
@@ -1182,9 +1178,7 @@ private:
         (obstacle_avoid_distance_ - front_min) /
           std::max(obstacle_avoid_distance_ - obstacle_stop_distance_, 0.01),
         0.0, 1.0);
-      cmd.angular.z = clamp_value(
-        cmd.angular.z + avoid_direction * avoid_angular_z_ * avoid_gain,
-        -max_angular_z_, max_angular_z_);
+      cmd.angular.z += avoid_direction * avoid_angular_z_ * avoid_gain;
       log_obstacle_warning(
         "Obstacle avoid: front=" + std::to_string(front_min) + "m, left=" +
         std::to_string(left_min) + "m, right=" + std::to_string(right_min) + "m.");
@@ -1250,9 +1244,7 @@ private:
         (keepout_avoid_distance_ - front_min) /
           std::max(keepout_avoid_distance_ - keepout_stop_distance_, 0.01),
         0.0, 1.0);
-      cmd.angular.z = clamp_value(
-        cmd.angular.z + avoid_direction * avoid_angular_z_ * avoid_gain * direction,
-        -max_angular_z_, max_angular_z_);
+      cmd.angular.z += avoid_direction * avoid_angular_z_ * avoid_gain * direction;
       log_obstacle_warning("Keepout soft avoid: virtual obstacle at " + std::to_string(front_min) + "m.");
     }
 
@@ -1478,13 +1470,11 @@ private:
 
   // goal_tolerance_：最终点到达容差，单位米。
   double goal_tolerance_{0.25};
-  // max_angular_z_：角速度绝对值上限，单位 rad/s。
-  double max_angular_z_{1.6};
-  // turn_angular_gain_：正向 pure pursuit 曲率转角速度的增益。
+  // turn_angular_gain_：正向巡线式角度误差转角速度的增益。
   double turn_angular_gain_{1.4};
   // turn_min_speed_scale_：正向转弯时线速度最低缩放比例。
   double turn_min_speed_scale_{0.45};
-  // reverse_angular_gain_：倒车 pure pursuit 曲率转角速度的增益。
+  // reverse_angular_gain_：倒车巡线式角度误差转角速度的增益。
   double reverse_angular_gain_{1.1};
   // reverse_min_speed_scale_：倒车转向时线速度最低缩放比例。
   double reverse_min_speed_scale_{0.30};
