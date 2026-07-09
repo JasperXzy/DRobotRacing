@@ -101,7 +101,6 @@ controller_server:
       plugin: "nav2_controller::SimpleGoalChecker"
       xy_goal_tolerance: 0.35            # 稍微收紧最终位置判定
       yaw_goal_tolerance: 1.2            # ~69°，比之前更看重朝向但不卡死
-
     # ========================================================================
     # ★ TEB (Timed Elastic Band) 局部规划器
     #
@@ -121,11 +120,11 @@ controller_server:
       cmd_angle_instead_rotvel: false
       wheelbase: 0.145                         # 轴距 (m) 
       max_vel_x: 2.00                          # 先压低速度，减少入弯甩尾
-      max_vel_x_backwards: 1.00                # 允许半米级短倒车，但仍慢于前进
+      max_vel_x_backwards: 0.20                # 允许半米级短倒车，但仍慢于前进
       max_vel_theta: 1.0                       # 再压一点转向角速度，消掉残余甩尾
 
       # 阿克曼转弯限制
-      min_turning_radius: 0.32                 # 略放大转弯半径，避免急弯导致后轮甩
+      min_turning_radius: 0.15                 # 略放大转弯半径，避免急弯导致后轮甩
 
       # TEB优化用车体模型，需与costmap footprint保持一致，避免优化时按点模型贴障
       footprint_model:
@@ -141,13 +140,13 @@ controller_server:
       dt_hysteresis: 0.1
       min_samples: 3                           # 冠军车 3：最少轨迹点数
       global_plan_overwrite_orientation: False # 留给3D路径规划使用的参数，改为False
-      global_plan_viapoint_sep: 0.16           # TEB按全局路径自动抽via-points，不使用自定义/via_points
+      global_plan_viapoint_sep: 0.16           # 航点约束稍放松，弯道轨迹更圆滑
 
       no_inner_iterations: 7                   # 增加内层优化，让弯道收敛更平滑
       no_outer_iterations: 3                   # 冠军车 3
 
-      max_global_plan_lookahead_dist: 3.2      # 稍微看远，提前入弯但不过度拉直切角
-      force_reinit_new_goal_dist: 1.0          # 冠军车 1.0：新目标>1m就重初始化整条轨迹
+      max_global_plan_lookahead_dist: 0.60      # 稍微看远，提前入弯但不过度拉直切角
+      force_reinit_new_goal_dist: 3.0          # 冠军车 1.0：新目标>1m就重初始化整条轨迹
 
       feasibility_check_no_poses: 2            # 恢复轻量可行性检查，减少贴障碍轨迹
       publish_feedback: false
@@ -168,7 +167,7 @@ controller_server:
       # ╔══════════════════════════════════════════════════════╗
       # ║ ★★★ 冠军车优化权重（国一车实测）★★★            ║
       # ╚══════════════════════════════════════════════════════╝
-      penalty_epsilon: 0.05                    # 冠军车 0.11→0.15：惩罚更圆滑，减少轨迹抖动 # ->0.05减小速度限制，未跑
+      penalty_epsilon: 0.15                    # 冠军车 0.11→0.15：惩罚更圆滑，减少轨迹抖动 # ->0.05减小速度限制，未跑
 
       # 速度/加速度约束
       weight_max_vel_x: 4.0
@@ -184,7 +183,7 @@ controller_server:
       # 目标优化
       weight_optimaltime: 25.0                 # 降低抢时间倾向，减少急打方向
       weight_obstacle: 220.0                   # 降低障碍恐惧，减少过障前犹豫
-      weight_viapoint: 50.0                    # 少贴折线航点，减少过弯顿挫(越小越贴全局规划)
+      weight_viapoint: 10.0                    # 少贴折线航点，减少过弯顿挫
       weight_inflation: 1.2                    # 软缓冲别太强，允许靠近但不贴障，障碍物软缓冲权重
       weight_adapt_factor: 2.0
 
@@ -199,7 +198,7 @@ controller_server:
       visualize_hc_graph: false
 
       # ━━━ 目标到达 ━━━
-      xy_goal_tolerance: 0.15
+      xy_goal_tolerance: 0.08
       yaw_goal_tolerance: 1.2
       free_goal_vel: True                    # ★冠军车 false，7.7上午修改：True，允许到达点仍有残余速度，减少甩尾
 
@@ -210,7 +209,6 @@ controller_server:
 controller_server_rclcpp_node:
   ros__parameters:
     use_sim_time:  False
-
 # ============================================================================
 # local_costmap — 局部代价地图
 # ============================================================================
@@ -327,33 +325,19 @@ map_saver:
     map_subscribe_transient_local: True
 
 # ============================================================================
-# planner_server — 全局规划器 (smac_planner 的 Hybrid-A* 插件)
+# planner_server — 全局规划器 (Navfn A*)
 # ============================================================================
 planner_server:
   ros__parameters:
     expected_planner_frequency: 1.0       # 5m场不需要频繁重新规划
     use_sim_time:  False
-    # ★ Smac Hybrid-A* — 状态空间含 (x,y,theta)，天然适配阿克曼底盘
-    #     REEDS_SHEPP + 高倒车惩罚：背向目标时可短距倒车调头，避免绕大圈
+    # ★ Navfn A* — 2D 栅格 A* 全局路径，局部仍交给 TEB 处理阿克曼约束
     planner_plugins: ["GridBased"]
     GridBased:
-      plugin: "nav2_smac_planner/SmacPlannerHybrid"
+      plugin: "nav2_navfn_planner/NavfnPlanner"
       tolerance: 0.4                  # 目标容差 (m)
-      downsample_costmap: false       # 5m小场不下采样
-      downsampling_factor: 1
+      use_astar: true                 # 使用 A*，而不是默认 Dijkstra
       allow_unknown: false            # 不穿越未知区域
-      max_iterations: 5000            # 远方目标增加迭代
-      max_planning_time: 5.0          # 放宽时间限制
-      motion_model_for_search: "REEDS_SHEPP"   # 允许倒车但严格惩罚
-      angle_quantization_bins: 3     # 15°精度，40→24 大幅加速启发式表计算（越小越宽松）
-      minimum_turning_radius: 0.32    # 跟 TEB 一致，避免全局路径给急弯
-      analytic_expansion_ratio: 3.5   # 分析扩展加速搜索
-      cache_obstacle_heuristic: true  # 缓存启发式加速重规划
-      lookup_table_size: 9.0          # 覆盖全局地图 (359×0.025≈9m)，15→9 大幅减少启动计算
-      reverse_penalty: 35.0           # 允许短距离倒车，长距离仍更偏向前进
-      change_penalty: 1.0             # 0.6→1.0 更少转向变化
-      non_straight_penalty: 3.0       # 2.0→3.0 大幅偏向直线，拒绝绕弯
-      cost_penalty: 3.0           # 降低全局代价惩罚，别过度绕开障碍
 planner_server_rclcpp_node:
   ros__parameters:
     use_sim_time:  False
