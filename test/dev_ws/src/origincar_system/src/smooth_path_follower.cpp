@@ -25,7 +25,7 @@
  * 输入：
  *   1. YAML 航点文件：包含顺时针/逆时针路线，每个点至少有 x、y。
  *   2. TF：frame_id -> base_frame_id，默认 map -> base_link。
- *   3. /scan：LaserScan，用于前方障碍转向避让，不再修改线速度。
+   *   3. /scan：LaserScan，用于检查前方矩形通行区并临时接管转向。
  *   4. /qr_info 或 /qr_code：可选 QR 数字，用于选择顺/逆时针路线。
  *
  * 输出：
@@ -38,18 +38,6 @@
 
 namespace
 {
-
-// 将 value 限制在 [low, high] 区间内，常用于限速、限角速度和比例系数裁剪。
-double clamp_value(double value, double low, double high)
-{
-  return std::max(low, std::min(high, value));
-}
-
-// 将任意角度归一化到 [-pi, pi]，方便比较雷达扇区和航向误差。
-double normalize_angle(double angle)
-{
-  return std::atan2(std::sin(angle), std::cos(angle));
-}
 
 // 从 YAML 节点里读取布尔值；兼容 YAML bool 和字符串形式。
 bool yaml_bool(const YAML::Node & node, bool default_value = false)
@@ -88,8 +76,6 @@ SmoothPathFollower::SmoothPathFollower()
   tf_listener_(tf_buffer_)
 {
   double control_frequency = 40.0;
-  double front_angle_deg = front_angle_ * 180.0 / M_PI;
-  double side_angle_deg = side_angle_ * 180.0 / M_PI;
 
   // 坐标系与话题
   declare_parameter<std::string>("waypoints_file", waypoints_file_);
@@ -103,35 +89,23 @@ SmoothPathFollower::SmoothPathFollower()
   declare_parameter<std::string>("scan_topic", scan_topic_);
   get_parameter("scan_topic", scan_topic_);
 
-  // 基础追点控制
+  // 基础巡线控制
   declare_parameter<double>("control_frequency", control_frequency);
   get_parameter("control_frequency", control_frequency);
   declare_parameter<double>("linear_speed", linear_speed_);
   get_parameter("linear_speed", linear_speed_);
   declare_parameter<double>("lookahead_distance", lookahead_distance_);
   get_parameter("lookahead_distance", lookahead_distance_);
-  declare_parameter<bool>("enable_lookahead_waypoint_selection", enable_lookahead_waypoint_selection_);
-  get_parameter("enable_lookahead_waypoint_selection", enable_lookahead_waypoint_selection_);
-  declare_parameter<bool>("enable_lookahead_progress_commit", enable_lookahead_progress_commit_);
-  get_parameter("enable_lookahead_progress_commit", enable_lookahead_progress_commit_);
   declare_parameter<double>("pass_radius", pass_radius_);
   get_parameter("pass_radius", pass_radius_);
   declare_parameter<double>("goal_tolerance", goal_tolerance_);
   get_parameter("goal_tolerance", goal_tolerance_);
-
-  // 冲过头跳点保护
-  declare_parameter<bool>("enable_skip_overshot_waypoints", enable_skip_overshot_waypoints_);
-  get_parameter("enable_skip_overshot_waypoints", enable_skip_overshot_waypoints_);
-  declare_parameter<double>("overshot_waypoint_margin", overshot_waypoint_margin_);
-  get_parameter("overshot_waypoint_margin", overshot_waypoint_margin_);
-  declare_parameter<double>("overshot_waypoint_max_distance", overshot_waypoint_max_distance_);
-  get_parameter("overshot_waypoint_max_distance", overshot_waypoint_max_distance_);
-  declare_parameter<double>("overshot_next_waypoint_max_distance", overshot_next_waypoint_max_distance_);
-  get_parameter("overshot_next_waypoint_max_distance", overshot_next_waypoint_max_distance_);
-  declare_parameter<int>("skip_overshot_min_waypoint", skip_overshot_min_waypoint_);
-  get_parameter("skip_overshot_min_waypoint", skip_overshot_min_waypoint_);
-  declare_parameter<int>("skip_overshot_max_waypoint", skip_overshot_max_waypoint_);
-  get_parameter("skip_overshot_max_waypoint", skip_overshot_max_waypoint_);
+  declare_parameter<int>("route_projection_window", route_projection_window_);
+  get_parameter("route_projection_window", route_projection_window_);
+  declare_parameter<double>("route_projection_max_distance", route_projection_max_distance_);
+  get_parameter("route_projection_max_distance", route_projection_max_distance_);
+  declare_parameter<double>("segment_advance_t", segment_advance_t_);
+  get_parameter("segment_advance_t", segment_advance_t_);
 
   // 倒车控制
   declare_parameter<double>("turn_angular_gain", turn_angular_gain_);
@@ -151,21 +125,25 @@ SmoothPathFollower::SmoothPathFollower()
   declare_parameter<double>("reverse_approach_nudge_angular_z", reverse_approach_nudge_angular_z_);
   get_parameter("reverse_approach_nudge_angular_z", reverse_approach_nudge_angular_z_);
 
-  // 雷达避障
+  // 雷达矩形通行区避障
   declare_parameter<bool>("enable_obstacle_avoidance", enable_obstacle_avoidance_);
   get_parameter("enable_obstacle_avoidance", enable_obstacle_avoidance_);
   declare_parameter<int>("obstacle_enable_from_waypoint", obstacle_enable_from_waypoint_);
   get_parameter("obstacle_enable_from_waypoint", obstacle_enable_from_waypoint_);
-  declare_parameter<double>("obstacle_avoid_distance", obstacle_avoid_distance_);
-  get_parameter("obstacle_avoid_distance", obstacle_avoid_distance_);
+  declare_parameter<double>("obstacle_corridor_length", obstacle_corridor_length_);
+  get_parameter("obstacle_corridor_length", obstacle_corridor_length_);
+  declare_parameter<double>("obstacle_corridor_half_width", obstacle_corridor_half_width_);
+  get_parameter("obstacle_corridor_half_width", obstacle_corridor_half_width_);
   declare_parameter<double>("min_obstacle_range", min_obstacle_range_);
   get_parameter("min_obstacle_range", min_obstacle_range_);
-  declare_parameter<double>("front_angle_deg", front_angle_deg);
-  get_parameter("front_angle_deg", front_angle_deg);
-  declare_parameter<double>("side_angle_deg", side_angle_deg);
-  get_parameter("side_angle_deg", side_angle_deg);
+  declare_parameter<int>("obstacle_min_points", obstacle_min_points_);
+  get_parameter("obstacle_min_points", obstacle_min_points_);
   declare_parameter<double>("avoid_angular_z", avoid_angular_z_);
   get_parameter("avoid_angular_z", avoid_angular_z_);
+  declare_parameter<double>("avoid_linear_speed", avoid_linear_speed_);
+  get_parameter("avoid_linear_speed", avoid_linear_speed_);
+  declare_parameter<int>("obstacle_clear_frames", obstacle_clear_frames_);
+  get_parameter("obstacle_clear_frames", obstacle_clear_frames_);
 
   // QR 与图生文触发
   declare_parameter<bool>("enable_qr_skip_first", enable_qr_skip_first_);
@@ -190,17 +168,20 @@ SmoothPathFollower::SmoothPathFollower()
   get_parameter("image_analysis_trigger_topic", image_analysis_trigger_topic_);
 
   route_direction_ = to_lower(route_direction_);
-  overshot_waypoint_margin_ = std::max(0.0, overshot_waypoint_margin_);
-  overshot_waypoint_max_distance_ = std::max(0.0, overshot_waypoint_max_distance_);
-  overshot_next_waypoint_max_distance_ = std::max(0.0, overshot_next_waypoint_max_distance_);
-  skip_overshot_min_waypoint_ = std::max(1, skip_overshot_min_waypoint_);
-  skip_overshot_max_waypoint_ = std::max(skip_overshot_min_waypoint_, skip_overshot_max_waypoint_);
+  lookahead_distance_ = std::max(0.05, lookahead_distance_);
+  route_projection_window_ = std::max(1, route_projection_window_);
+  route_projection_max_distance_ = std::max(0.10, route_projection_max_distance_);
+  segment_advance_t_ = std::max(0.50, std::min(1.20, segment_advance_t_));
   reverse_approach_nudge_waypoint_ = std::max(1, reverse_approach_nudge_waypoint_);
   reverse_approach_nudge_distance_ = std::max(0.0, reverse_approach_nudge_distance_);
   obstacle_enable_from_waypoint_ = std::max(0, obstacle_enable_from_waypoint_);
+  obstacle_corridor_length_ = std::max(0.20, obstacle_corridor_length_);
+  obstacle_corridor_half_width_ = std::max(0.05, obstacle_corridor_half_width_);
+  obstacle_min_points_ = std::max(1, obstacle_min_points_);
+  avoid_angular_z_ = std::max(0.0, avoid_angular_z_);
+  avoid_linear_speed_ = std::max(0.0, avoid_linear_speed_);
+  obstacle_clear_frames_ = std::max(1, obstacle_clear_frames_);
   image_analysis_waypoint_ = std::max(1, image_analysis_waypoint_);
-  front_angle_ = front_angle_deg * M_PI / 180.0;
-  side_angle_ = side_angle_deg * M_PI / 180.0;
 
   // 按 route_direction_ 从 YAML 中加载初始路线；auto 会读取 YAML 顶层 route_direction。
   waypoints_ = load_waypoints(route_direction_);
@@ -234,13 +215,12 @@ SmoothPathFollower::SmoothPathFollower()
     waypoints_.begin(), waypoints_.end(), [](const Waypoint & w) { return w.reverse; });
   RCLCPP_INFO(
     get_logger(),
-    "Loaded %zu waypoint(s) (%zu reverse), route=%s, lookahead=%.2fm, waypoint_lookahead=%s, pass_radius=%.2fm, linear_speed=%.2fm/s, obstacle_from_waypoint=%d, obstacle_avoidance=%s.",
+    "Loaded %zu waypoint(s) (%zu reverse), route=%s, lookahead=%.2fm, projection_window=%d, projection_max_distance=%.2fm, linear_speed=%.2fm/s, obstacle_from_waypoint=%d, obstacle_avoidance=%s.",
     waypoints_.size(), static_cast<std::size_t>(reverse_count), selected_route_direction_.c_str(), lookahead_distance_,
-    enable_lookahead_waypoint_selection_ ? "true" : "false", pass_radius_,
-    linear_speed_, obstacle_enable_from_waypoint_,
+    route_projection_window_, route_projection_max_distance_, linear_speed_, obstacle_enable_from_waypoint_,
     enable_obstacle_avoidance_ ? "true" : "false");
 
-  // 定时控制循环：每次读取 TF、更新航点进度、算 cmd_vel、应用避障，然后发布速度。
+  // 定时控制循环：每次读取 TF、用路线窗口更新进度、追离散前瞻 waypoint，再按雷达通行区临时接管转向。
   timer_ = create_wall_timer(
     std::chrono::duration<double>(1.0 / std::max(control_frequency, 1.0)),
     std::bind(&SmoothPathFollower::control_once, this));
@@ -284,7 +264,7 @@ void SmoothPathFollower::set_control_state(SmoothPathFollower::ControlState next
 // ******************************** 主控制流程 ********************************
 // ********************************************************************************
 
-// 主控制循环：拿位姿 -> 判断终点 -> 推进航点 -> 选追踪目标 -> 算速度 -> 叠加避障 -> 发布。
+// 主控制循环：拿位姿 -> 更新路线线段进度 -> 算离散前瞻 waypoint 速度 -> 必要时由矩形通行区避障接管 -> 发布。
 // 这里保留完整顺序，避免为了几行赋值再跳到小包装函数里。
 void SmoothPathFollower::control_once()
 {
@@ -295,31 +275,41 @@ void SmoothPathFollower::control_once()
     return;
   }
 
+  next_control_state_ = ControlState::PATH_FOLLOWING;
+
+  if (!first_waypoint_reached_) {
+    const auto & first = waypoints_.front();
+    const double first_distance = std::hypot(first.x - pose.x, first.y - pose.y);
+    if (first_distance <= waypoint_pass_radius(0)) {
+      first_waypoint_reached_ = true;
+      RCLCPP_INFO(get_logger(), "Initial waypoint reached; starting segment progress.");
+    }
+  }
+
+  if (first_waypoint_reached_) {
+    update_route_progress(pose);
+  }
+
   if (stop_if_final_goal_reached(pose)) {
     return;
   }
 
-  next_control_state_ = ControlState::PATH_FOLLOWING;
+  const auto target = compute_lookahead_target(pose);
+  auto cmd = compute_tracking_command(pose, target);
+  cmd = apply_corridor_obstacle_avoidance(pose, cmd, target.reverse);
 
-  advance_passed_waypoints(pose.x, pose.y);
-
-  const std::size_t target_index = select_lookahead_waypoint(pose.x, pose.y);
-  commit_lookahead_progress(target_index);
-  const auto & target = waypoints_[target_index];
-
-  auto cmd = compute_tracking_command(pose, target, target_index);
-
-  cmd = apply_obstacle_avoidance(cmd, target.reverse);
   set_control_state(next_control_state_);
   cmd_pub_->publish(cmd);
 }
 
-// 终点使用 goal_tolerance_ 判定，避免最后一个点因为 pass_radius 逻辑继续向后切。
+// 终点使用 goal_tolerance_ 判定；同时要求路线进度已经接近末段，避免闭环路线在起点附近误停。
 bool SmoothPathFollower::stop_if_final_goal_reached(const SmoothPathFollower::RobotPose & pose)
 {
   const auto & final = waypoints_.back();
   const double final_distance = std::hypot(final.x - pose.x, final.y - pose.y);
-  if (current_index_ >= waypoints_.size() - 1 && final_distance <= goal_tolerance_) {
+  const bool final_segment_active = current_index_ + 1 >= waypoints_.size() - 1;
+  if (final_segment_active && final_distance <= goal_tolerance_) {
+    current_index_ = waypoints_.size() - 1;
     set_control_state(ControlState::FINISHED);
     RCLCPP_INFO(get_logger(), "Final waypoint reached; stopping.");
     publish_stop();
@@ -330,146 +320,229 @@ bool SmoothPathFollower::stop_if_final_goal_reached(const SmoothPathFollower::Ro
 }
 
 // ********************************************************************************
-// ******************************** 航点进度 ********************************
+// ******************************** 路线线段进度 ********************************
 // ********************************************************************************
 
-// 按 pass_radius 更新 current_index_。
-// 只要机器人进入当前航点通过半径，就认为该点完成并切到下一个点。
-void SmoothPathFollower::advance_passed_waypoints(double robot_x, double robot_y)
+// 正常巡线只看当前线段，避免高速时提前跳线；避障已激活时才看后方窗口来跳过被挡住的点。
+// current_index_ 表示当前参考线段起点：waypoint[i] -> waypoint[i + 1]。
+void SmoothPathFollower::update_route_progress(const SmoothPathFollower::RobotPose & pose)
 {
-  while (current_index_ < waypoints_.size() - 1) {
-    const auto & waypoint = waypoints_[current_index_];
-    const double distance = std::hypot(waypoint.x - robot_x, waypoint.y - robot_y);
-    const double pass_radius = waypoint.reverse ?
-      std::max(waypoint.reverse_pass_radius, reverse_goal_lookahead_distance_) : waypoint.pass_radius;
-    if (distance > pass_radius) {
-      if (should_skip_overshot_waypoint(robot_x, robot_y, distance)) {
-        const auto & next = waypoints_[current_index_ + 1];
-        const double next_distance = std::hypot(next.x - robot_x, next.y - robot_y);
-        RCLCPP_WARN(
-          get_logger(),
-          "Skipping overshot waypoint %zu/%zu: current_distance=%.2fm, next_distance=%.2fm.",
-          current_index_ + 1, waypoints_.size(), distance, next_distance);
-        trigger_image_analysis_if_needed(current_index_ + 1);
-        ++current_index_;
-        continue;
-      }
-      break;
-    }
-    RCLCPP_INFO(get_logger(), "Passing waypoint %zu/%zu at distance %.2fm.", current_index_ + 1, waypoints_.size(), distance);
-    trigger_image_analysis_if_needed(current_index_ + 1);
-    ++current_index_;
+  if (waypoints_.size() < 2 || current_index_ >= waypoints_.size() - 1) {
+    return;
   }
+
+  const std::size_t extra_segments = obstacle_avoidance_active_ ?
+    static_cast<std::size_t>(route_projection_window_) : 0U;
+  RouteProjection projection;
+  if (!find_route_projection(pose, extra_segments, projection)) {
+    return;
+  }
+
+  std::size_t candidate_index = projection.segment_index;
+  if (projection.t >= segment_advance_t_) {
+    candidate_index = projection.segment_index + 1;
+  }
+  candidate_index = std::min(candidate_index, waypoints_.size() - 1);
+  if (candidate_index <= current_index_) {
+    return;
+  }
+
+  std::size_t allowed_index = current_index_;
+  if (!can_advance_to_index(candidate_index, pose, allowed_index)) {
+    return;
+  }
+  advance_current_index_to(allowed_index, "Route projection");
 }
 
-// 判断机器人是否已经“冲过”当前航点。
-// 典型场景：车因为速度/避障绕行没进入当前点 pass_radius，但已经离下一个点更近。
-// 返回 true 时 advance_passed_waypoints() 会跳过当前点，避免车辆回头找点。
-bool SmoothPathFollower::should_skip_overshot_waypoint(double robot_x, double robot_y, double current_distance) const
+// 在 current_index_ 到 current_index_ + extra_segments 的线段窗口里找车的投影。
+// 只向前找，不全局找，避免闭环/椭圆路线匹配到另一侧。
+bool SmoothPathFollower::find_route_projection(
+  const SmoothPathFollower::RobotPose & pose, std::size_t extra_segments,
+  SmoothPathFollower::RouteProjection & projection) const
 {
-  // 没开功能，或当前点已经是最后一个点，就不能跳。
-  if (!enable_skip_overshot_waypoints_ || current_index_ + 1 >= waypoints_.size()) {
+  if (waypoints_.size() < 2 || current_index_ >= waypoints_.size() - 1) {
     return false;
   }
 
-  // 只允许在配置的航点编号范围内跳点，避免普通路段误跳。
-  const int waypoint_number = static_cast<int>(current_index_) + 1;
-  if (waypoint_number < skip_overshot_min_waypoint_ || waypoint_number > skip_overshot_max_waypoint_) {
-    return false;
+  const std::size_t last_segment = waypoints_.size() - 2;
+  const std::size_t end_segment = std::min(
+    last_segment, current_index_ + extra_segments);
+  double best_score = std::numeric_limits<double>::infinity();
+
+  for (std::size_t index = current_index_; index <= end_segment; ++index) {
+    const auto & start = waypoints_[index];
+    const auto & end = waypoints_[index + 1];
+    const double seg_x = end.x - start.x;
+    const double seg_y = end.y - start.y;
+    const double seg_len_sq = seg_x * seg_x + seg_y * seg_y;
+    if (seg_len_sq < 1e-6) {
+      continue;
+    }
+
+    const double robot_x = pose.x - start.x;
+    const double robot_y = pose.y - start.y;
+    const double raw_t = (robot_x * seg_x + robot_y * seg_y) / seg_len_sq;
+    if (raw_t < -0.25) {
+      continue;
+    }
+
+    const double t = std::max(0.0, std::min(1.0, raw_t));
+    const Point2D projected{start.x + seg_x * t, start.y + seg_y * t};
+    const double distance = std::hypot(pose.x - projected.x, pose.y - projected.y);
+    if (distance > route_projection_max_distance_) {
+      continue;
+    }
+
+    const double forward_penalty = 0.06 * static_cast<double>(index - current_index_);
+    const double score = distance + forward_penalty;
+    if (score < best_score) {
+      best_score = score;
+      projection.valid = true;
+      projection.segment_index = index;
+      projection.t = raw_t;
+      projection.distance = distance;
+      projection.point = projected;
+    }
   }
 
-  // 当前点太远时不认为是“刚刚错过”，否则可能把路径大段跳掉。
-  if (current_distance > overshot_waypoint_max_distance_) {
-    return false;
-  }
-
-  const auto & next = waypoints_[current_index_ + 1];
-  const double next_distance = std::hypot(next.x - robot_x, next.y - robot_y);
-  if (next_distance > overshot_next_waypoint_max_distance_) {
-    return false;
-  }
-  return next_distance + overshot_waypoint_margin_ < current_distance;
+  return projection.valid;
 }
 
-// 选择本周期要追踪的航点下标。
-// 如果不开前瞻，就追当前 current_index_。
-// 如果开前瞻，就从 current_index_ 往后找第一个距离达到 lookahead_distance_ 的点，
-// 让车提前朝远一点的点转向，从而减少折线感。
-std::size_t SmoothPathFollower::select_lookahead_waypoint(double robot_x, double robot_y) const
+// 控制目标是离散 waypoint：从 current_index_ + 1 往后找第一个离车达到 lookahead_distance_ 的点。
+SmoothPathFollower::TargetPoint SmoothPathFollower::compute_lookahead_target(
+  const SmoothPathFollower::RobotPose & pose) const
 {
-  if (!enable_lookahead_waypoint_selection_) {
-    return current_index_;
+  TargetPoint target;
+  if (waypoints_.empty()) {
+    return target;
+  }
+  if (waypoints_.size() < 2 || current_index_ >= waypoints_.size() - 1) {
+    const std::size_t index = waypoints_.size() - 1;
+    target.point = Point2D{waypoints_[index].x, waypoints_[index].y};
+    target.waypoint_index = index;
+    target.reverse = false;
+    return target;
+  }
+  if (!first_waypoint_reached_) {
+    target.point = Point2D{waypoints_.front().x, waypoints_.front().y};
+    target.waypoint_index = 0;
+    target.reverse = waypoints_.front().reverse;
+    return target;
   }
 
-  // 精准点需要真正贴近，例如起步点、二维码后倒车点和终点，不做前瞻跳过。
-  if (current_index_ < waypoints_.size() && is_precision_waypoint(current_index_)) {
-    return current_index_;
+  const std::size_t next_index = current_index_ + 1;
+  std::size_t target_index = next_index;
+
+  // 精准点作为当前线段终点时，先认真追到该点，不用前瞻跨过去。
+  if (is_precision_waypoint(next_index)) {
+    target.waypoint_index = next_index;
+    target.reverse = waypoints_[next_index].reverse;
+    target.point = Point2D{waypoints_[next_index].x, waypoints_[next_index].y};
+    return target;
   }
 
-  std::size_t target_index = current_index_;
-  for (std::size_t index = current_index_; index < waypoints_.size(); ++index) {
-    const auto & waypoint = waypoints_[index];
-    const double distance = std::hypot(waypoint.x - robot_x, waypoint.y - robot_y);
-
-    double lookahead = lookahead_distance_;
-    if (waypoint.reverse && index == current_index_) {
-      lookahead = std::min(lookahead_distance_, reverse_goal_lookahead_distance_);
-    }
-
-    // 前方如果遇到精准点，直接把它作为目标，让车辆认真到位。
-    if (index > current_index_ && is_precision_waypoint(index)) {
-      target_index = index;
-      break;
-    }
-
-    if (distance >= lookahead) {
-      target_index = index;
-      break;
-    }
-
+  const double lookahead = is_segment_reverse(current_index_) ?
+    std::min(lookahead_distance_, reverse_goal_lookahead_distance_) : lookahead_distance_;
+  for (std::size_t index = next_index; index < waypoints_.size(); ++index) {
     target_index = index;
+    if (index > next_index && is_precision_waypoint(index)) {
+      break;
+    }
+    const auto & waypoint = waypoints_[index];
+    const double distance = std::hypot(waypoint.x - pose.x, waypoint.y - pose.y);
+    if (distance >= lookahead) {
+      break;
+    }
   }
-  return target_index;
+
+  const auto & waypoint = waypoints_[target_index];
+  target.waypoint_index = target_index;
+  target.reverse = waypoint.reverse;
+  target.point = Point2D{waypoint.x, waypoint.y};
+  return target;
 }
 
-// 哪些点必须精确通过，不允许被前瞻逻辑提前跳过。
-// 当前策略：前两个点和最后一个点为精准点。
+// 精准点不能被窗口投影直接跨过去；只有车真的到它半径内，才允许推进到该点。
+bool SmoothPathFollower::can_advance_to_index(
+  std::size_t candidate_index, const SmoothPathFollower::RobotPose & pose, std::size_t & allowed_index) const
+{
+  candidate_index = std::min(candidate_index, waypoints_.size() - 1);
+  allowed_index = candidate_index;
+  for (std::size_t index = current_index_ + 1; index <= candidate_index; ++index) {
+    if (!is_precision_waypoint(index)) {
+      continue;
+    }
+
+    const auto & waypoint = waypoints_[index];
+    const double distance = std::hypot(waypoint.x - pose.x, waypoint.y - pose.y);
+    if (distance <= waypoint_pass_radius(index)) {
+      allowed_index = index;
+      return true;
+    }
+
+    allowed_index = index > 0 ? index - 1 : 0;
+    return allowed_index > current_index_;
+  }
+  return true;
+}
+
+void SmoothPathFollower::advance_current_index_to(std::size_t new_index, const char * reason)
+{
+  new_index = std::min(new_index, waypoints_.size() - 1);
+  while (current_index_ < new_index) {
+    ++current_index_;
+    first_waypoint_reached_ = true;
+    RCLCPP_INFO(
+      get_logger(), "%s advanced route progress to waypoint %zu/%zu.",
+      reason, current_index_ + 1, waypoints_.size());
+    trigger_image_analysis_if_needed(current_index_ + 1);
+  }
+}
+
+double SmoothPathFollower::waypoint_pass_radius(std::size_t index) const
+{
+  if (index >= waypoints_.size()) {
+    return pass_radius_;
+  }
+  if (index == waypoints_.size() - 1) {
+    return goal_tolerance_;
+  }
+  const auto & waypoint = waypoints_[index];
+  if (waypoint.reverse) {
+    return std::max(waypoint.reverse_pass_radius, reverse_goal_lookahead_distance_);
+  }
+  return waypoint.pass_radius;
+}
+
+bool SmoothPathFollower::is_segment_reverse(std::size_t segment_index) const
+{
+  return segment_index + 1 < waypoints_.size() && waypoints_[segment_index + 1].reverse;
+}
+
+// 哪些点必须精确通过，不允许被线段窗口直接跨过。
+// 当前策略：第 2 点、最后一个点和图像分析触发点为精准点；第 1 点是路线起点。
 bool SmoothPathFollower::is_precision_waypoint(std::size_t index) const
 {
   if (index >= waypoints_.size()) {
     return false;
   }
-  return index < 2 || index == waypoints_.size() - 1;
-}
-
-// 当前瞻目标已经超过 current_index_ 时，把中间航点直接标记为完成。
-// 这会让“看远一点”的目标也推进路线进度，否则车辆会一直被旧 current_index_ 拉回。
-void SmoothPathFollower::commit_lookahead_progress(std::size_t target_index)
-{
-  if (!enable_lookahead_progress_commit_ || target_index <= current_index_) {
-    return;
+  if (index == 1 || index == waypoints_.size() - 1) {
+    return true;
   }
-
-  target_index = std::min(target_index, waypoints_.size() - 1);
-  while (current_index_ < target_index) {
-    RCLCPP_INFO(
-      get_logger(), "Lookahead committed waypoint %zu/%zu; continuing toward waypoint %zu/%zu.",
-      current_index_ + 1, waypoints_.size(), target_index + 1, waypoints_.size());
-    trigger_image_analysis_if_needed(current_index_ + 1);
-    ++current_index_;
-  }
+  return enable_image_analysis_trigger_ &&
+    index + 1 == static_cast<std::size_t>(image_analysis_waypoint_);
 }
 
 // ********************************************************************************
-// ******************************** 追点控制 ********************************
+// ******************************** 巡线控制 ********************************
 // ********************************************************************************
 
-// 根据目标航点计算原始跟随速度，不处理避障。
+// 根据离散前瞻 waypoint 计算原始跟随速度，不处理避障。
 geometry_msgs::msg::Twist SmoothPathFollower::compute_tracking_command(
-  const SmoothPathFollower::RobotPose & pose, const Waypoint & target, std::size_t target_index) const
+  const SmoothPathFollower::RobotPose & pose, const SmoothPathFollower::TargetPoint & target) const
 {
-  const double dx = target.x - pose.x;
-  const double dy = target.y - pose.y;
+  const double dx = target.point.x - pose.x;
+  const double dy = target.point.y - pose.y;
 
   // 将目标向量从 map 坐标系旋转到 base_link 坐标系。
   const double cos_yaw = std::cos(pose.yaw);
@@ -487,7 +560,7 @@ geometry_msgs::msg::Twist SmoothPathFollower::compute_tracking_command(
     heading_error = std::atan2(-target_y_base, -target_x_base);
     cmd.linear.x = -linear_speed_;
     cmd.angular.z = reverse_angular_gain_ * heading_error;
-    cmd = apply_reverse_approach_nudge(cmd, target_index, distance);
+    cmd = apply_reverse_approach_nudge(cmd, target.waypoint_index, distance);
   } else {
     cmd.linear.x = linear_speed_;
     cmd.angular.z = turn_angular_gain_ * heading_error;
@@ -512,120 +585,128 @@ geometry_msgs::msg::Twist SmoothPathFollower::apply_reverse_approach_nudge(
 }
 
 // ********************************************************************************
-// ******************************** 障碍转向 ********************************
+// ******************************** 矩形通行区避障 ********************************
 // ********************************************************************************
 
-// 叠加真实雷达避障。
-// 输入 cmd 是路径跟随算出的原始速度；返回值只会叠加角速度，不再改线速度。
-// reverse 表示当前路径点是否倒车，倒车时“前方雷达扇区”会切到车尾方向。
-geometry_msgs::msg::Twist SmoothPathFollower::apply_obstacle_avoidance(geometry_msgs::msg::Twist cmd, bool reverse)
+// 类似 visual_control 的反应式避障：
+// 矩形通行区有障碍时固定往反方向打舵；路线进度仍由每帧线段投影持续更新。
+geometry_msgs::msg::Twist SmoothPathFollower::apply_corridor_obstacle_avoidance(
+  const SmoothPathFollower::RobotPose & pose, geometry_msgs::msg::Twist cmd, bool reverse)
 {
-  if (!enable_obstacle_avoidance_) {
+  (void)pose;
+  if (!enable_obstacle_avoidance_ || reverse) {
+    obstacle_avoidance_active_ = false;
+    obstacle_clear_count_ = 0;
+    avoid_direction_ = 0;
     return cmd;
   }
 
-  // obstacle_enable_from_waypoint_ 允许前几个点不启用避障，常用于起步/扫码等特殊动作。
   if (static_cast<int>(current_index_) + 1 < obstacle_enable_from_waypoint_) {
+    obstacle_avoidance_active_ = false;
+    obstacle_clear_count_ = 0;
+    avoid_direction_ = 0;
     return cmd;
   }
 
-  if (!latest_scan_) {
+  CorridorObstacle obstacle;
+  const bool blocked = detect_corridor_obstacle(false, obstacle);
+  if (blocked) {
+    obstacle_avoidance_active_ = true;
+    obstacle_clear_count_ = 0;
+    avoid_direction_ = choose_avoid_direction(obstacle);
+    RCLCPP_WARN_THROTTLE(
+      get_logger(), *get_clock(), 1000,
+      "Corridor obstacle: points=%d, center=(%.2f, %.2f), nearest=%.2fm, steering=%s.",
+      obstacle.point_count, obstacle.center.x, obstacle.center.y, obstacle.nearest_range,
+      avoid_direction_ > 0 ? "left" : "right");
+  } else if (obstacle_avoidance_active_) {
+    ++obstacle_clear_count_;
+    if (obstacle_clear_count_ >= obstacle_clear_frames_) {
+      obstacle_avoidance_active_ = false;
+      obstacle_clear_count_ = 0;
+      avoid_direction_ = 0;
+      return cmd;
+    }
+  }
+
+  if (!obstacle_avoidance_active_) {
     return cmd;
   }
 
-  double front_min = 0.0;
-  double left_min = 0.0;
-  double right_min = 0.0;
-  if (reverse) {
-    // 倒车时，车尾方向才是“运动前方”，所以采样角度移动到 pi 附近。
-    front_min = min_range(M_PI - front_angle_, M_PI + front_angle_);
-    left_min = min_range(M_PI, M_PI + side_angle_);
-    right_min = min_range(M_PI - side_angle_, M_PI);
-  } else {
-    // 正向时，0 度附近是车头前方，正角度为左侧，负角度为右侧。
-    front_min = min_range(-front_angle_, front_angle_);
-    left_min = min_range(0.0, side_angle_);
-    right_min = min_range(-side_angle_, 0.0);
-  }
-
-  // 如果前方完全没有有效雷达点，就沿用原始跟随速度。
-  if (!std::isfinite(front_min)) {
-    return cmd;
-  }
-
-  // 避让区：在原始跟随角速度上叠加朝空旷侧转的角速度，线速度保持不变。
-  if (front_min <= obstacle_avoid_distance_) {
-    next_control_state_ = ControlState::OBSTACLE_AVOIDING;
-    const double avoid_direction = avoid_direction_from_ranges(left_min, right_min);
-    const double avoid_gain = clamp_value(
-      (obstacle_avoid_distance_ - front_min) / std::max(obstacle_avoid_distance_, 0.01),
-      0.0, 1.0);
-    cmd.angular.z += avoid_direction * avoid_angular_z_ * avoid_gain;
-    log_obstacle_warning(
-      "Obstacle avoid: front=" + std::to_string(front_min) + "m, left=" +
-      std::to_string(left_min) + "m, right=" + std::to_string(right_min) + "m.");
-  }
+  next_control_state_ = ControlState::OBSTACLE_AVOIDING;
+  cmd.linear.x = avoid_linear_speed_;
+  cmd.angular.z = static_cast<double>(avoid_direction_) * avoid_angular_z_;
   return cmd;
 }
 
-// 根据左右最近障碍距离选择避让方向。
-// 返回值会乘到 avoid_angular_z_ 上：1.0 叠加正角速度，-1.0 叠加负角速度。
-// 注意这里保留当前代码原有策略；若实车左右转向不符合预期，优先核查这几个分支。
-double SmoothPathFollower::avoid_direction_from_ranges(double left_min, double right_min) const
-{
-  // 两边都没看到障碍时默认正角速度方向。
-  if (!std::isfinite(left_min) && !std::isfinite(right_min)) {
-    return 1.0;
-  }
-  // 只有左侧没有有效点时，按原策略返回负角速度方向。
-  if (!std::isfinite(left_min)) {
-    return -1.0;
-  }
-  // 只有右侧没有有效点时，按原策略返回正角速度方向。
-  if (!std::isfinite(right_min)) {
-    return 1.0;
-  }
-  // 两边都有读数时，左侧距离更大返回正角速度，否则返回负角速度。
-  return left_min >= right_min ? 1.0 : -1.0;
-}
-
-// 读取 LaserScan 在 [min_angle, max_angle] 扇区内的最近有效距离。
-// 角度单位是弧度，0 表示车头方向；返回 infinity 表示该扇区没有有效点。
-double SmoothPathFollower::min_range(double min_angle, double max_angle) const
+// 在车体前方定义矩形通行区：0 < x <= length, |y| <= half_width。
+// 只要矩形内有效雷达点数量达到阈值，就认为需要避障。
+bool SmoothPathFollower::detect_corridor_obstacle(
+  bool reverse, SmoothPathFollower::CorridorObstacle & obstacle) const
 {
   if (!latest_scan_) {
-    return std::numeric_limits<double>::infinity();
+    return false;
   }
+
   const auto & scan = *latest_scan_;
-  double result = std::numeric_limits<double>::infinity();
-  double angle = scan.angle_min;
-
-  // 小于雷达自身 range_min 或 min_obstacle_range_ 的点都忽略，过滤近距离噪声。
   const double min_valid_range = std::max(static_cast<double>(scan.range_min), min_obstacle_range_);
-  min_angle = normalize_angle(min_angle);
-  max_angle = normalize_angle(max_angle);
-  for (const auto value : scan.ranges) {
-    const double scan_angle = normalize_angle(angle);
+  double angle = scan.angle_min;
+  double sum_x = 0.0;
+  double sum_y = 0.0;
+  obstacle.nearest_range = std::numeric_limits<double>::infinity();
 
-    // 扇区可能跨越 -pi/pi 边界；跨界时用 “>= min 或 <= max” 判断。
-    const bool in_sector = min_angle <= max_angle ?
-      (min_angle <= scan_angle && scan_angle <= max_angle) :
-      (scan_angle >= min_angle || scan_angle <= max_angle);
-    if (in_sector && std::isfinite(value) && min_valid_range <= value && value <= scan.range_max) {
-      result = std::min(result, static_cast<double>(value));
+  for (const auto value : scan.ranges) {
+    if (
+      std::isfinite(value) && min_valid_range <= value && value <= scan.range_max)
+    {
+      const double base_x = static_cast<double>(value) * std::cos(angle);
+      const double base_y = static_cast<double>(value) * std::sin(angle);
+      const Point2D motion_point{reverse ? -base_x : base_x, reverse ? -base_y : base_y};
+      if (
+        motion_point.x > 0.0 && motion_point.x <= obstacle_corridor_length_ &&
+        std::abs(motion_point.y) <= obstacle_corridor_half_width_)
+      {
+        ++obstacle.point_count;
+        sum_x += motion_point.x;
+        sum_y += motion_point.y;
+        obstacle.nearest_range = std::min(
+          obstacle.nearest_range, std::hypot(motion_point.x, motion_point.y));
+        if (motion_point.y >= 0.0) {
+          ++obstacle.left_count;
+        } else {
+          ++obstacle.right_count;
+        }
+      }
     }
     angle += scan.angle_increment;
   }
-  return result;
+
+  if (obstacle.point_count < obstacle_min_points_) {
+    return false;
+  }
+
+  obstacle.center.x = sum_x / static_cast<double>(obstacle.point_count);
+  obstacle.center.y = sum_y / static_cast<double>(obstacle.point_count);
+  return true;
 }
 
-// 避障日志节流。控制循环频率较高，直接每周期 WARN 会刷屏，所以每 10 次打印 1 次。
-void SmoothPathFollower::log_obstacle_warning(const std::string & message)
+// 正角速度向左，负角速度向右。障碍在左就向右打，障碍在右就向左打。
+int SmoothPathFollower::choose_avoid_direction(const SmoothPathFollower::CorridorObstacle & obstacle) const
 {
-  ++obstacle_warning_count_;
-  if (obstacle_warning_count_ % 10 == 1) {
-    RCLCPP_WARN(get_logger(), "%s", message.c_str());
+  constexpr double center_deadband = 0.03;
+  if (obstacle.center.y > center_deadband) {
+    return -1;
   }
+  if (obstacle.center.y < -center_deadband) {
+    return 1;
+  }
+  if (avoid_direction_ != 0) {
+    return avoid_direction_;
+  }
+  if (obstacle.left_count != obstacle.right_count) {
+    return obstacle.left_count > obstacle.right_count ? -1 : 1;
+  }
+  return 1;
 }
 
 // ********************************************************************************
@@ -634,7 +715,7 @@ void SmoothPathFollower::log_obstacle_warning(const std::string & message)
 
 // QR 回调：
 //   1. 根据 QR 数字判断顺/逆时针并切换路线；
-//   2. 如果 enable_qr_skip_first_ 为 true，第一次收到 QR 时直接跳到当前路线第 2 点。
+//   2. 如果 enable_qr_skip_first_ 为 true，第一次收到 QR 时确认起步线段已可执行。
 void SmoothPathFollower::qr_callback(const std_msgs::msg::String::ConstSharedPtr msg)
 {
   const std::string direction = direction_from_qr(msg->data);
@@ -689,13 +770,17 @@ void SmoothPathFollower::switch_route(const std::string & direction)
   waypoints_ = new_waypoints;
   selected_route_direction_ = direction;
   current_index_ = std::min(current_index_, waypoints_.size() - 1);
+  first_waypoint_reached_ = current_index_ > 0;
+  obstacle_avoidance_active_ = false;
+  obstacle_clear_count_ = 0;
+  avoid_direction_ = 0;
   RCLCPP_INFO(
     get_logger(), "QR selected %s route; continuing from waypoint %zu/%zu.",
     selected_route_direction_.c_str(), current_index_ + 1, waypoints_.size());
 }
 
-// 第一次收到 QR 时，如果还在第 1 个点，就直接把当前目标改为第 2 个点。
-// 这个逻辑常用于比赛中“扫码后开始倒车去 2 号点”的动作。
+// 线段巡线里 current_index_=0 表示 point_01 -> point_02。
+// QR 到来时只确认 point_01 已处理，让车开始执行这条起步线段。
 void SmoothPathFollower::skip_first_waypoint_from_qr(const std::string & data)
 {
   if (qr_skip_done_) {
@@ -707,11 +792,11 @@ void SmoothPathFollower::skip_first_waypoint_from_qr(const std::string & data)
     return;
   }
   if (current_index_ == 0) {
-    current_index_ = 1;
+    first_waypoint_reached_ = true;
     qr_skip_done_ = true;
     RCLCPP_INFO(
-      get_logger(), "QR info received \"%s\"; switching directly to waypoint 2 (%s).",
-      data.c_str(), waypoints_[current_index_].reverse ? "reverse" : "forward");
+      get_logger(), "QR info received \"%s\"; starting segment toward waypoint 2 (%s).",
+      data.c_str(), is_segment_reverse(current_index_) ? "reverse" : "forward");
     return;
   }
   qr_skip_done_ = true;
