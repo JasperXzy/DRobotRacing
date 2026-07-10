@@ -1,5 +1,5 @@
 <!--
-  Ackermann 专用行为树：去除一切倒车，只清图+盲开+等待恢复
+  Ackermann 专用行为树：正常跟踪不倒车；只有Recovery阶段允许小段BackUp脱困
   RateController 3Hz 对齐 expected_planner_frequency
 -->
 <root main_tree_to_execute="MainTree">
@@ -26,6 +26,7 @@
           </Sequence>
           <DriveOnHeading speed="0.15" time_allowance="5"/>
           <Wait wait_duration="2"/>
+          <BackUp backup_dist="0.20" backup_speed="0.08"/>
           <ClearEntireCostmap name="ClearGlobal-Last" service_name="global_costmap/clear_entirely_global_costmap"/>
         </RoundRobin>
       </ReactiveFallback>

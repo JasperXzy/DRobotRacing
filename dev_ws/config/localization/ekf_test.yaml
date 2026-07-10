@@ -1,0 +1,148 @@
+ekf_filter_node:
+  ros__parameters:
+    # =========================================================================
+    # General Settings
+    # =========================================================================
+    
+    # EKF update frequency (Hz)
+    frequency: 30.0
+    
+    # Sensor timeout
+    sensor_timeout: 0.10
+    
+    # 2D mode
+    two_d_mode: true
+    
+    # Transform settings
+    publish_tf: true                    # Publish odom -> base_link TF
+    publish_acceleration: false         # Don't need acceleration output
+    
+    # Diagnostics
+    print_diagnostics: false
+    
+    # =========================================================================
+    # Frame Configuration
+    # =========================================================================
+    
+    # Frame IDs
+    map_frame: map                      # Global frame
+    odom_frame: odom                    # Odometry frame
+    base_link_frame: base_link          # Robot body frame
+    
+    # World frame for state estimation
+    world_frame: odom
+    
+    # =========================================================================
+    # Sensor 0: Wheel Odometry
+    # Topic: /chassis/odom
+    # Type: nav_msgs/Odometry
+    # =========================================================================
+    
+    odom0: /chassis/odom
+    
+    # Configuration matrix for odom0
+    # Order: [x,     y,      z,
+    #         roll,  pitch,  yaw,
+    #         vx,    vy,     vz,
+    #         vroll, vpitch, vyaw,
+    #         ax,    ay,     az]
+    odom0_config: [false, false, false,   # Position: don't use (drifts)
+                   false, false, false,   # Orientation: don't use (use IMU)
+                   true,  true,  false,   # Linear velocity: use vx, vy
+                   false, false, true,    # Angular velocity: use vyaw
+                   false, false, false]   # Acceleration: don't use
+    
+    # Odometry options
+    odom0_differential: false           # Use absolute values, not deltas
+    odom0_relative: false               # Data is in odom frame, not relative
+    odom0_queue_size: 5
+    
+    # Rejection threshold (Mahalanobis distance)
+    # Set to 0 to disable outlier rejection for this sensor
+    odom0_rejection_threshold: 2.0
+    
+    # =========================================================================
+    # Sensor 1: IMU
+    # Topic: /chassis/imu/data_raw
+    # Type: sensor_msgs/Imu
+    # =========================================================================
+    
+    imu0: /chassis/imu/data_raw
+    
+    # Configuration matrix for imu0
+    imu0_config: [false, false, false,    # Position: IMU doesn't provide
+                  true,  true,  true,     # Orientation: use roll, pitch, yaw
+                  false, false, false,    # Linear velocity: IMU doesn't provide
+                  true,  true,  true,     # Angular velocity: use all axes
+                  true,  true,  false]    # Acceleration: use ax, ay (not az in 2D)
+    
+    # IMU options
+    imu0_differential: false
+    imu0_relative: false
+    imu0_queue_size: 5
+    
+    # Remove gravity component from acceleration
+    imu0_remove_gravitational_acceleration: true
+    
+    # Rejection threshold
+    imu0_rejection_threshold: 2.0
+    
+    # =========================================================================
+    # Process Noise Covariance
+    # =========================================================================
+    # 
+    # This matrix represents how much we expect the state to change
+    # between updates due to unmodeled dynamics.
+    # 
+    # Larger values = less trust in motion model, more responsive to sensors
+    # Smaller values = more trust in motion model, smoother but slower response
+    #
+    # 15x15 diagonal matrix for:
+    # [x, y, z, roll, pitch, yaw, vx, vy, vz, vroll, vpitch, vyaw, ax, ay, az]
+    # =========================================================================
+    
+    process_noise_covariance: [
+      0.05,  0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,
+      0.0,   0.05,  0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,
+      0.0,   0.0,   0.06,  0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,
+      0.0,   0.0,   0.0,   0.03,  0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,
+      0.0,   0.0,   0.0,   0.0,   0.03,  0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,
+      0.0,   0.0,   0.0,   0.0,   0.0,   0.06,  0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,
+      0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.025, 0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,
+      0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.025, 0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,
+      0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.04,  0.0,   0.0,   0.0,   0.0,   0.0,   0.0,
+      0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.01,  0.0,   0.0,   0.0,   0.0,   0.0,
+      0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.01,  0.0,   0.0,   0.0,   0.0,
+      0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.02,  0.0,   0.0,   0.0,
+      0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.01,  0.0,   0.0,
+      0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.01,  0.0,
+      0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.015
+    ]
+
+    # =========================================================================
+    # Initial Estimate Covariance
+    # =========================================================================
+    #
+    # How certain we are about the initial state
+    # Larger values = less certain about initial state
+    #
+    # 15x15 diagonal matrix
+    # =========================================================================
+    
+    initial_estimate_covariance: [
+      1e-9,  0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,
+      0.0,   1e-9,  0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,
+      0.0,   0.0,   1e-9,  0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,
+      0.0,   0.0,   0.0,   1e-9,  0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,
+      0.0,   0.0,   0.0,   0.0,   1e-9,  0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,
+      0.0,   0.0,   0.0,   0.0,   0.0,   1e-9,  0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,
+      0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   1e-9,  0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,
+      0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   1e-9,  0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,
+      0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   1e-9,  0.0,   0.0,   0.0,   0.0,   0.0,   0.0,
+      0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   1e-9,  0.0,   0.0,   0.0,   0.0,   0.0,
+      0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   1e-9,  0.0,   0.0,   0.0,   0.0,
+      0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   1e-9,  0.0,   0.0,   0.0,
+      0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   1e-9,  0.0,   0.0,
+      0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   1e-9,  0.0,
+      0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   1e-9
+    ]

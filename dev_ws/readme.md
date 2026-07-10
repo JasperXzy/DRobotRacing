@@ -3,7 +3,10 @@
 export ROS_DOMAIN_ID=1
 export ROS_DOMAIN_ID=1 && cd ~/D_Robot/dev_ws && source /opt/ros/humble/setup.bash && source install/setup.bash
 ```
-
+## Foxglove
+```bash
+ros2 launch foxglove_bridge foxglove_bridge_launch.xml 
+```
 # B站阿杰的跟随launch
 ```bash
 ros2 launch jie_deamon start.launch.py

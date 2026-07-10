@@ -29,6 +29,7 @@ q/e: slow left/right
 space or x: stop
 p: save now       z: undo last waypoint
 Ctrl-C: save and exit
+record_only:=true disables cmd_vel publishing
 """
 
 
@@ -72,6 +73,7 @@ class RecordYsvvWaypoints(Node):
         self.declare_parameter('min_distance', 0.08)
         self.declare_parameter('min_yaw_delta', 0.17)
         self.declare_parameter('publish_rate', 20.0)
+        self.declare_parameter('record_only', False)
 
         self.output_file = self.get_parameter('output_file').value
         self.cmd_vel_topic = self.get_parameter('cmd_vel_topic').value
@@ -86,8 +88,11 @@ class RecordYsvvWaypoints(Node):
         self.min_distance = float(self.get_parameter('min_distance').value)
         self.min_yaw_delta = float(self.get_parameter('min_yaw_delta').value)
         publish_rate = float(self.get_parameter('publish_rate').value)
+        self.record_only = bool(self.get_parameter('record_only').value)
 
-        self.cmd_pub = self.create_publisher(Twist, self.cmd_vel_topic, 10)
+        self.cmd_pub = None
+        if not self.record_only:
+            self.cmd_pub = self.create_publisher(Twist, self.cmd_vel_topic, 10)
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
@@ -105,7 +110,10 @@ class RecordYsvvWaypoints(Node):
         self.timer = self.create_timer(timer_period, self._tick)
 
         self.get_logger().info(HELP_TEXT)
-        self.get_logger().info(f'cmd_vel topic: {self.cmd_vel_topic}')
+        if self.record_only:
+            self.get_logger().info('record_only: true; cmd_vel publishing disabled')
+        else:
+            self.get_logger().info(f'cmd_vel topic: {self.cmd_vel_topic}')
         self.get_logger().info(
             f'record frame: {self.target_frame} -> {self.base_frame}')
         self.get_logger().info(f'output file: {self.output_file}')
@@ -125,13 +133,15 @@ class RecordYsvvWaypoints(Node):
 
     def _tick(self):
         self._handle_keyboard()
-        self._publish_cmd()
+        if not self.record_only:
+            self._publish_cmd()
         self._record_pose_if_needed()
 
         if self.shutdown_requested:
             self.get_logger().info('Saving waypoints and shutting down...')
             self.save()
-            self._publish_stop()
+            if not self.record_only:
+                self._publish_stop()
             rclpy.shutdown()
 
     def _handle_keyboard(self):
@@ -147,6 +157,20 @@ class RecordYsvvWaypoints(Node):
             if key == '\x03':
                 self.shutdown_requested = True
                 return
+            if key == 'p':
+                self.save()
+                continue
+            if key == 'z':
+                self._undo_last_waypoint()
+                continue
+
+            if self.record_only:
+                if key in ('w', 's', 'a', 'd', 'q', 'e', ' ', 'x'):
+                    self.get_logger().warn(
+                        'record_only=true; cmd_vel publishing is disabled',
+                        throttle_duration_sec=2.0)
+                continue
+
             if key == 'w':
                 self._set_cmd(self.linear_speed, 0.0)
             elif key == 's':
@@ -161,10 +185,6 @@ class RecordYsvvWaypoints(Node):
                 self._set_cmd(self.slow_turn_linear_speed, -self.angular_speed)
             elif key in (' ', 'x'):
                 self._set_cmd(0.0, 0.0)
-            elif key == 'p':
-                self.save()
-            elif key == 'z':
-                self._undo_last_waypoint()
 
     def _set_cmd(self, linear, angular):
         self.current_linear = linear
@@ -173,6 +193,9 @@ class RecordYsvvWaypoints(Node):
             f'cmd_vel set: linear={linear:.2f}, angular={angular:.2f}')
 
     def _publish_cmd(self):
+        if self.cmd_pub is None:
+            return
+
         msg = Twist()
         msg.linear.x = self.current_linear
         msg.angular.z = self.current_angular

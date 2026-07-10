@@ -295,8 +295,27 @@ unsigned char chassis_driver::Check_Sum(unsigned char Count_Number,unsigned char
 bool chassis_driver::Get_Sensor_Data()
 {
     short transition_16 = 0, j = 0, Header_Pos = 0, Tail_Pos = 0;
-    uint8_t Receive_Data_Pr[RECEIVE_DATA_SIZE] = {0}; 
-    Stm32_Serial.read(Receive_Data_Pr,sizeof (Receive_Data_Pr)); 
+    uint8_t Receive_Data_Pr[RECEIVE_DATA_SIZE] = {0};
+    try {
+      const size_t bytes_read = Stm32_Serial.read(Receive_Data_Pr, sizeof(Receive_Data_Pr));
+      if (bytes_read != sizeof(Receive_Data_Pr)) {
+        RCLCPP_WARN_THROTTLE(
+          this->get_logger(), *this->get_clock(), 2000,
+          "Incomplete chassis serial frame: read %zu/%zu bytes",
+          bytes_read, sizeof(Receive_Data_Pr));
+        return false;
+      }
+    } catch (const serial::SerialException& e) {
+      RCLCPP_ERROR_THROTTLE(
+        this->get_logger(), *this->get_clock(), 2000,
+        "Chassis serial read failed: %s", e.what());
+      return false;
+    } catch (const serial::IOException& e) {
+      RCLCPP_ERROR_THROTTLE(
+        this->get_logger(), *this->get_clock(), 2000,
+        "Chassis serial IO failed: %s", e.what());
+      return false;
+    }
     for (j = 0; j < 24; j++) {
       if (Receive_Data_Pr[j] == FRAME_HEADER)
       Header_Pos=j;

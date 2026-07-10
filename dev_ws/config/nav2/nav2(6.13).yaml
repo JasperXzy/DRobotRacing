@@ -120,11 +120,11 @@ controller_server:
       cmd_angle_instead_rotvel: false
       wheelbase: 0.145                         # 轴距 (m) 
       max_vel_x: 2.00                          # 先压低速度，减少入弯甩尾
-      max_vel_x_backwards: 0.20                # 允许半米级短倒车，但仍慢于前进
+      max_vel_x_backwards: 0.00                # TEB不使用倒车速度；倒车只交给行为树Recovery
       max_vel_theta: 1.0                       # 再压一点转向角速度，消掉残余甩尾
 
       # 阿克曼转弯限制
-      min_turning_radius: 0.15                 # 略放大转弯半径，避免急弯导致后轮甩
+      min_turning_radius: 0.25                 # 略放大转弯半径，避免急弯导致后轮甩
 
       # TEB优化用车体模型，需与costmap footprint保持一致，避免优化时按点模型贴障
       footprint_model:
@@ -132,25 +132,25 @@ controller_server:
         vertices: "[[0.15, 0.095], [0.15, -0.095], [-0.15, -0.095], [-0.15, 0.095]]"
 
       # ━━━ 加速度限制 ━━━
-      acc_lim_x: 0.30                          # 柔和加减速，减轻打滑/甩尾
+      acc_lim_x: 0.40                          # 稍微提高线加速度，让直道响应更快
       acc_lim_theta: 1.4                       # 继续降低角加速度，转向变化更柔
 
       # ━━━ 轨迹优化核心参数 ━━━
       dt_ref: 0.32                             # 冠军车 0.32：时间分辨率
       dt_hysteresis: 0.1
       min_samples: 3                           # 冠军车 3：最少轨迹点数
-      global_plan_overwrite_orientation: False # 留给3D路径规划使用的参数，改为False
-      global_plan_viapoint_sep: 0.16           # 航点约束稍放松，弯道轨迹更圆滑
+      global_plan_overwrite_orientation: True  # 用全局路径方向重写局部姿态，减少倒车满足姿态约束
+      global_plan_viapoint_sep: 0.12           # 更密集抽取全局路径点，让TEB更像路径跟随器
 
       no_inner_iterations: 7                   # 增加内层优化，让弯道收敛更平滑
       no_outer_iterations: 3                   # 冠军车 3
 
-      max_global_plan_lookahead_dist: 0.60      # 稍微看远，提前入弯但不过度拉直切角
+      max_global_plan_lookahead_dist: 0.25      # 缩短TEB前视距离，让局部规划更贴近当前全局路径段
       force_reinit_new_goal_dist: 3.0          # 冠军车 1.0：新目标>1m就重初始化整条轨迹
 
       feasibility_check_no_poses: 2            # 恢复轻量可行性检查，减少贴障碍轨迹
       publish_feedback: false
-      allow_init_with_backwards_motion: true   # 目标在正后方时允许直接倒车初始化
+      allow_init_with_backwards_motion: false  # 禁止用倒车初始化局部轨迹，优先前进跟随全局路径
       exact_arc_length: false
 
       # ━━━ 代价地图转换 ━━━
@@ -177,13 +177,13 @@ controller_server:
 
       # 运动学约束
       weight_kinematics_nh: 1000.0              # 更严格约束非完整运动，减少横摆
-      weight_kinematics_forward_drive: 500.0   # 保留前进偏好，但不再锁死倒车
+      weight_kinematics_forward_drive: 20000.0 # 极强前进偏好，进一步压制倒车解
       weight_kinematics_turning_radius: 1000.0 # ★冠军车 1000：硬约束转弯
 
       # 目标优化
       weight_optimaltime: 25.0                 # 降低抢时间倾向，减少急打方向
       weight_obstacle: 220.0                   # 降低障碍恐惧，减少过障前犹豫
-      weight_viapoint: 10.0                    # 少贴折线航点，减少过弯顿挫
+      weight_viapoint: 25.0                    # 更紧跟全局路径，减少局部规划器自行绕/倒车决策
       weight_inflation: 1.2                    # 软缓冲别太强，允许靠近但不贴障，障碍物软缓冲权重
       weight_adapt_factor: 2.0
 
@@ -230,7 +230,7 @@ local_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 4.5        # 障碍代价衰减放缓，让局部规划更早避开
-        inflation_radius: 0.24          # 局部障碍膨胀再小一点，过障更果断
+        inflation_radius: 0.22          # 局部障碍膨胀再小一点，过障更果断
       voxel_layer:
         plugin: "nav2_costmap_2d::VoxelLayer"
         enabled: True
@@ -297,7 +297,7 @@ global_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0        # 全局代价衰减更慢，路径别贴障碍物边
-        inflation_radius: 0.24          # 全局障碍膨胀略小，减少绕行保守度
+        inflation_radius: 0.22          # 全局障碍膨胀略小，减少绕行保守度
       always_send_full_costmap: True
   global_costmap_client:
     ros__parameters:
@@ -354,6 +354,25 @@ smoother_server:
       tolerance: 1.0e-10
       max_its: 1000
       do_refinement: True
+
+# ============================================================================
+# velocity_smoother — 速度输出平滑器
+# controller_server 输出 /cmd_vel_nav，经本节点限加速度后再发布 /cmd_vel 给底盘
+# ============================================================================
+velocity_smoother:
+  ros__parameters:
+    use_sim_time: False
+    smoothing_frequency: 20.0
+    scale_velocities: false
+    feedback: "OPEN_LOOP"
+    max_velocity: [2.0, 0.0, 1.0]
+    min_velocity: [0.0, 0.0, -1.0]
+    max_accel: [0.40, 0.0, 1.4]
+    max_decel: [-0.80, 0.0, -2.0]
+    odom_topic: "odom"
+    odom_duration: 0.1
+    deadband_velocity: [0.0, 0.0, 0.0]
+    velocity_timeout: 0.3
 
 # ============================================================================
 # behavior_server — 恢复行为
