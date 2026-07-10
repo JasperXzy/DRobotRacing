@@ -45,6 +45,7 @@ setup(
             'nav2_ysvv_waypoints = origincar_nav2.ysvv_waypoint_navigator:main',
             'map_overlay_publisher = origincar_nav2.map_overlay_publisher:main',
             'trigger_cruise = origincar_nav2.trigger_cruise:main',
+            'cmd_vel_kp_scaler = origincar_nav2.cmd_vel_kp_scaler:main',
         ],
     },
 )

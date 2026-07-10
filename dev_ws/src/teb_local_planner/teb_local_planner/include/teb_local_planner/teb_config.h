@@ -106,6 +106,7 @@ public:
     double base_max_vel_theta; //!< Maximum angular velocity of the robot before speed limit is applied
     double max_vel_x; //!< Maximum translational velocity of the robot
     double max_vel_x_backwards; //!< Maximum translational velocity of the robot for driving backwards
+    bool allow_backwards_motion; //!< If false, TEB constrains optimized translational velocity to forward motion only
     double max_vel_y; //!< Maximum strafing velocity of the robot (should be zero for non-holonomic robots!)
     double max_vel_theta; //!< Maximum angular velocity of the robot
     double acc_lim_x; //!< Maximum translational acceleration of the robot
@@ -166,7 +167,7 @@ public:
     double weight_acc_lim_y; //!< Optimization weight for satisfying the maximum allowed strafing acceleration (in use only for holonomic robots)
     double weight_acc_lim_theta; //!< Optimization weight for satisfying the maximum allowed angular acceleration
     double weight_kinematics_nh; //!< Optimization weight for satisfying the non-holonomic kinematics
-    double weight_kinematics_forward_drive; //!< Optimization weight for forcing the robot to choose only forward directions (positive transl. velocities, only diffdrive robot)
+    double weight_kinematics_forward_drive; //!< Optimization weight for forcing the robot to choose only forward directions (positive transl. velocities)
     double weight_kinematics_turning_radius; //!< Optimization weight for enforcing a minimum turning radius (carlike robots)
     double weight_optimaltime; //!< Optimization weight for contracting the trajectory w.r.t. transition time
     double weight_shortest_path; //!< Optimization weight for contracting the trajectory w.r.t. path length
@@ -277,12 +278,13 @@ public:
 
     robot.max_vel_x = 0.4;
     robot.max_vel_x_backwards = 0.2;
+    robot.allow_backwards_motion = true;
     robot.max_vel_y = 0.0;
     robot.max_vel_theta = 0.3;
     robot.base_max_vel_x = robot.max_vel_x;
-    robot.base_max_vel_x_backwards = robot.base_max_vel_x_backwards;
-    robot.base_max_vel_y = robot.base_max_vel_y;
-    robot.base_max_vel_theta = robot.base_max_vel_theta;
+    robot.base_max_vel_x_backwards = robot.max_vel_x_backwards;
+    robot.base_max_vel_y = robot.max_vel_y;
+    robot.base_max_vel_theta = robot.max_vel_theta;
     robot.acc_lim_x = 0.5;
     robot.acc_lim_y = 0.5;
     robot.acc_lim_theta = 0.5;

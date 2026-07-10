@@ -16,6 +16,7 @@ from nav2_msgs.action import ComputePathToPose, NavigateToPose
 from nav_msgs.msg import OccupancyGrid
 from rclpy.action import ActionClient
 from rclpy.node import Node
+from std_msgs.msg import Bool
 from rclpy.time import Time as RclpyTime
 from tf2_ros import Buffer
 from tf2_ros import TransformException
@@ -49,19 +50,23 @@ class YsvvWaypointNavigator(Node):
         self.declare_parameter('initial_y', 0.0)
         self.declare_parameter('initial_yaw', 0.0)
         self.declare_parameter('switch_distance', 0.30)
-        self.declare_parameter('lookahead_index_offset', 7)
+        self.declare_parameter('lookahead_index_offset', 15)
         self.declare_parameter('closest_search_back_window', 5)
         self.declare_parameter('closest_search_forward_window', 30)
-        self.declare_parameter('intermediate_goal_yaw_mode', 'current')
+        self.declare_parameter('intermediate_goal_yaw_mode', 'path_tangent')
         self.declare_parameter('goal_update_min_interval', 0.50)
-        self.declare_parameter('goal_republish_distance', 0.12)
+        self.declare_parameter('goal_republish_distance', 0.05)
+        self.declare_parameter('feedback_stall_timeout', 4.0)
+        self.declare_parameter('feedback_stall_distance_epsilon', 0.02)
         self.declare_parameter('costmap_topic', '/global_costmap/costmap')
-        self.declare_parameter('obstacle_escape_distance', 0.50)
+        self.declare_parameter('obstacle_escape_distance', 0.60)
         self.declare_parameter('blocked_check_radius', 0.60)
-        self.declare_parameter('max_skip_waypoints', 15)
+        self.declare_parameter('max_skip_waypoints', 20)
         self.declare_parameter('blocked_cost_threshold', 95)
         self.declare_parameter('obstacle_center_cost_threshold', 80)
         self.declare_parameter('obstacle_ahead_cost_threshold', 80)
+        self.declare_parameter(
+            'obstacle_avoidance_topic', '/ysvv_obstacle_avoidance_active')
         self.declare_parameter('path_check_timeout', 1.0)
         self.declare_parameter('planner_id', 'GridBased')
         self.declare_parameter('exit_on_result', False)
@@ -87,12 +92,16 @@ class YsvvWaypointNavigator(Node):
         if self.intermediate_goal_yaw_mode not in ('current', 'path_tangent', 'recorded'):
             self.get_logger().warn(
                 f'Unsupported intermediate_goal_yaw_mode='
-                f'{self.intermediate_goal_yaw_mode!r}; using current')
-            self.intermediate_goal_yaw_mode = 'current'
+                f'{self.intermediate_goal_yaw_mode!r}; using path_tangent')
+            self.intermediate_goal_yaw_mode = 'path_tangent'
         self.goal_update_min_interval = float(
             self.get_parameter('goal_update_min_interval').value)
         self.goal_republish_distance = float(
             self.get_parameter('goal_republish_distance').value)
+        self.feedback_stall_timeout = float(
+            self.get_parameter('feedback_stall_timeout').value)
+        self.feedback_stall_distance_epsilon = float(
+            self.get_parameter('feedback_stall_distance_epsilon').value)
         self.costmap_topic = self.get_parameter('costmap_topic').value
         self.obstacle_escape_distance = float(
             self.get_parameter('obstacle_escape_distance').value)
@@ -104,6 +113,8 @@ class YsvvWaypointNavigator(Node):
             self.get_parameter('obstacle_center_cost_threshold').value)
         self.obstacle_ahead_cost_threshold = int(
             self.get_parameter('obstacle_ahead_cost_threshold').value)
+        self.obstacle_avoidance_topic = self.get_parameter(
+            'obstacle_avoidance_topic').value
         self.path_check_timeout = float(self.get_parameter('path_check_timeout').value)
         self.planner_id = self.get_parameter('planner_id').value
         self.exit_on_result = self.get_parameter('exit_on_result').value
@@ -117,6 +128,8 @@ class YsvvWaypointNavigator(Node):
             PoseWithCovarianceStamped, 'initialpose', 10)
         self.costmap_sub = self.create_subscription(
             OccupancyGrid, self.costmap_topic, self._costmap_callback, 10)
+        self.obstacle_avoidance_pub = self.create_publisher(
+            Bool, self.obstacle_avoidance_topic, 10)
 
         self.started = False
         self.route_progress_index = 0
@@ -129,6 +142,11 @@ class YsvvWaypointNavigator(Node):
         self.last_goal_update_time = None
         self.last_sent_waypoint_index = None
         self.last_sent_goal_xy = None
+        self.last_feedback_distance = None
+        self.last_feedback_progress_index = None
+        self.last_feedback_improvement_time = None
+        self.obstacle_avoidance_active = False
+        self.obstacle_avoidance_until_index = None
         self.start_time = self.get_clock().now()
         self.timer = self.create_timer(0.2, self._tick)
         self.path_check_timer = self.create_timer(0.2, self._path_check_timeout_tick)
@@ -150,7 +168,12 @@ class YsvvWaypointNavigator(Node):
             f'update_interval={self.goal_update_min_interval:.2f}s')
         self.get_logger().info(
             f'  intermediate_goal_yaw_mode: {self.intermediate_goal_yaw_mode}')
+        self.get_logger().info(
+            f'  feedback_stall_timeout: {self.feedback_stall_timeout:.1f}s, '
+            f'distance_epsilon={self.feedback_stall_distance_epsilon:.2f}m')
         self.get_logger().info(f'  costmap_topic: {self.costmap_topic}')
+        self.get_logger().info(
+            f'  obstacle_avoidance_topic: {self.obstacle_avoidance_topic}')
         self.get_logger().info(
             f'  obstacle_escape_distance: {self.obstacle_escape_distance:.2f}m')
         self.get_logger().info('=' * 60)
@@ -274,6 +297,7 @@ class YsvvWaypointNavigator(Node):
         self.last_goal_update_time = self.get_clock().now()
         self.last_sent_waypoint_index = waypoint_index
         self.last_sent_goal_xy = (x, y)
+        self._reset_feedback_watchdog()
         self.get_logger().warn(
             f'Sending YSVV waypoint {waypoint_index + 1}/{len(self.waypoints)}: '
             f'({x:.3f}, {y:.3f}, goal_yaw={goal_yaw:.3f}, '
@@ -288,8 +312,58 @@ class YsvvWaypointNavigator(Node):
 
     def _stop_navigation(self, message):
         self.get_logger().error(message)
+        self._set_obstacle_avoidance(False, 'navigation stopped')
         if self.exit_on_result and rclpy.ok():
             rclpy.shutdown()
+
+    def _publish_obstacle_avoidance_state(self):
+        msg = Bool()
+        msg.data = self.obstacle_avoidance_active
+        self.obstacle_avoidance_pub.publish(msg)
+
+    def _set_obstacle_avoidance(self, active, reason='', until_index=None):
+        active = bool(active)
+        previous_active = self.obstacle_avoidance_active
+        previous_until_index = self.obstacle_avoidance_until_index
+
+        if active:
+            self.obstacle_avoidance_active = True
+            if until_index is not None:
+                if self.obstacle_avoidance_until_index is None:
+                    self.obstacle_avoidance_until_index = until_index
+                else:
+                    self.obstacle_avoidance_until_index = max(
+                        self.obstacle_avoidance_until_index, until_index)
+        else:
+            self.obstacle_avoidance_active = False
+            self.obstacle_avoidance_until_index = None
+
+        state_changed = previous_active != self.obstacle_avoidance_active
+        target_changed = previous_until_index != self.obstacle_avoidance_until_index
+        if state_changed or target_changed:
+            self._publish_obstacle_avoidance_state()
+
+        if state_changed:
+            if self.obstacle_avoidance_active:
+                target_text = ''
+                if self.obstacle_avoidance_until_index is not None:
+                    target_text = (
+                        f' until waypoint {self.obstacle_avoidance_until_index + 1}')
+                self.get_logger().warn(
+                    f'YSVV obstacle avoidance speed mode ON{target_text}: {reason}')
+            else:
+                self.get_logger().info(
+                    f'YSVV obstacle avoidance speed mode OFF: {reason}')
+
+    def _update_obstacle_avoidance_progress(self):
+        if not self.obstacle_avoidance_active:
+            return
+        if self.obstacle_avoidance_until_index is None:
+            return
+        if self.route_progress_index >= self.obstacle_avoidance_until_index:
+            self._set_obstacle_avoidance(
+                False,
+                f'progress reached waypoint {self.route_progress_index + 1}')
 
     def _tracking_tick(self):
         if not self.started:
@@ -329,6 +403,69 @@ class YsvvWaypointNavigator(Node):
         self.current_waypoint_index = next_index
         self._request_current_waypoint()
 
+    def _force_advance_lookahead_goal(self, reason):
+        if self.current_waypoint_index + 1 >= len(self.waypoints):
+            return
+        if self.pending_path_check or self.pending_nav_goal_index is not None:
+            return
+
+        next_index = min(
+            len(self.waypoints) - 1,
+            max(
+                self.current_waypoint_index + 1,
+                self.route_progress_index + max(1, self.lookahead_index_offset) + 1))
+        if next_index <= self.current_waypoint_index:
+            return
+
+        self.get_logger().warn(
+            f'YSVV feedback stalled; forcing lookahead goal '
+            f'{self.current_waypoint_index + 1} -> {next_index + 1} '
+            f'({reason}, progress waypoint {self.route_progress_index + 1})')
+        self.current_waypoint_index = next_index
+        self._request_current_waypoint()
+
+    def _reset_feedback_watchdog(self):
+        self.last_feedback_distance = None
+        self.last_feedback_progress_index = self.route_progress_index
+        self.last_feedback_improvement_time = self.get_clock().now()
+
+    def _update_feedback_watchdog(self, distance, waypoint_index):
+        if self.feedback_stall_timeout <= 0.0:
+            return
+        if waypoint_index + 1 >= len(self.waypoints):
+            return
+
+        now = self.get_clock().now()
+        if self.last_feedback_improvement_time is None:
+            self.last_feedback_distance = distance
+            self.last_feedback_progress_index = self.route_progress_index
+            self.last_feedback_improvement_time = now
+            return
+
+        progress_advanced = (
+            self.last_feedback_progress_index is None or
+            self.route_progress_index > self.last_feedback_progress_index)
+        distance_improved = (
+            self.last_feedback_distance is None or
+            distance < self.last_feedback_distance - self.feedback_stall_distance_epsilon)
+        if progress_advanced or distance_improved:
+            self.last_feedback_distance = distance
+            self.last_feedback_progress_index = self.route_progress_index
+            self.last_feedback_improvement_time = now
+            return
+
+        stalled_for = (
+            now - self.last_feedback_improvement_time).nanoseconds * 1e-9
+        if stalled_for < self.feedback_stall_timeout:
+            return
+
+        self.last_feedback_distance = distance
+        self.last_feedback_progress_index = self.route_progress_index
+        self.last_feedback_improvement_time = now
+        self._force_advance_lookahead_goal(
+            f'no distance/progress improvement for {stalled_for:.1f}s, '
+            f'distance_remaining={distance:.3f}m')
+
     def _select_lookahead_waypoint_index(self):
         robot_pose = self._lookup_robot_pose()
         if robot_pose is None:
@@ -344,6 +481,7 @@ class YsvvWaypointNavigator(Node):
         previous_progress_index = self.route_progress_index
         if closest_index > self.route_progress_index:
             self.route_progress_index = closest_index
+        self._update_obstacle_avoidance_progress()
 
         target_index = min(
             self.route_progress_index + max(0, self.lookahead_index_offset),
@@ -512,6 +650,7 @@ class YsvvWaypointNavigator(Node):
             f'{reason}; skipping waypoint {waypoint_index + 1}, '
             f'obstacle_center≈({obstacle_center[0]:.3f}, {obstacle_center[1]:.3f}), '
             f'sending waypoint {next_index + 1}')
+        self._set_obstacle_avoidance(True, reason, next_index)
         self.current_waypoint_index = next_index
         self._request_current_waypoint()
 
@@ -545,6 +684,8 @@ class YsvvWaypointNavigator(Node):
             f'cost={blocked_cost}, '
             f'obstacle_center≈({obstacle_center[0]:.3f}, {obstacle_center[1]:.3f}), '
             f'jumping to waypoint {next_index + 1}')
+        self._set_obstacle_avoidance(
+            True, f'blocked waypoint {waypoint_index + 1}', next_index)
         return next_index
 
     def _resolve_upcoming_obstacle(self, waypoint_index):
@@ -578,7 +719,7 @@ class YsvvWaypointNavigator(Node):
             x, y, _ = self.waypoints[blocked_index]
             obstacle_center = self._find_obstacle_center((x, y)) or (x, y)
             next_index = self._find_escape_waypoint_index(
-                blocked_index, obstacle_center)
+                blocked_index, obstacle_center, minimum_index=waypoint_index)
             if next_index is None:
                 self.get_logger().error(
                     f'Obstacle ahead near YSVV waypoint {blocked_index + 1}, '
@@ -587,19 +728,35 @@ class YsvvWaypointNavigator(Node):
                     f'was found within {self.max_skip_waypoints} waypoints')
                 return None
 
-            self.get_logger().warn(
-                f'Obstacle ahead near YSVV waypoint {blocked_index + 1}, '
-                f'cost={cost}, closest={closest_index + 1}, goal={waypoint_index + 1}, '
-                f'obstacle_center≈({obstacle_center[0]:.3f}, {obstacle_center[1]:.3f}), '
-                f'jumping early to waypoint {next_index + 1}')
+            if next_index == waypoint_index:
+                self.get_logger().warn(
+                    f'Obstacle ahead near YSVV waypoint {blocked_index + 1}, '
+                    f'cost={cost}, closest={closest_index + 1}, '
+                    f'goal={waypoint_index + 1}, '
+                    f'obstacle_center≈({obstacle_center[0]:.3f}, '
+                    f'{obstacle_center[1]:.3f}); keeping current lookahead goal')
+            else:
+                self.get_logger().warn(
+                    f'Obstacle ahead near YSVV waypoint {blocked_index + 1}, '
+                    f'cost={cost}, closest={closest_index + 1}, '
+                    f'goal={waypoint_index + 1}, '
+                    f'obstacle_center≈({obstacle_center[0]:.3f}, '
+                    f'{obstacle_center[1]:.3f}), jumping early to waypoint '
+                    f'{next_index + 1}')
+            self._set_obstacle_avoidance(
+                True, f'obstacle ahead near waypoint {blocked_index + 1}', next_index)
             return next_index
 
         return waypoint_index
 
-    def _find_escape_waypoint_index(self, blocked_index, obstacle_center):
+    def _find_escape_waypoint_index(
+            self, blocked_index, obstacle_center, minimum_index=None):
+        first_candidate = blocked_index + 1
+        if minimum_index is not None:
+            first_candidate = max(first_candidate, minimum_index)
         last_candidate = min(
             len(self.waypoints) - 1, blocked_index + self.max_skip_waypoints)
-        for candidate_index in range(blocked_index + 1, last_candidate + 1):
+        for candidate_index in range(first_candidate, last_candidate + 1):
             x, y, _ = self.waypoints[candidate_index]
             distance = math.hypot(x - obstacle_center[0], y - obstacle_center[1])
             if distance < self.obstacle_escape_distance:
@@ -812,6 +969,7 @@ class YsvvWaypointNavigator(Node):
                 f'running, progress={self.route_progress_index + 1}, '
                 f'distance_remaining={distance:.3f}',
                 throttle_duration_sec=2.0)
+            self._update_feedback_watchdog(distance, waypoint_index)
             if (waypoint_index + 1 < len(self.waypoints) and
                     distance <= self.switch_distance):
                 self._maybe_update_lookahead_goal(
@@ -845,6 +1003,7 @@ class YsvvWaypointNavigator(Node):
         final_waypoint_index = len(self.waypoints) - 1
         if waypoint_index >= final_waypoint_index:
             self.route_progress_index = final_waypoint_index
+            self._update_obstacle_avoidance_progress()
             self.get_logger().warn(
                 f'YSVV current reached/progress waypoint '
                 f'{self.route_progress_index + 1}/{len(self.waypoints)} '

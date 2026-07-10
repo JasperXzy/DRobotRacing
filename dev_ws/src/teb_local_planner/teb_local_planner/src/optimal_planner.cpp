@@ -939,14 +939,15 @@ void TebOptimalPlanner::AddEdgesKinematicsDiffDrive()
 
 void TebOptimalPlanner::AddEdgesKinematicsCarlike()
 {
-  if (cfg_->optim.weight_kinematics_nh==0 && cfg_->optim.weight_kinematics_turning_radius==0)
+  if (cfg_->optim.weight_kinematics_nh==0 && cfg_->optim.weight_kinematics_forward_drive==0 && cfg_->optim.weight_kinematics_turning_radius==0)
     return; // if weight equals zero skip adding edges!
 
   // create edge for satisfiying kinematic constraints
-  Eigen::Matrix<double,2,2> information_kinematics;
+  Eigen::Matrix<double,3,3> information_kinematics;
   information_kinematics.fill(0.0);
   information_kinematics(0, 0) = cfg_->optim.weight_kinematics_nh;
-  information_kinematics(1, 1) = cfg_->optim.weight_kinematics_turning_radius;
+  information_kinematics(1, 1) = cfg_->optim.weight_kinematics_forward_drive;
+  information_kinematics(2, 2) = cfg_->optim.weight_kinematics_turning_radius;
   
   for (int i=0; i < teb_.sizePoses()-1; i++) // ignore twiced start only
   {
@@ -1166,6 +1167,15 @@ bool TebOptimalPlanner::getVelocityCommand(double& vx, double& vy, double& omega
 	  
   // Get velocity from the first two configurations
   extractVelocity(teb_.Pose(0), teb_.Pose(look_ahead_poses), dt, vx, vy, omega);
+  if (!cfg_->robot.allow_backwards_motion && vx < -1e-4)
+  {
+    RCLCPP_WARN_THROTTLE(node_->get_logger(), *(node_->get_clock()), 1000,
+                         "TebOptimalPlanner::getVelocityCommand(): rejecting backward velocity because allow_backwards_motion is false.");
+    vx = 0;
+    vy = 0;
+    omega = 0;
+    return false;
+  }
   return true;
 }
 
@@ -1261,6 +1271,21 @@ bool TebOptimalPlanner::isTrajectoryFeasible(dwb_critics::ObstacleFootprintCriti
       if(pose_distance > feasibility_check_lookahead_distance){
         look_ahead_idx = i - 1;
         break;
+      }
+    }
+  }
+
+  if (!cfg_->robot.allow_backwards_motion)
+  {
+    for (int i=0; i < look_ahead_idx; ++i)
+    {
+      const Eigen::Vector2d delta_dist = teb().Pose(i+1).position() - teb().Pose(i).position();
+      const Eigen::Vector2d heading(std::cos(teb().Pose(i).theta()), std::sin(teb().Pose(i).theta()));
+      if (delta_dist.dot(heading) < -1e-4)
+      {
+        RCLCPP_WARN_THROTTLE(node_->get_logger(), *(node_->get_clock()), 1000,
+                             "TebOptimalPlanner::isTrajectoryFeasible(): rejecting backward trajectory segment because allow_backwards_motion is false.");
+        return false;
       }
     }
   }

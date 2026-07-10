@@ -1,0 +1,149 @@
+<launch>
+  <!-- 坐标系与话题 -->
+  <!-- 航点 YAML 文件；包含 clockwise/counterclockwise 两套路由和每个点的 x/y/reverse/pass_radius。 -->
+  <arg name="waypoints_file" default="/root/D_Robot/test/dev_ws/src/origincar_system/config/waypoints_ysvv_replaced.yaml"/>
+  <!-- 全局定位坐标系；主线建图/AMCL 输出一般是 map。 -->
+  <arg name="frame_id" default="map"/>
+  <!-- 车体坐标系；控制节点通过 map -> base_link TF 读取车当前位置和朝向。 -->
+  <arg name="base_frame_id" default="base_link"/>
+  <!-- 速度输出话题；主线底盘驱动订阅 /cmd_vel。 -->
+  <arg name="cmd_vel_topic" default="/cmd_vel"/>
+  <!-- 激光雷达话题；只用于转向避障，不负责定位。 -->
+  <arg name="scan_topic" default="/scan"/>
+
+  <!-- 基础线段巡线控制 -->
+  <!-- 线速度，单位 m/s；正向使用 +linear_speed，倒车使用 -linear_speed。 -->
+  <arg name="linear_speed" default="1.0"/>
+  <!-- 控制循环频率，单位 Hz；决定 /cmd_vel 发布频率。 -->
+  <arg name="control_frequency" default="50.0"/>
+  <!-- 正向巡线角速度增益；angular.z = turn_angular_gain * heading_error。 -->
+  <arg name="turn_angular_gain" default="1.4"/>
+  <!-- 离散 waypoint 前瞻距离，单位 m；从 current_index_+1 往后找第一个离车达到该距离的 waypoint。 -->
+  <arg name="lookahead_distance" default="0.65"/>
+  <!-- 默认精准点通过半径，单位 m；YAML 单点 pass_radius 可覆盖。 -->
+  <arg name="pass_radius" default="1.2"/>
+  <!-- 最后一个航点的到达半径，单位 m；进入后发布停车并退出节点。 -->
+  <arg name="goal_tolerance" default="0.1"/>
+  <!-- 避障结束重定位时，current_index_ 后方参与投影匹配的线段数量；正常巡线只看当前线段。 -->
+  <arg name="route_projection_window" default="30"/>
+  <!-- 车离候选线段超过该距离时，不用该线段更新路线进度，单位 m。 -->
+  <arg name="route_projection_max_distance" default="0.7"/>
+  <!-- 投影到线段该比例之后，认为已走到下一段；0.85 表示线段末端前一点就切段。 -->
+  <arg name="segment_advance_t" default="0.85"/>
+
+  <!-- 倒车控制 -->
+  <!-- 倒车追点角速度增益；倒车时目标方向按车尾计算。 -->
+  <arg name="reverse_angular_gain" default="1.1"/>
+  <!-- 倒车当前点使用的较短前瞻距离，单位 m，用于避免倒车提前切远点。 -->
+  <arg name="reverse_goal_lookahead_distance" default="0.25"/>
+  <!-- 默认倒车点通过半径，单位 m，YAML 单点 reverse_pass_radius 可覆盖。 -->
+  <arg name="reverse_pass_radius" default="0.25"/>
+  <!-- 是否在指定倒车航点附近额外给一个角速度修正。 -->
+  <arg name="enable_reverse_approach_nudge" default="true"/>
+  <!-- 需要倒车姿态微调的航点编号，从 1 开始。 -->
+  <arg name="reverse_approach_nudge_waypoint" default="2"/>
+  <!-- 离指定倒车航点小于该距离时开始微调，单位 m。 -->
+  <arg name="reverse_approach_nudge_distance" default="0.35"/>
+  <!-- 倒车微调角速度，单位 rad/s；正负号决定打角方向。 -->
+  <arg name="reverse_approach_nudge_angular_z" default="-0.35"/>
+
+  <!-- 真实雷达矩形通行区避障 -->
+  <!-- 是否启用真实雷达避障；启用后在前方矩形区域有障碍时临时接管转向。 -->
+  <arg name="enable_obstacle_avoidance" default="true"/>
+  <!-- 从哪个航点编号开始启用真实雷达避障；0 表示一开始启用。 -->
+  <arg name="obstacle_enable_from_waypoint" default="0"/>
+  <!-- 外层减速矩形长度，单位 m；有障碍时只限速，不打避障方向。 -->
+  <arg name="slow_corridor_length" default="0.65"/>
+  <!-- 外层减速矩形半宽，单位 m。 -->
+  <arg name="slow_corridor_half_width" default="0.4"/>
+  <!-- 外层减速矩形内至少多少个有效雷达点才减速。 -->
+  <arg name="slow_obstacle_min_points" default="1"/>
+  <!-- 外层减速触发后的线速度上限，单位 m/s。 -->
+  <arg name="slow_linear_speed" default="0.4"/>
+  <!-- 内层避障矩形长度，单位 m。 -->
+  <arg name="obstacle_corridor_length" default="0.50"/>
+  <!-- 内层避障矩形半宽，单位 m；总宽度为该值的 2 倍。 -->
+  <arg name="obstacle_corridor_half_width" default="0.3"/>
+  <!-- 小于该距离的雷达点忽略，单位 m；用于过滤贴脸噪声。 -->
+  <arg name="min_obstacle_range" default="0.05"/>
+  <!-- 矩形区内至少多少个有效雷达点才认为有障碍。 -->
+  <arg name="obstacle_min_points" default="1"/>
+  <!-- 避障时固定打舵角速度，单位 rad/s；障碍在左则取负值，障碍在右则取正值。 -->
+  <arg name="avoid_angular_z" default="1.0"/>
+  <!-- 避障时线速度，单位 m/s。 -->
+  <arg name="avoid_linear_speed" default="0.3"/>
+
+  <!-- QR 路线选择 -->
+  <!-- 启动路线方向；auto 表示读取 waypoints.yaml 顶层 route_direction。 -->
+  <arg name="route_direction" default="auto"/>
+  <!-- 第一次收到 QR 后，是否确认起步线段；线段巡线下不会强行跳到固定 point_02。 -->
+  <arg name="enable_qr_skip_first" default="true"/>
+  <!-- 是否允许 QR 数字在运行中切换顺/逆时针路线。 -->
+  <arg name="enable_qr_direction_select" default="true"/>
+  <!-- QR 识别结果话题；主线 QR 节点通常发布 /qr_code。 -->
+  <arg name="qr_topic" default="/qr_code"/>
+  <!-- true 时奇数 QR=clockwise，偶数 QR=counterclockwise。 -->
+  <arg name="use_qr_parity_direction" default="true"/>
+  <!-- 不使用奇偶规则时，匹配该数值选择 clockwise。 -->
+  <arg name="clockwise_qr_value" default="1"/>
+  <!-- 不使用奇偶规则时，匹配该数值选择 counterclockwise。 -->
+  <arg name="counterclockwise_qr_value" default="2"/>
+
+  <!-- 是否在经过指定航点时发布一次图生文/图像分析触发。 -->
+  <arg name="enable_image_analysis_trigger" default="true"/>
+  <!-- 触发图生文/图像分析的航点编号，从 1 开始。 -->
+  <arg name="image_analysis_waypoint" default="8"/>
+  <!-- 图生文/图像分析触发话题；主线 visual_control 监听 /sign4return。 -->
+  <arg name="image_analysis_trigger_topic" default="/sign4return"/>
+
+  <node pkg="origincar_system" exec="smooth_path_follower" name="smooth_path_follower" output="screen">
+    <param name="waypoints_file" value="$(var waypoints_file)" type="str"/>
+    <param name="frame_id" value="$(var frame_id)" type="str"/>
+    <param name="base_frame_id" value="$(var base_frame_id)" type="str"/>
+    <param name="cmd_vel_topic" value="$(var cmd_vel_topic)" type="str"/>
+    <param name="scan_topic" value="$(var scan_topic)" type="str"/>
+
+    <param name="linear_speed" value="$(var linear_speed)" type="float"/>
+    <param name="control_frequency" value="$(var control_frequency)" type="float"/>
+    <param name="turn_angular_gain" value="$(var turn_angular_gain)" type="float"/>
+    <param name="lookahead_distance" value="$(var lookahead_distance)" type="float"/>
+    <param name="pass_radius" value="$(var pass_radius)" type="float"/>
+    <param name="goal_tolerance" value="$(var goal_tolerance)" type="float"/>
+    <param name="route_projection_window" value="$(var route_projection_window)" type="int"/>
+    <param name="route_projection_max_distance" value="$(var route_projection_max_distance)" type="float"/>
+    <param name="segment_advance_t" value="$(var segment_advance_t)" type="float"/>
+
+    <param name="reverse_angular_gain" value="$(var reverse_angular_gain)" type="float"/>
+    <param name="reverse_goal_lookahead_distance" value="$(var reverse_goal_lookahead_distance)" type="float"/>
+    <param name="reverse_pass_radius" value="$(var reverse_pass_radius)" type="float"/>
+    <param name="enable_reverse_approach_nudge" value="$(var enable_reverse_approach_nudge)" type="bool"/>
+    <param name="reverse_approach_nudge_waypoint" value="$(var reverse_approach_nudge_waypoint)" type="int"/>
+    <param name="reverse_approach_nudge_distance" value="$(var reverse_approach_nudge_distance)" type="float"/>
+    <param name="reverse_approach_nudge_angular_z" value="$(var reverse_approach_nudge_angular_z)" type="float"/>
+
+    <param name="enable_obstacle_avoidance" value="$(var enable_obstacle_avoidance)" type="bool"/>
+    <param name="obstacle_enable_from_waypoint" value="$(var obstacle_enable_from_waypoint)" type="int"/>
+    <param name="slow_corridor_length" value="$(var slow_corridor_length)" type="float"/>
+    <param name="slow_corridor_half_width" value="$(var slow_corridor_half_width)" type="float"/>
+    <param name="slow_obstacle_min_points" value="$(var slow_obstacle_min_points)" type="int"/>
+    <param name="slow_linear_speed" value="$(var slow_linear_speed)" type="float"/>
+    <param name="obstacle_corridor_length" value="$(var obstacle_corridor_length)" type="float"/>
+    <param name="obstacle_corridor_half_width" value="$(var obstacle_corridor_half_width)" type="float"/>
+    <param name="min_obstacle_range" value="$(var min_obstacle_range)" type="float"/>
+    <param name="obstacle_min_points" value="$(var obstacle_min_points)" type="int"/>
+    <param name="avoid_angular_z" value="$(var avoid_angular_z)" type="float"/>
+    <param name="avoid_linear_speed" value="$(var avoid_linear_speed)" type="float"/>
+
+    <param name="route_direction" value="$(var route_direction)" type="str"/>
+    <param name="enable_qr_skip_first" value="$(var enable_qr_skip_first)" type="bool"/>
+    <param name="enable_qr_direction_select" value="$(var enable_qr_direction_select)" type="bool"/>
+    <param name="qr_topic" value="$(var qr_topic)" type="str"/>
+    <param name="use_qr_parity_direction" value="$(var use_qr_parity_direction)" type="bool"/>
+    <param name="clockwise_qr_value" value="$(var clockwise_qr_value)" type="int"/>
+    <param name="counterclockwise_qr_value" value="$(var counterclockwise_qr_value)" type="int"/>
+
+    <param name="enable_image_analysis_trigger" value="$(var enable_image_analysis_trigger)" type="bool"/>
+    <param name="image_analysis_waypoint" value="$(var image_analysis_waypoint)" type="int"/>
+    <param name="image_analysis_trigger_topic" value="$(var image_analysis_trigger_topic)" type="str"/>
+  </node>
+</launch>

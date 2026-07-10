@@ -72,6 +72,7 @@ void TebConfig::declareParameters(const nav2_util::LifecycleNode::SharedPtr nh, 
   // Robot
   declare_parameter_if_not_declared(nh, name + "." + "max_vel_x", rclcpp::ParameterValue(robot.max_vel_x));
   declare_parameter_if_not_declared(nh, name + "." + "max_vel_x_backwards", rclcpp::ParameterValue(robot.max_vel_x_backwards));
+  declare_parameter_if_not_declared(nh, name + "." + "allow_backwards_motion", rclcpp::ParameterValue(robot.allow_backwards_motion));
   declare_parameter_if_not_declared(nh, name + "." + "max_vel_y", rclcpp::ParameterValue(robot.max_vel_y));
   declare_parameter_if_not_declared(nh, name + "." + "max_vel_theta", rclcpp::ParameterValue(robot.max_vel_theta));
   declare_parameter_if_not_declared(nh, name + "." + "acc_lim_x", rclcpp::ParameterValue(robot.acc_lim_x));
@@ -199,6 +200,7 @@ void TebConfig::loadRosParamFromNodeHandle(const nav2_util::LifecycleNode::Share
   // Robot
   nh->get_parameter_or(name + "." + "max_vel_x", robot.max_vel_x, robot.max_vel_x);
   nh->get_parameter_or(name + "." + "max_vel_x_backwards", robot.max_vel_x_backwards, robot.max_vel_x_backwards);
+  nh->get_parameter_or(name + "." + "allow_backwards_motion", robot.allow_backwards_motion, robot.allow_backwards_motion);
   nh->get_parameter_or(name + "." + "max_vel_y", robot.max_vel_y, robot.max_vel_y);
   nh->get_parameter_or(name + "." + "max_vel_theta", robot.max_vel_theta, robot.max_vel_theta);
   nh->get_parameter_or(name + "." + "acc_lim_x", robot.acc_lim_x, robot.acc_lim_x);
@@ -681,6 +683,8 @@ rcl_interfaces::msg::SetParametersResult
       // Robot
       else if (name == node_name + ".cmd_angle_instead_rotvel") {
         robot.cmd_angle_instead_rotvel = parameter.as_bool();
+      } else if (name == node_name + ".allow_backwards_motion") {
+        robot.allow_backwards_motion = parameter.as_bool();
       } else if (name == node_name + ".is_footprint_dynamic") {
         robot.is_footprint_dynamic = parameter.as_bool();
       }
@@ -806,14 +810,14 @@ void TebConfig::checkParameters() const
 {
   //rclcpp::Logger logger_{rclcpp::get_logger("TEBLocalPlanner")};
   // positive backward velocity?
-  if (robot.max_vel_x_backwards <= 0)
+  if (robot.allow_backwards_motion && robot.max_vel_x_backwards <= 0)
     RCLCPP_WARN(logger_, "TebLocalPlannerROS() Param Warning: Do not choose max_vel_x_backwards to be <=0. Disable backwards driving by increasing the optimization weight for penalyzing backwards driving.");
   
   // bounds smaller than penalty epsilon
   if (robot.max_vel_x <= optim.penalty_epsilon)
     RCLCPP_WARN(logger_, "TebLocalPlannerROS() Param Warning: max_vel_x <= penalty_epsilon. The resulting bound is negative. Undefined behavior... Change at least one of them!");
   
-  if (robot.max_vel_x_backwards <= optim.penalty_epsilon)
+  if (robot.allow_backwards_motion && robot.max_vel_x_backwards <= optim.penalty_epsilon)
     RCLCPP_WARN(logger_, "TebLocalPlannerROS() Param Warning: max_vel_x_backwards <= penalty_epsilon. The resulting bound is negative. Undefined behavior... Change at least one of them!");
   
   if (robot.max_vel_theta <= optim.penalty_epsilon)

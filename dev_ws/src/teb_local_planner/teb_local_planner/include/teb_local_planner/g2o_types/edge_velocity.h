@@ -112,7 +112,8 @@ public:
     
     const double omega = angle_diff / deltaT->estimate();
   
-    _error[0] = penaltyBoundToInterval(vel, -cfg_->robot.max_vel_x_backwards, cfg_->robot.max_vel_x,cfg_->optim.penalty_epsilon);
+    const double min_vel_x = cfg_->robot.allow_backwards_motion ? -cfg_->robot.max_vel_x_backwards : 0.0;
+    _error[0] = penaltyBoundToInterval(vel, min_vel_x, cfg_->robot.max_vel_x,cfg_->optim.penalty_epsilon);
     _error[1] = penaltyBoundToInterval(omega, cfg_->robot.max_vel_theta,cfg_->optim.penalty_epsilon);
 
     TEB_ASSERT_MSG(std::isfinite(_error[0]), "EdgeVelocity::computeError() _error[0]=%f _error[1]=%f\n",_error[0],_error[1]);
@@ -140,7 +141,8 @@ public:
     double vel = dist * aux2;
     double omega = g2o::normalize_theta(conf2->theta() - conf1->theta()) * aux2;
     
-    double dev_border_vel = penaltyBoundToIntervalDerivative(vel, -cfg_->robot.max_vel_x_backwards, cfg_->robot.max_vel_x,cfg_->optim.penalty_epsilon);
+    const double min_vel_x = cfg_->robot.allow_backwards_motion ? -cfg_->robot.max_vel_x_backwards : 0.0;
+    double dev_border_vel = penaltyBoundToIntervalDerivative(vel, min_vel_x, cfg_->robot.max_vel_x,cfg_->optim.penalty_epsilon);
     double dev_border_omega = penaltyBoundToIntervalDerivative(omega, cfg_->robot.max_vel_theta,cfg_->optim.penalty_epsilon);
     
     _jacobianOplus[0].resize(2,3); // conf1
@@ -254,7 +256,8 @@ public:
     double vy = r_dy / deltaT->estimate();
     double omega = g2o::normalize_theta(conf2->theta() - conf1->theta()) / deltaT->estimate();
     
-    _error[0] = penaltyBoundToInterval(vx, -cfg_->robot.max_vel_x_backwards, cfg_->robot.max_vel_x, cfg_->optim.penalty_epsilon);
+    const double min_vel_x = cfg_->robot.allow_backwards_motion ? -cfg_->robot.max_vel_x_backwards : 0.0;
+    _error[0] = penaltyBoundToInterval(vx, min_vel_x, cfg_->robot.max_vel_x, cfg_->optim.penalty_epsilon);
     _error[1] = penaltyBoundToInterval(vy, cfg_->robot.max_vel_y, 0.0); // we do not apply the penalty epsilon here, since the velocity could be close to zero
     _error[2] = penaltyBoundToInterval(omega, cfg_->robot.max_vel_theta,cfg_->optim.penalty_epsilon);
 

@@ -37,6 +37,7 @@
   <!-- 4. 传感器驱动与消息 -->
   <exec_depend>ackermann_msgs</exec_depend>        <!-- 阿克曼转向消息 -->
   <exec_depend>geometry_msgs</exec_depend>         <!-- Twist等几何消息 -->
+  <exec_depend>std_msgs</exec_depend>              <!-- Bool/String等标准消息 -->
   <exec_depend>nav_msgs</exec_depend>              <!-- OccupancyGrid等导航消息 -->
   <exec_depend>sensor_msgs</exec_depend>           <!-- LaserScan等传感器消息 -->
 

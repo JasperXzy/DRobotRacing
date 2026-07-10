@@ -906,7 +906,9 @@ void TebLocalPlannerROS::saturateVelocity(double& vx, double& vy, double& omega,
     ratio_omega = std::abs(max_vel_theta / omega);
   
   // Limit backwards velocity
-  if (max_vel_x_backwards<=0)
+  if (!cfg_->robot.allow_backwards_motion && vx < 0)
+    ratio_x = 0.0;
+  else if (max_vel_x_backwards<=0)
   {
     RCLCPP_WARN_ONCE(
                 logger_,

@@ -100,7 +100,7 @@ controller_server:
       stateful: True
       plugin: "nav2_controller::SimpleGoalChecker"
       xy_goal_tolerance: 0.35            # 稍微收紧最终位置判定
-      yaw_goal_tolerance: 1.2            # ~69°，比之前更看重朝向但不卡死
+      yaw_goal_tolerance: 3.14           # 不为最终朝向倒车调姿，到位即可继续前进
     # ========================================================================
     # ★ TEB (Timed Elastic Band) 局部规划器
     #
@@ -120,11 +120,12 @@ controller_server:
       cmd_angle_instead_rotvel: false
       wheelbase: 0.145                         # 轴距 (m) 
       max_vel_x: 2.00                          # 先压低速度，减少入弯甩尾
-      max_vel_x_backwards: 0.00                # TEB不使用倒车速度；倒车只交给行为树Recovery
+      max_vel_x_backwards: 0.01                # 兼容旧参数；allow_backwards_motion=false 时不作为优化下界
+      allow_backwards_motion: false            # 从TEB速度约束层禁止规划倒车轨迹
       max_vel_theta: 1.0                       # 再压一点转向角速度，消掉残余甩尾
 
       # 阿克曼转弯限制
-      min_turning_radius: 0.25                 # 略放大转弯半径，避免急弯导致后轮甩
+      min_turning_radius: 0.20                 # 放宽前进转弯可行性，减少倒车调姿解
 
       # TEB优化用车体模型，需与costmap footprint保持一致，避免优化时按点模型贴障
       footprint_model:
@@ -132,7 +133,7 @@ controller_server:
         vertices: "[[0.15, 0.095], [0.15, -0.095], [-0.15, -0.095], [-0.15, 0.095]]"
 
       # ━━━ 加速度限制 ━━━
-      acc_lim_x: 0.40                          # 稍微提高线加速度，让直道响应更快
+      acc_lim_x: 0.60                          # 提高线加速度，让直道响应更快
       acc_lim_theta: 1.4                       # 继续降低角加速度，转向变化更柔
 
       # ━━━ 轨迹优化核心参数 ━━━
@@ -140,13 +141,15 @@ controller_server:
       dt_hysteresis: 0.1
       min_samples: 3                           # 冠军车 3：最少轨迹点数
       global_plan_overwrite_orientation: True  # 用全局路径方向重写局部姿态，减少倒车满足姿态约束
-      global_plan_viapoint_sep: 0.12           # 更密集抽取全局路径点，让TEB更像路径跟随器
+      global_plan_viapoint_sep: 0.02           # 更密集抽取全局路径点，让TEB更像路径跟随器
 
-      no_inner_iterations: 7                   # 增加内层优化，让弯道收敛更平滑
-      no_outer_iterations: 3                   # 冠军车 3
+      no_inner_iterations: 3                 # 增加内层优化，让弯道收敛更平滑
+      no_outer_iterations: 2                  # 冠军车 3
 
-      max_global_plan_lookahead_dist: 0.25      # 缩短TEB前视距离，让局部规划更贴近当前全局路径段
-      force_reinit_new_goal_dist: 3.0          # 冠军车 1.0：新目标>1m就重初始化整条轨迹
+      max_global_plan_lookahead_dist: 0.35     # 稍微看远一点，提前转向拟合小半径弯
+      global_plan_prune_distance: 0.15         # 更积极剪掉车身后的全局路径点，减少局部轨迹起点回钩
+      force_reinit_new_goal_dist: 0.2          # 冠军车 1.0：新目标>1m就重初始化整条轨迹
+      force_reinit_new_goal_angular: 0.35      # 局部目标方向变化约20°时重初始化，减少反向热启动
 
       feasibility_check_no_poses: 2            # 恢复轻量可行性检查，减少贴障碍轨迹
       publish_feedback: false
@@ -154,7 +157,7 @@ controller_server:
       exact_arc_length: false
 
       # ━━━ 代价地图转换 ━━━
-      costmap_converter_plugin: ""
+      costmap_converter_plugin: "costmap_converter::CostmapToPolygonsDBSMCCH"
       costmap_converter_spin_thread: true
       costmap_converter_rate: 5.0
 
@@ -167,23 +170,23 @@ controller_server:
       # ╔══════════════════════════════════════════════════════╗
       # ║ ★★★ 冠军车优化权重（国一车实测）★★★            ║
       # ╚══════════════════════════════════════════════════════╝
-      penalty_epsilon: 0.15                    # 冠军车 0.11→0.15：惩罚更圆滑，减少轨迹抖动 # ->0.05减小速度限制，未跑
+      penalty_epsilon: 0.03                    # 收紧速度/运动学约束软边界，压掉小幅倒车解
 
       # 速度/加速度约束
       weight_max_vel_x: 4.0
-      weight_max_vel_theta: 10.0
+      weight_max_vel_theta: 5.0    #10.0-5.0
       weight_acc_lim_x: 1.0
-      weight_acc_lim_theta: 30.0
+      weight_acc_lim_theta: 20.0
 
       # 运动学约束
       weight_kinematics_nh: 1000.0              # 更严格约束非完整运动，减少横摆
-      weight_kinematics_forward_drive: 20000.0 # 极强前进偏好，进一步压制倒车解
+      weight_kinematics_forward_drive: 100000.0 # 极强前进偏好，禁止TEB偏向倒车解
       weight_kinematics_turning_radius: 1000.0 # ★冠军车 1000：硬约束转弯
 
       # 目标优化
       weight_optimaltime: 25.0                 # 降低抢时间倾向，减少急打方向
       weight_obstacle: 220.0                   # 降低障碍恐惧，减少过障前犹豫
-      weight_viapoint: 25.0                    # 更紧跟全局路径，减少局部规划器自行绕/倒车决策
+      weight_viapoint: 10.0                    # 保持跟随全局路径，但给前进转弯留出可行空间
       weight_inflation: 1.2                    # 软缓冲别太强，允许靠近但不贴障，障碍物软缓冲权重
       weight_adapt_factor: 2.0
 
@@ -198,8 +201,8 @@ controller_server:
       visualize_hc_graph: false
 
       # ━━━ 目标到达 ━━━
-      xy_goal_tolerance: 0.08
-      yaw_goal_tolerance: 1.2
+      xy_goal_tolerance: 0.20
+      yaw_goal_tolerance: 3.14
       free_goal_vel: True                    # ★冠军车 false，7.7上午修改：True，允许到达点仍有残余速度，减少甩尾
 
       # ━━━ 恢复行为 ━━━
@@ -366,8 +369,8 @@ velocity_smoother:
     scale_velocities: false
     feedback: "OPEN_LOOP"
     max_velocity: [2.0, 0.0, 1.0]
-    min_velocity: [0.0, 0.0, -1.0]
-    max_accel: [0.40, 0.0, 1.4]
+    min_velocity: [0.00, 0.0, -1.0]
+    max_accel: [0.60, 0.0, 1.6]
     max_decel: [-0.80, 0.0, -2.0]
     odom_topic: "odom"
     odom_duration: 0.1

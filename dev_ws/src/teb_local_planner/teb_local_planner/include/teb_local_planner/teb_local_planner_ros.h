@@ -308,8 +308,7 @@ protected:
    * @brief Saturate the translational and angular velocity to given limits.
    * 
    * The limit of the translational velocity for backwards driving can be changed independently.
-   * Do not choose max_vel_x_backwards <= 0. If no backward driving is desired, change the optimization weight for
-   * penalizing backwards driving instead.
+   * If allow_backwards_motion is false, negative vx is suppressed after optimization as a safety guard.
    * @param[in,out] vx The translational velocity that should be saturated.
    * @param[in,out] vy Strafing velocity which can be nonzero for holonomic robots
    * @param[in,out] omega The angular velocity that should be saturated.
@@ -422,5 +421,4 @@ public:
 }; // end namespace teb_local_planner
 
 #endif // TEB_LOCAL_PLANNER_ROS_H_
-
 

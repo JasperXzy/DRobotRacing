@@ -78,6 +78,10 @@ def _launch_setup(context):
         LaunchConfiguration('goal_update_min_interval').perform(context))
     goal_republish_distance = float(
         LaunchConfiguration('goal_republish_distance').perform(context))
+    feedback_stall_timeout = float(
+        LaunchConfiguration('feedback_stall_timeout').perform(context))
+    feedback_stall_distance_epsilon = float(
+        LaunchConfiguration('feedback_stall_distance_epsilon').perform(context))
     obstacle_escape_distance = float(
         LaunchConfiguration('obstacle_escape_distance').perform(context))
     blocked_check_radius = float(
@@ -91,6 +95,10 @@ def _launch_setup(context):
         LaunchConfiguration('obstacle_ahead_cost_threshold').perform(context))
     path_check_timeout = float(LaunchConfiguration('path_check_timeout').perform(context))
     costmap_topic = LaunchConfiguration('costmap_topic').perform(context)
+    obstacle_avoidance_topic = LaunchConfiguration(
+        'obstacle_avoidance_topic').perform(context)
+    cmd_vel_kp1 = float(LaunchConfiguration('cmd_vel_kp1').perform(context))
+    cmd_vel_kp2 = float(LaunchConfiguration('cmd_vel_kp2').perform(context))
     publish_initial_pose = _as_bool(
         LaunchConfiguration('publish_initial_pose').perform(context))
 
@@ -167,6 +175,21 @@ def _launch_setup(context):
         'bt_navigator',
         'velocity_smoother',
     ]
+    cmd_vel_kp_scaler_node = Node(
+        package='origincar_nav2',
+        executable='cmd_vel_kp_scaler',
+        name='cmd_vel_kp_scaler',
+        output='screen',
+        arguments=['--ros-args', '--log-level', 'info'],
+        parameters=[{
+            'use_sim_time': _as_bool(use_sim_time),
+            'input_topic': '/cmd_vel_teb',
+            'output_topic': '/cmd_vel_nav',
+            'avoidance_topic': obstacle_avoidance_topic,
+            'kp1': cmd_vel_kp1,
+            'kp2': cmd_vel_kp2,
+        }],
+    )
     nav2_nodes = [
         Node(
             package='nav2_controller',
@@ -175,7 +198,7 @@ def _launch_setup(context):
             output='screen',
             parameters=[nav2_params_fixed],
             arguments=['--ros-args', '--log-level', 'info'],
-            remappings=nav2_remappings + [('cmd_vel', 'cmd_vel_nav')],
+            remappings=nav2_remappings + [('cmd_vel', 'cmd_vel_teb')],
         ),
         Node(
             package='nav2_smoother',
@@ -260,12 +283,15 @@ def _launch_setup(context):
             'intermediate_goal_yaw_mode': intermediate_goal_yaw_mode,
             'goal_update_min_interval': goal_update_min_interval,
             'goal_republish_distance': goal_republish_distance,
+            'feedback_stall_timeout': feedback_stall_timeout,
+            'feedback_stall_distance_epsilon': feedback_stall_distance_epsilon,
             'obstacle_escape_distance': obstacle_escape_distance,
             'blocked_check_radius': blocked_check_radius,
             'max_skip_waypoints': max_skip_waypoints,
             'blocked_cost_threshold': blocked_cost_threshold,
             'obstacle_center_cost_threshold': obstacle_center_cost_threshold,
             'obstacle_ahead_cost_threshold': obstacle_ahead_cost_threshold,
+            'obstacle_avoidance_topic': obstacle_avoidance_topic,
             'path_check_timeout': path_check_timeout,
             'costmap_topic': costmap_topic,
             'exit_on_result': False,
@@ -283,7 +309,7 @@ def _launch_setup(context):
         TimerAction(period=4.0, actions=[ekf_launch]),
         TimerAction(period=6.0, actions=[map_server_node]),
         TimerAction(period=8.0, actions=[amcl_node, amcl_lifecycle_manager]),
-        TimerAction(period=12.0, actions=nav2_nodes),
+        TimerAction(period=12.0, actions=[cmd_vel_kp_scaler_node] + nav2_nodes),
         TimerAction(period=navigator_delay, actions=[navigator_node]),
     ])
 
@@ -354,11 +380,11 @@ def generate_launch_description():
             description='Distance in meters for switching early to the next waypoint'),
         DeclareLaunchArgument(
             'lookahead_index_offset',
-            default_value='7',
+            default_value='15',
             description='Waypoint index offset from the nearest route point for the rolling target'),
         DeclareLaunchArgument(
             'intermediate_goal_yaw_mode',
-            default_value='current',
+            default_value='path_tangent',
             description='Yaw for intermediate lookahead goals: current, path_tangent, or recorded'),
         DeclareLaunchArgument(
             'goal_update_min_interval',
@@ -366,15 +392,23 @@ def generate_launch_description():
             description='Minimum seconds between rolling lookahead goal updates'),
         DeclareLaunchArgument(
             'goal_republish_distance',
-            default_value='0.12',
+            default_value='0.05',
             description='Minimum target movement before republishing a lookahead goal'),
+        DeclareLaunchArgument(
+            'feedback_stall_timeout',
+            default_value='4.0',
+            description='Seconds without feedback progress before forcing the next lookahead goal'),
+        DeclareLaunchArgument(
+            'feedback_stall_distance_epsilon',
+            default_value='0.02',
+            description='Minimum distance decrease treated as feedback progress'),
         DeclareLaunchArgument(
             'base_frame',
             default_value='base_link',
             description='Robot base frame used for lookahead tracking'),
         DeclareLaunchArgument(
             'obstacle_escape_distance',
-            default_value='0.50',
+            default_value='0.60',
             description='Minimum distance from obstacle center for the next safe waypoint'),
         DeclareLaunchArgument(
             'blocked_check_radius',
@@ -382,7 +416,7 @@ def generate_launch_description():
             description='Radius in meters for obstacle-center estimation around a blocked waypoint'),
         DeclareLaunchArgument(
             'max_skip_waypoints',
-            default_value='15',
+            default_value='20',
             description='Maximum number of later waypoints to inspect after a blocked waypoint'),
         DeclareLaunchArgument(
             'blocked_cost_threshold',
@@ -404,6 +438,18 @@ def generate_launch_description():
             'costmap_topic',
             default_value='/global_costmap/costmap',
             description='Global costmap topic used for blocked waypoint checks'),
+        DeclareLaunchArgument(
+            'obstacle_avoidance_topic',
+            default_value='/ysvv_obstacle_avoidance_active',
+            description='Bool topic that switches cmd_vel scaling to obstacle mode'),
+        DeclareLaunchArgument(
+            'cmd_vel_kp1',
+            default_value='1.10',
+            description='Multiplier applied to TEB cmd_vel during normal navigation'),
+        DeclareLaunchArgument(
+            'cmd_vel_kp2',
+            default_value='0.80',
+            description='Multiplier applied to TEB cmd_vel during obstacle avoidance'),
         DeclareLaunchArgument(
             'publish_initial_pose',
             default_value='true',
