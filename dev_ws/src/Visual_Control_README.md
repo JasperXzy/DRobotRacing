@@ -15,6 +15,83 @@ source /opt/tros/humble/setup.bash
 source install/setup.bash
 ```
 
+## test完整启动流程（雷达版和视觉版看这里）
+
+雷达避障版和视觉避障版的前两个终端完全相同，只有终端三不同。
+
+每个终端都先执行：
+
+```bash
+cd /root/D_Robot/test/dev_ws
+source /opt/tros/humble/setup.bash
+source /root/D_Robot/dev_ws/install/setup.bash
+source /root/D_Robot/test/dev_ws/install/setup.bash
+```
+
+### 终端一：启动公共前置系统
+
+```bash
+ros2 launch origincar_system test_bringup.launch.py
+```
+
+该命令统一启动底盘、相机、雷达、机器人模型、定位、地图、线识别、障碍物
+识别和二维码识别。视觉避障版也需要保持雷达运行，因为 AMCL 定位仍然使用
+雷达，只是不使用雷达做追点避障。
+
+### 终端二：启动前后两段visual_control
+
+```bash
+ros2 launch origincar_system visual_control_test.launch.py \
+  avoid_angular_ratio:=-0.005 avoid_linear_speed:=0.5 \
+  recovering_linear_speed:=0.85 recovering_angular_ratio:=1.25 \
+  follow_angular_ratio:=-3.0 follow_linear_speed:=0.85 \
+  bottom_threshold_caution:=295 bottom_threshold_avoid:=305 \
+  obstacle_y_jump_threshold:=50 parking_y_threshold:=405 \
+  line_confidence_threshold:=0.2 obstacle_confidence_threshold:=0.5 \
+  parking_sign_confidence_threshold:=0.6 qr_code_confidence_threshold:=0.6 \
+  qr_code_hight_follow_threshold:=20 qr_code_height_threshold:=54 \
+  line_center_threshold_x:=280 qr_code_speed_modifier:=0.2 \
+  follow_qr_code_ratio:=-4.0 follow_parking_sign_ratio:=-4.5 \
+  delta_x_ratio:=0.0 debug_control_logs:=true
+```
+
+这个节点不会启动两次，而是一直运行并自动切换阶段：
+
+```text
+第一次visual_control：赛道线 + 二维码 + 障碍物，忽略停车位
+追点结束后恢复：赛道线 + 停车位 + 障碍物，忽略二维码
+```
+
+### 终端三：避障版本二选一
+
+雷达避障版本：
+
+```bash
+ros2 launch origincar_system smooth_path_follower.launch.xml
+```
+
+该版本由 `smooth_path_follower` 直接向 `/cmd_vel` 发布速度，追点阶段使用
+`/scan` 雷达避障。
+
+视觉避障版本：
+
+```bash
+ros2 launch visual_path_avoidance visual_path_follower.launch.xml
+```
+
+该命令同时启动 `smooth_path_follower` 和 `visual_path_avoidance`。追点器先向
+`/visual_path_cmd_vel` 发布速度，再由视觉避障节点处理锥桶并输出到 `/cmd_vel`；
+追点器自身的雷达避障会自动关闭。
+
+> 终端三只能选择一个版本，禁止同时启动两个 launch，否则会争抢 `/cmd_vel`。
+> 切换版本时先停车并关闭当前终端三，再启动另一个版本；建议同时重启终端二，
+> 让 `visual_control` 的阶段状态重新开始。
+
+## 单节点启动参考
+
+以下命令用于单独调试硬件或识别节点。正常跑上述 test 完整流程时，不需要再
+逐个启动这些节点。
+
 ## 启动底盘
 ```bash
 ros2 launch chassis_driver chassis.launch.py
@@ -24,7 +101,7 @@ ros2 launch chassis_driver chassis.launch.py
 ```bash
 ros2 launch camera_driver camera.launch.py
 ```
-`
+
 ### 线识别
 ```bash
 ros2 launch line_detector line_detector.launch.py
@@ -41,15 +118,103 @@ ros2 launch perception_detector perception_detector.launch.py
 ros2 run qr_detector_cpp qr_detector_node
 ```
 
-## 中速_offset线性关系         //提升0.85线速度
+## 参数参考：中速_offset线性关系         //提升0.85线速度
 ```bash
-ros2 launch visual_control visual_control.launch.py avoid_angular_ratio:=-0.005 avoid_linear_speed:=0.5 recovering_linear_speed:=0.85 recovering_angular_ratio:=1.25 follow_angular_ratio:=-3.0 follow_linear_speed:=0.85 bottom_threshold_caution:=295 bottom_threshold_avoid:=305 obstacle_y_jump_threshold:=50 parking_y_threshold:=405 line_confidence_threshold:=0.2 obstacle_confidence_threshold:=0.5 parking_sign_confidence_threshold:=0.6 qr_code_confidence_threshold:=0.6 qr_code_hight_follow_threshold:=20 qr_code_height_threshold:=54 line_center_threshold_x:=280 qr_code_speed_modifier:=0.2 follow_qr_code_ratio:=-4.0 follow_parking_sign_ratio:=-4.5 delta_x_ratio:=0.0 debug_control_logs:=false
+ros2 launch visual_control visual_control.launch.py avoid_angular_ratio:=-0.005 avoid_linear_speed:=0.5 recovering_linear_speed:=0.85 recovering_angular_ratio:=1.25 follow_angular_ratio:=-3.0 follow_linear_speed:=0.85 bottom_threshold_caution:=295 bottom_threshold_avoid:=305 obstacle_y_jump_threshold:=50 parking_y_threshold:=405 line_confidence_threshold:=0.2 obstacle_confidence_threshold:=0.5 parking_sign_confidence_threshold:=0.6 qr_code_confidence_threshold:=0.6 qr_code_hight_follow_threshold:=20 qr_code_height_threshold:=54 line_center_threshold_x:=280 qr_code_speed_modifier:=0.2 follow_qr_code_ratio:=-4.0 follow_parking_sign_ratio:=-4.5 delta_x_ratio:=0.0 debug_control_logs:=true
+```
+
+## 视觉追点避障实现说明
+
+实验流程：
+
+```text
+第一次visual_control（线+二维码+障碍物）
+  -> 航点追踪+视觉避障（只处理障碍物）
+  -> 第二次visual_control（线+停车位+障碍物）
+```
+
+此实验不会修改原来的雷达避障版。追点器将原始速度发布到
+`/visual_path_cmd_vel`，`visual_path_avoidance` 根据
+`/racing_obstacle_detection` 的锥桶检测结果修正速度，再发布到
+`/cmd_vel`。
+
+- `/sign4return=5`：挂起 `visual_control`，启用视觉追点避障。
+- `/sign4return=6`：停止视觉追点避障输出，恢复 `visual_control`。
+- 第一次 `visual_control` 忽略停车位，避免在扫码前误停车。
+- 第二次 `visual_control` 忽略二维码，只寻找赛道线、障碍物和停车位。
+- `visual_path_avoidance` 只处理 `construction_cone`，不会跟随二维码或停车位。
+- 避障方向优先采用当前航点的追踪方向。
+- 障碍物消失后直接恢复追点，不执行回线操作。
+- 视觉检测或追点速度超时后停车。
+- 前视相机无法观察车后方，倒车航点不启用视觉避障。
+
+编译：
+
+```bash
+cd /root/D_Robot/test/dev_ws
+source /opt/tros/humble/setup.bash
+source /root/D_Robot/dev_ws/install/setup.bash
+colcon build --packages-select visual_path_avoidance
+source install/setup.bash
+```
+
+启动现有的底盘、相机、定位、线识别、障碍物识别、二维码识别和
+`visual_control_test.launch.py` 后，启动实验追点链路。该 test launch 默认设置：
+
+```text
+enable_parking_before_path=false
+enable_qr_after_path=false
+```
+
+然后启动实验追点链路：
+
+```bash
+cd /root/D_Robot/test/dev_ws
+source /opt/tros/humble/setup.bash
+source /root/D_Robot/dev_ws/install/setup.bash
+source install/setup.bash
+ros2 launch visual_path_avoidance visual_path_follower.launch.xml
+```
+
+上面的命令会同时启动：
+
+```text
+smooth_path_follower
+visual_path_avoidance
+```
+
+因此不要再单独启动 `smooth_path_follower.launch.xml`，也不需要另外执行
+`ros2 run visual_path_avoidance visual_path_avoidance`。
+
+只调试视觉避障过滤器、不启动追点器时，可以单独运行：
+
+```bash
+ros2 run visual_path_avoidance visual_path_avoidance --ros-args \
+  -p active_on_start:=true \
+  -p path_cmd_vel_topic:=/visual_path_cmd_vel \
+  -p output_cmd_vel_topic:=/cmd_vel \
+  -p detection_topic:=/racing_obstacle_detection
+```
+
+单独运行时还必须有节点持续向 `/visual_path_cmd_vel` 发布追点速度；正常跑完整
+流程时使用上面的一键 launch 即可。
+
+实验版默认沿用上面的中速参数：
+
+```text
+linear_speed=0.85
+avoid_linear_speed=0.5
+avoid_angular_ratio=-0.005
+bottom_threshold_caution=295
+bottom_threshold_avoid=305
+obstacle_confidence_threshold=0.5
+delta_x_ratio=0.0
 ```
 
 
 ## 高速_offset线性关系         //提升0.95速度
 ```bash
-ros2 launch visual_control visual_control.launch.py avoid_angular_ratio:=-0.0055 avoid_linear_speed:=0.55 recovering_linear_speed:=0.95 recovering_angular_ratio:=1.45 follow_angular_ratio:=-3.5 follow_linear_speed:=0.95 bottom_threshold_caution:=275 bottom_threshold_avoid:=280 obstacle_y_jump_threshold:=50 parking_y_threshold:=405 line_confidence_threshold:=0.4 obstacle_confidence_threshold:=0.3 parking_sign_confidence_threshold:=0.3 qr_code_confidence_threshold:=0.6 qr_code_hight_follow_threshold:=30 qr_code_height_threshold:=55 line_center_threshold_x:=280 qr_code_speed_modifier:=0.2 follow_qr_code_ratio:=-4.0 follow_parking_sign_ratio:=-4.5 delta_x_ratio:=0.0
+ros2 launch visual_control visual_control.launch.py avoid_angular_ratio:=-0.005 avoid_linear_speed:=0.5 recovering_linear_speed:=0.95 recovering_angular_ratio:=1.45 follow_angular_ratio:=-3.5 follow_linear_speed:=0.95 bottom_threshold_caution:=275 bottom_threshold_avoid:=280 obstacle_y_jump_threshold:=50 parking_y_threshold:=405 line_confidence_threshold:=0.4 obstacle_confidence_threshold:=0.3 parking_sign_confidence_threshold:=0.3 qr_code_confidence_threshold:=0.6 qr_code_hight_follow_threshold:=30 qr_code_height_threshold:=55 line_center_threshold_x:=280 qr_code_speed_modifier:=0.2 follow_qr_code_ratio:=-4.0 follow_parking_sign_ratio:=-4.5 delta_x_ratio:=0.0
 ```
 
 ## 光速_offset线性关系         //提升1.15速度

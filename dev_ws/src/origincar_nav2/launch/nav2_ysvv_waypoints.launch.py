@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Start Nav2 with nav2(6.13).yaml and run the YSVV route point-to-point."""
+"""Start Nav2 and run the YSVV route as rolling through-poses windows."""
 
 import os
 import tempfile
@@ -24,6 +24,9 @@ INSTALLED_BT_TO_POSE = (
 INSTALLED_BT_THROUGH_POSES = (
     '/root/D_Robot/dev_ws/install/origincar_nav2/share/origincar_nav2/'
     'behavior_trees/ackermann_navigate_through_poses_w_recovery.xml')
+INSTALLED_BT_YSVV_RPP = (
+    '/root/D_Robot/dev_ws/install/origincar_nav2/share/origincar_nav2/'
+    'behavior_trees/ackermann_ysvv_rpp_through_poses_window.xml')
 INSTALLED_MAP_YAML = (
     '/root/D_Robot/dev_ws/install/origincar_nav2/share/origincar_nav2/'
     'map/my_map.yaml')
@@ -39,17 +42,24 @@ def _make_nav2_params_file(params_file, origincar_share):
     bt_through_poses_xml = os.path.join(
         origincar_share, 'behavior_trees',
         'ackermann_navigate_through_poses_w_recovery.xml')
+    bt_ysvv_rpp_xml = os.path.join(
+        origincar_share, 'behavior_trees',
+        'ackermann_ysvv_rpp_through_poses_window.xml')
     map_yaml_path = os.path.join(origincar_share, 'map', 'my_map.yaml')
 
     with open(params_file, 'r') as stream:
         params_content = stream.read()
 
-    params_content = params_content.replace(INSTALLED_BT_TO_POSE, bt_to_pose_xml)
+    params_content = params_content.replace(
+        INSTALLED_BT_TO_POSE, bt_to_pose_xml)
     params_content = params_content.replace(
         INSTALLED_BT_THROUGH_POSES, bt_through_poses_xml)
+    params_content = params_content.replace(
+        INSTALLED_BT_YSVV_RPP, bt_ysvv_rpp_xml)
     params_content = params_content.replace(INSTALLED_MAP_YAML, map_yaml_path)
 
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as stream:
+    with tempfile.NamedTemporaryFile(
+            mode='w', suffix='.yaml', delete=False) as stream:
         stream.write(params_content)
         return stream.name
 
@@ -59,41 +69,56 @@ def _launch_setup(context):
 
     params_file = LaunchConfiguration('params_file').perform(context)
     waypoints_file = LaunchConfiguration('waypoints_file').perform(context)
-    map_file = LaunchConfiguration('map').perform(context)
     use_sim_time = LaunchConfiguration('use_sim_time').perform(context)
     start_chassis_driver = _as_bool(
         LaunchConfiguration('start_chassis_driver').perform(context))
     start_lidar_driver = _as_bool(
         LaunchConfiguration('start_lidar_driver').perform(context))
-    chassis_config_file = LaunchConfiguration('chassis_config_file').perform(context)
-    lidar_config_file = LaunchConfiguration('lidar_config_file').perform(context)
-    navigator_delay = float(LaunchConfiguration('navigator_delay').perform(context))
-    node_start_delay = float(LaunchConfiguration('node_start_delay').perform(context))
-    switch_distance = float(LaunchConfiguration('switch_distance').perform(context))
-    lookahead_index_offset = int(
-        LaunchConfiguration('lookahead_index_offset').perform(context))
+    chassis_config_file = LaunchConfiguration(
+        'chassis_config_file').perform(context)
+    lidar_config_file = LaunchConfiguration(
+        'lidar_config_file').perform(context)
+    navigator_delay = float(
+        LaunchConfiguration('navigator_delay').perform(context))
+    node_start_delay = float(
+        LaunchConfiguration('node_start_delay').perform(context))
+    window_size = int(LaunchConfiguration('window_size').perform(context))
+    window_start_offset = int(
+        LaunchConfiguration('window_start_offset').perform(context))
+    window_overlap_size = int(
+        LaunchConfiguration('window_overlap_size').perform(context))
     intermediate_goal_yaw_mode = LaunchConfiguration(
         'intermediate_goal_yaw_mode').perform(context)
     goal_update_min_interval = float(
         LaunchConfiguration('goal_update_min_interval').perform(context))
-    goal_republish_distance = float(
-        LaunchConfiguration('goal_republish_distance').perform(context))
+    nav_cancel_timeout = float(
+        LaunchConfiguration('nav_cancel_timeout').perform(context))
     feedback_stall_timeout = float(
         LaunchConfiguration('feedback_stall_timeout').perform(context))
-    feedback_stall_distance_epsilon = float(
-        LaunchConfiguration('feedback_stall_distance_epsilon').perform(context))
-    obstacle_escape_distance = float(
-        LaunchConfiguration('obstacle_escape_distance').perform(context))
-    blocked_check_radius = float(
-        LaunchConfiguration('blocked_check_radius').perform(context))
-    max_skip_waypoints = int(LaunchConfiguration('max_skip_waypoints').perform(context))
-    blocked_cost_threshold = int(
-        LaunchConfiguration('blocked_cost_threshold').perform(context))
-    obstacle_center_cost_threshold = int(
-        LaunchConfiguration('obstacle_center_cost_threshold').perform(context))
-    obstacle_ahead_cost_threshold = int(
-        LaunchConfiguration('obstacle_ahead_cost_threshold').perform(context))
-    path_check_timeout = float(LaunchConfiguration('path_check_timeout').perform(context))
+    feedback_stall_distance_epsilon = float(LaunchConfiguration(
+        'feedback_stall_distance_epsilon').perform(context))
+    enable_path_precheck = _as_bool(
+        LaunchConfiguration('enable_path_precheck').perform(context))
+    route_blocked_cost_threshold = int(
+        LaunchConfiguration('route_blocked_cost_threshold').perform(context))
+    unknown_is_blocked = _as_bool(
+        LaunchConfiguration('unknown_is_blocked').perform(context))
+    obstacle_entry_buffer = float(
+        LaunchConfiguration('obstacle_entry_buffer').perform(context))
+    obstacle_exit_buffer = float(
+        LaunchConfiguration('obstacle_exit_buffer').perform(context))
+    obstacle_merge_gap = float(
+        LaunchConfiguration('obstacle_merge_gap').perform(context))
+    obstacle_scan_waypoints = int(
+        LaunchConfiguration('obstacle_scan_waypoints').perform(context))
+    path_check_timeout = float(
+        LaunchConfiguration('path_check_timeout').perform(context))
+    path_check_max_retries = int(
+        LaunchConfiguration('path_check_max_retries').perform(context))
+    path_check_retry_delay = float(
+        LaunchConfiguration('path_check_retry_delay').perform(context))
+    navigation_max_retries = int(
+        LaunchConfiguration('navigation_max_retries').perform(context))
     costmap_topic = LaunchConfiguration('costmap_topic').perform(context)
     obstacle_avoidance_topic = LaunchConfiguration(
         'obstacle_avoidance_topic').perform(context)
@@ -103,6 +128,9 @@ def _launch_setup(context):
         LaunchConfiguration('publish_initial_pose').perform(context))
 
     nav2_params_fixed = _make_nav2_params_file(params_file, origincar_share)
+    ysvv_behavior_tree = os.path.join(
+        origincar_share, 'behavior_trees',
+        'ackermann_ysvv_rpp_through_poses_window.xml')
 
     chassis_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -183,7 +211,7 @@ def _launch_setup(context):
         arguments=['--ros-args', '--log-level', 'info'],
         parameters=[{
             'use_sim_time': _as_bool(use_sim_time),
-            'input_topic': '/cmd_vel_teb',
+            'input_topic': '/cmd_vel_rpp',
             'output_topic': '/cmd_vel_nav',
             'avoidance_topic': obstacle_avoidance_topic,
             'kp1': cmd_vel_kp1,
@@ -198,7 +226,7 @@ def _launch_setup(context):
             output='screen',
             parameters=[nav2_params_fixed],
             arguments=['--ros-args', '--log-level', 'info'],
-            remappings=nav2_remappings + [('cmd_vel', 'cmd_vel_teb')],
+            remappings=nav2_remappings + [('cmd_vel', 'cmd_vel_rpp')],
         ),
         Node(
             package='nav2_smoother',
@@ -270,7 +298,8 @@ def _launch_setup(context):
         arguments=['--ros-args', '--log-level', 'info'],
         parameters=[{
             'waypoints_file': waypoints_file,
-            'action_name': 'navigate_to_pose',
+            'behavior_tree': ysvv_behavior_tree,
+            'action_name': 'navigate_through_poses',
             'frame_id': 'map',
             'base_frame': LaunchConfiguration('base_frame').perform(context),
             'start_delay': node_start_delay,
@@ -278,21 +307,26 @@ def _launch_setup(context):
             'initial_x': 0.0,
             'initial_y': 0.0,
             'initial_yaw': 0.0,
-            'switch_distance': switch_distance,
-            'lookahead_index_offset': lookahead_index_offset,
+            'window_size': window_size,
+            'window_start_offset': window_start_offset,
+            'window_overlap_size': window_overlap_size,
             'intermediate_goal_yaw_mode': intermediate_goal_yaw_mode,
             'goal_update_min_interval': goal_update_min_interval,
-            'goal_republish_distance': goal_republish_distance,
+            'nav_cancel_timeout': nav_cancel_timeout,
             'feedback_stall_timeout': feedback_stall_timeout,
             'feedback_stall_distance_epsilon': feedback_stall_distance_epsilon,
-            'obstacle_escape_distance': obstacle_escape_distance,
-            'blocked_check_radius': blocked_check_radius,
-            'max_skip_waypoints': max_skip_waypoints,
-            'blocked_cost_threshold': blocked_cost_threshold,
-            'obstacle_center_cost_threshold': obstacle_center_cost_threshold,
-            'obstacle_ahead_cost_threshold': obstacle_ahead_cost_threshold,
+            'enable_path_precheck': enable_path_precheck,
+            'route_blocked_cost_threshold': route_blocked_cost_threshold,
+            'unknown_is_blocked': unknown_is_blocked,
+            'obstacle_entry_buffer': obstacle_entry_buffer,
+            'obstacle_exit_buffer': obstacle_exit_buffer,
+            'obstacle_merge_gap': obstacle_merge_gap,
+            'obstacle_scan_waypoints': obstacle_scan_waypoints,
             'obstacle_avoidance_topic': obstacle_avoidance_topic,
             'path_check_timeout': path_check_timeout,
+            'path_check_max_retries': path_check_max_retries,
+            'path_check_retry_delay': path_check_retry_delay,
+            'navigation_max_retries': navigation_max_retries,
             'costmap_topic': costmap_topic,
             'exit_on_result': False,
             'use_sim_time': _as_bool(use_sim_time),
@@ -309,7 +343,8 @@ def _launch_setup(context):
         TimerAction(period=4.0, actions=[ekf_launch]),
         TimerAction(period=6.0, actions=[map_server_node]),
         TimerAction(period=8.0, actions=[amcl_node, amcl_lifecycle_manager]),
-        TimerAction(period=12.0, actions=[cmd_vel_kp_scaler_node] + nav2_nodes),
+        TimerAction(
+            period=12.0, actions=[cmd_vel_kp_scaler_node] + nav2_nodes),
         TimerAction(period=navigator_delay, actions=[navigator_node]),
     ])
 
@@ -318,22 +353,27 @@ def _launch_setup(context):
 
 def generate_launch_description():
     origincar_share = get_package_share_directory('origincar_nav2')
-    ws_root = os.path.abspath(os.path.join(origincar_share, '..', '..', '..', '..'))
+    ws_root = os.path.abspath(
+        os.path.join(origincar_share, '..', '..', '..', '..'))
 
-    default_params_file = os.path.join(ws_root, 'config', 'nav2', 'nav2(6.13).yaml')
+    default_params_file = os.path.join(
+        ws_root, 'config', 'nav2', 'nav2(rpp_follower).yaml')
     default_chassis_config = os.path.join(
         ws_root, 'config', 'drivers', 'chassis_driver.yaml')
     default_lidar_config = os.path.join(
         ws_root, 'config', 'drivers', 'lidar_driver.yaml')
     default_waypoints_file = os.path.join(
-        ws_root, 'src', 'origincar_nav2', 'origincar_nav2', 'ysvv_waypoints.yaml')
+        ws_root, 'src', 'origincar_nav2', 'origincar_nav2',
+        'ysvv_waypoints.yaml')
     default_map_file = os.path.join(origincar_share, 'map', 'my_map.yaml')
 
     return LaunchDescription([
         DeclareLaunchArgument(
             'params_file',
             default_value=default_params_file,
-            description='Nav2 params YAML, defaults to dev_ws/config/nav2/nav2(6.13).yaml'),
+            description=(
+                'Nav2 params YAML, defaults to '
+                'dev_ws/config/nav2/nav2(rpp_follower).yaml')),
         DeclareLaunchArgument(
             'waypoints_file',
             default_value=default_waypoints_file,
@@ -375,85 +415,129 @@ def generate_launch_description():
             default_value='0.5',
             description='Extra delay inside the waypoint sender node'),
         DeclareLaunchArgument(
-            'switch_distance',
-            default_value='0.30',
-            description='Distance in meters for switching early to the next waypoint'),
+            'window_size',
+            default_value='10',
+            description=(
+                'Ordered route poses per Nav2 batch, hard-capped at 10')),
         DeclareLaunchArgument(
-            'lookahead_index_offset',
-            default_value='15',
-            description='Waypoint index offset from the nearest route point for the rolling target'),
+            'window_start_offset',
+            default_value='5',
+            description='First batch pose offset from current route progress'),
+        DeclareLaunchArgument(
+            'window_overlap_size',
+            default_value='3',
+            description=(
+                'Ordered poses retained between consecutive windows')),
         DeclareLaunchArgument(
             'intermediate_goal_yaw_mode',
             default_value='path_tangent',
-            description='Yaw for intermediate lookahead goals: current, path_tangent, or recorded'),
+            description=(
+                'Yaw for intermediate batch poses: current, path_tangent, '
+                'or recorded')),
         DeclareLaunchArgument(
             'goal_update_min_interval',
-            default_value='0.50',
-            description='Minimum seconds between rolling lookahead goal updates'),
+            default_value='0.4',
+            description='Minimum seconds between rolling batch updates'),
         DeclareLaunchArgument(
-            'goal_republish_distance',
-            default_value='0.05',
-            description='Minimum target movement before republishing a lookahead goal'),
+            'nav_cancel_timeout',
+            default_value='1.0',
+            description=(
+                'Maximum seconds to wait for the previous batch to cancel')),
         DeclareLaunchArgument(
             'feedback_stall_timeout',
             default_value='4.0',
-            description='Seconds without feedback progress before forcing the next lookahead goal'),
+            description=(
+                'Seconds without progress before refreshing the batch')),
         DeclareLaunchArgument(
             'feedback_stall_distance_epsilon',
             default_value='0.02',
-            description='Minimum distance decrease treated as feedback progress'),
+            description=(
+                'Minimum distance decrease treated as feedback progress')),
+        DeclareLaunchArgument(
+            'enable_path_precheck',
+            default_value='true',
+            description=(
+                'Precheck each batch with ComputePathThroughPoses; disable '
+                'to remove duplicate planning latency')),
         DeclareLaunchArgument(
             'base_frame',
             default_value='base_link',
-            description='Robot base frame used for lookahead tracking'),
+            description='Robot base frame used for route progress tracking'),
         DeclareLaunchArgument(
-            'obstacle_escape_distance',
-            default_value='0.60',
-            description='Minimum distance from obstacle center for the next safe waypoint'),
-        DeclareLaunchArgument(
-            'blocked_check_radius',
-            default_value='0.60',
-            description='Radius in meters for obstacle-center estimation around a blocked waypoint'),
-        DeclareLaunchArgument(
-            'max_skip_waypoints',
-            default_value='20',
-            description='Maximum number of later waypoints to inspect after a blocked waypoint'),
-        DeclareLaunchArgument(
-            'blocked_cost_threshold',
-            default_value='95',
-            description='Costmap value at or above this threshold is treated as a blocked waypoint'),
-        DeclareLaunchArgument(
-            'obstacle_center_cost_threshold',
+            'route_blocked_cost_threshold',
             default_value='80',
-            description='Costmap value used when estimating the nearby obstacle center'),
+            description='Global costmap value that excludes a route pose'),
         DeclareLaunchArgument(
-            'obstacle_ahead_cost_threshold',
-            default_value='80',
-            description='Costmap value that triggers early obstacle-ahead route switching'),
+            'unknown_is_blocked',
+            default_value='true',
+            description=(
+                'Treat unknown global costmap cells as blocked route poses')),
+        DeclareLaunchArgument(
+            'obstacle_entry_buffer',
+            default_value='0.35',
+            description=(
+                'Route distance removed before a blocked costmap interval')),
+        DeclareLaunchArgument(
+            'obstacle_exit_buffer',
+            default_value='0.35',
+            description=(
+                'Route distance removed after a blocked costmap interval')),
+        DeclareLaunchArgument(
+            'obstacle_merge_gap',
+            default_value='0.25',
+            description=(
+                'Merge obstacle intervals separated by a shorter route gap')),
+        DeclareLaunchArgument(
+            'obstacle_scan_waypoints',
+            default_value='60',
+            description=(
+                'Maximum forward route poses inspected when building '
+                'one batch')),
         DeclareLaunchArgument(
             'path_check_timeout',
-            default_value='1.0',
-            description='Timeout in seconds for compute_path_to_pose precheck'),
+            default_value='3.0',
+            description=(
+                'Timeout in seconds for compute_path_through_poses precheck')),
+        DeclareLaunchArgument(
+            'path_check_max_retries',
+            default_value='2',
+            description=(
+                'Batch planning retries before stopping without further '
+                'deletion')),
+        DeclareLaunchArgument(
+            'path_check_retry_delay',
+            default_value='0.5',
+            description='Delay between batch planning retries'),
+        DeclareLaunchArgument(
+            'navigation_max_retries',
+            default_value='2',
+            description='NavigateThroughPoses retries before stopping'),
         DeclareLaunchArgument(
             'costmap_topic',
             default_value='/global_costmap/costmap',
-            description='Global costmap topic used for blocked waypoint checks'),
+            description=(
+                'Global costmap topic used for blocked waypoint checks')),
         DeclareLaunchArgument(
             'obstacle_avoidance_topic',
             default_value='/ysvv_obstacle_avoidance_active',
-            description='Bool topic that switches cmd_vel scaling to obstacle mode'),
+            description=(
+                'Bool topic that switches cmd_vel scaling to obstacle mode')),
         DeclareLaunchArgument(
             'cmd_vel_kp1',
             default_value='1.10',
-            description='Multiplier applied to TEB cmd_vel during normal navigation'),
+            description=(
+                'Multiplier applied to RPP cmd_vel during normal navigation')),
         DeclareLaunchArgument(
             'cmd_vel_kp2',
             default_value='0.80',
-            description='Multiplier applied to TEB cmd_vel during obstacle avoidance'),
+            description=(
+                'Multiplier applied to RPP cmd_vel during obstacle '
+                'avoidance')),
         DeclareLaunchArgument(
             'publish_initial_pose',
             default_value='true',
             description='Publish initialpose before sending the route'),
-        SetEnvironmentVariable('ROS_LOG_DIR', LaunchConfiguration('ros_log_dir')),
+        SetEnvironmentVariable(
+            'ROS_LOG_DIR', LaunchConfiguration('ros_log_dir')),
         OpaqueFunction(function=_launch_setup),
     ])

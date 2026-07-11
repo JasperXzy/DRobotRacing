@@ -1,0 +1,1210 @@
+# test 替换版环线航点：二维码前路径已移到 waypoints_qr.yaml。
+# 扫到 QR 后再进入本文件；本文件不再包含每条路线开头的旧 QR 前置点。
+# 顺时针：ysvv_152..ysvv_033，结束后恢复 visual_control 停车。
+# 逆时针：ysvv_033..ysvv_152，结束后恢复 visual_control 停车。
+route_direction: clockwise
+default_pass_radius: 0.6
+default_reverse_pass_radius: 0.6
+routes:
+  clockwise:
+  - name: ysvv_152
+    x: 1.6
+    y: 2.321
+    yaw: 1.648593
+    pass_radius: 0.4
+  - name: ysvv_151
+    x: 1.6
+    y: 2.406
+    yaw: 1.767593
+    pass_radius: 0.4
+  - name: ysvv_150
+    x: 1.6
+    y: 2.489
+    yaw: 1.875593
+    pass_radius: 0.4
+  - name: ysvv_149
+    x: 1.6
+    y: 2.564
+    yaw: 1.983593
+    pass_radius: 0.4
+  - name: ysvv_148
+    x: 1.6
+    y: 2.639
+    yaw: 2.079593
+    pass_radius: 0.4
+  - name: ysvv_147
+    x: 1.554
+    y: 2.705
+    yaw: 2.179593
+    pass_radius: 0.4
+  - name: ysvv_146
+    x: 1.496
+    y: 2.765
+    yaw: 2.289593
+    pass_radius: 0.4
+  - name: ysvv_145
+    x: 1.435
+    y: 2.818
+    yaw: 2.443593
+    pass_radius: 0.4
+  - name: ysvv_144
+    x: 1.365
+    y: 2.86
+    yaw: 2.575593
+    pass_radius: 0.4
+  - name: ysvv_143
+    x: 1.29
+    y: 2.889
+    yaw: 2.706593
+    pass_radius: 0.4
+  - name: ysvv_142
+    x: 1.204
+    y: 2.912
+    yaw: 2.844593
+    pass_radius: 0.4
+  - name: ysvv_141
+    x: 1.124
+    y: 2.922
+    yaw: 2.966593
+    pass_radius: 0.4
+  - name: ysvv_140
+    x: 1.044
+    y: 2.928
+    yaw: 3.081593
+    pass_radius: 0.4
+  - name: ysvv_139
+    x: 0.96
+    y: 2.936
+    yaw: 3.110593
+    pass_radius: 0.4
+  - name: ysvv_138
+    x: 0.871
+    y: 2.934
+    yaw: 3.111593
+    pass_radius: 0.4
+  - name: ysvv_137
+    x: 0.786
+    y: 2.937
+    yaw: 3.101593
+    pass_radius: 0.4
+  - name: ysvv_136
+    x: 0.704
+    y: 2.935
+    yaw: 3.101593
+    pass_radius: 0.4
+  - name: ysvv_135
+    x: 0.621
+    y: 2.939
+    yaw: 3.103593
+    pass_radius: 0.4
+  - name: ysvv_134
+    x: 0.54
+    y: 2.945
+    yaw: 3.109593
+    pass_radius: 0.4
+  - name: ysvv_133
+    x: 0.451
+    y: 2.955
+    yaw: 3.092593
+    pass_radius: 0.4
+  - name: ysvv_132
+    x: 0.4
+    y: 2.972
+    yaw: 2.959593
+    pass_radius: 0.4
+  - name: ysvv_131
+    x: 0.4
+    y: 3.003
+    yaw: 2.784593
+    pass_radius: 0.4
+  - name: ysvv_130
+    x: 0.4
+    y: 3.049
+    yaw: 2.592593
+    pass_radius: 0.4
+  - name: ysvv_129
+    x: 0.4
+    y: 3.103
+    yaw: 2.417593
+    pass_radius: 0.4
+  - name: ysvv_128
+    x: 0.4
+    y: 3.168
+    yaw: 2.240593
+    pass_radius: 0.4
+  - name: ysvv_127
+    x: 0.4
+    y: 3.239
+    yaw: 2.064593
+    pass_radius: 0.4
+  - name: ysvv_126
+    x: 0.4
+    y: 3.308
+    yaw: 1.874593
+    pass_radius: 0.4
+  - name: ysvv_125
+    x: 0.4
+    y: 3.367
+    yaw: 1.702593
+    pass_radius: 0.4
+  - name: ysvv_124
+    x: 0.4
+    y: 3.447
+    yaw: 1.564593
+    pass_radius: 0.4
+  - name: ysvv_123
+    x: 0.4
+    y: 3.529
+    yaw: 1.468593
+    pass_radius: 0.4
+  - name: ysvv_122
+    x: 0.4
+    y: 3.61
+    yaw: 1.457593
+    pass_radius: 0.4
+  - name: ysvv_121
+    x: 0.4
+    y: 3.691
+    yaw: 1.386593
+    pass_radius: 0.4
+  - name: ysvv_120
+    x: 0.4
+    y: 3.77
+    yaw: 1.236593
+    pass_radius: 0.4
+  - name: ysvv_119
+    x: 0.4
+    y: 3.847
+    yaw: 1.067593
+    pass_radius: 0.4
+  - name: ysvv_118
+    x: 0.4
+    y: 3.914
+    yaw: 0.917593
+    pass_radius: 0.4
+  - name: ysvv_117
+    x: 0.4
+    y: 3.974
+    yaw: 0.777593
+    pass_radius: 0.4
+  - name: ysvv_116
+    x: 0.4
+    y: 4.031
+    yaw: 0.621593
+    pass_radius: 0.4
+  - name: ysvv_115
+    x: 0.4
+    y: 4.08
+    yaw: 0.459593
+    pass_radius: 0.4
+  - name: ysvv_114
+    x: 0.437
+    y: 4.111
+    yaw: 0.326593
+    pass_radius: 0.4
+  - name: ysvv_113
+    x: 0.519
+    y: 4.131
+    yaw: 0.200593
+    pass_radius: 0.4
+  - name: ysvv_112
+    x: 0.602
+    y: 4.146
+    yaw: 0.139593
+    pass_radius: 0.4
+  - name: ysvv_111
+    x: 0.69
+    y: 4.154
+    yaw: 0.081593
+    pass_radius: 0.4
+  - name: ysvv_110
+    x: 0.774
+    y: 4.161
+    yaw: 0.015593
+    pass_radius: 0.4
+  - name: ysvv_109
+    x: 0.861
+    y: 4.165
+    yaw: -0.022593
+    pass_radius: 0.4
+  - name: ysvv_108
+    x: 0.942
+    y: 4.168
+    yaw: -0.025593
+    pass_radius: 0.4
+  - name: ysvv_107
+    x: 1.03
+    y: 4.161
+    yaw: -0.013593
+    pass_radius: 0.4
+  - name: ysvv_106
+    x: 1.116
+    y: 4.167
+    yaw: -0.025593
+    pass_radius: 0.4
+  - name: ysvv_105
+    x: 1.196
+    y: 4.163
+    yaw: -0.013593
+    pass_radius: 0.4
+  - name: ysvv_104
+    x: 1.277
+    y: 4.165
+    yaw: -0.010593
+    pass_radius: 0.4
+  - name: ysvv_103
+    x: 1.358
+    y: 4.166
+    yaw: -0.007593
+    pass_radius: 0.4
+  - name: ysvv_102
+    x: 1.44
+    y: 4.169
+    yaw: -0.012593
+    pass_radius: 0.4
+  - name: ysvv_101
+    x: 1.529
+    y: 4.175
+    yaw: -0.006593
+    pass_radius: 0.4
+  - name: ysvv_100
+    x: 1.617
+    y: 4.174
+    yaw: -0.007593
+    pass_radius: 0.4
+  - name: ysvv_099
+    x: 1.7
+    y: 4.184
+    yaw: -0.022593
+    pass_radius: 0.4
+  - name: ysvv_098
+    x: 1.7
+    y: 4.186
+    yaw: -0.025593
+    pass_radius: 0.4
+  - name: ysvv_097
+    x: 1.874
+    y: 4.17
+    yaw: -0.032593
+    pass_radius: 0.4
+  - name: ysvv_096
+    x: 1.958
+    y: 4.17
+    yaw: -0.031593
+    pass_radius: 0.4
+  - name: ysvv_095
+    x: 2.048
+    y: 4.17
+    yaw: -0.033593
+    pass_radius: 0.4
+  - name: ysvv_094
+    x: 2.128
+    y: 4.17
+    yaw: -0.027593
+    pass_radius: 0.4
+  - name: ysvv_093
+    x: 2.218
+    y: 4.17
+    yaw: -0.015593
+    pass_radius: 0.4
+  - name: ysvv_092
+    x: 2.302
+    y: 4.17
+    yaw: -0.017593
+    pass_radius: 0.4
+  - name: ysvv_091
+    x: 2.382
+    y: 4.17
+    yaw: -0.019593
+    pass_radius: 0.4
+  - name: ysvv_090
+    x: 2.463
+    y: 4.17
+    yaw: -0.017593
+    pass_radius: 0.4
+  - name: ysvv_089
+    x: 2.543
+    y: 4.17
+    yaw: -0.021593
+    pass_radius: 0.4
+  - name: ysvv_088
+    x: 2.624
+    y: 4.17
+    yaw: -0.021593
+    pass_radius: 0.4
+  - name: ysvv_087
+    x: 2.704
+    y: 4.17
+    yaw: -0.023593
+    pass_radius: 0.4
+  - name: ysvv_086
+    x: 2.787
+    y: 4.17
+    yaw: 0.012593
+    pass_radius: 0.4
+  - name: ysvv_085
+    x: 2.867
+    y: 4.17
+    yaw: 0.032593
+    pass_radius: 0.4
+  - name: ysvv_084
+    x: 2.955
+    y: 4.17
+    yaw: 0.040593
+    pass_radius: 0.4
+  - name: ysvv_083
+    x: 3.037
+    y: 4.17
+    yaw: 0.033593
+    pass_radius: 0.4
+  - name: ysvv_082
+    x: 3.12
+    y: 4.17
+    yaw: 0.034593
+    pass_radius: 0.4
+  - name: ysvv_081
+    x: 3.208
+    y: 4.17
+    yaw: -0.028593
+    pass_radius: 0.4
+  - name: ysvv_080
+    x: 3.294
+    y: 4.17
+    yaw: -0.189593
+    pass_radius: 0.4
+  - name: ysvv_079
+    x: 3.362
+    y: 4.17
+    yaw: -0.379593
+    pass_radius: 0.4
+  - name: ysvv_078
+    x: 3.427
+    y: 4.162
+    yaw: -0.556593
+    pass_radius: 0.4
+  - name: ysvv_077
+    x: 3.489
+    y: 4.116
+    yaw: -0.747593
+    pass_radius: 0.4
+  - name: ysvv_076
+    x: 3.5
+    y: 4.058
+    yaw: -0.925593
+    pass_radius: 0.4
+  - name: ysvv_075
+    x: 3.5
+    y: 3.992
+    yaw: -1.119593
+    pass_radius: 0.4
+  - name: ysvv_074
+    x: 3.5
+    y: 3.915
+    yaw: -1.270593
+    pass_radius: 0.4
+  - name: ysvv_073
+    x: 3.5
+    y: 3.833
+    yaw: -1.415593
+    pass_radius: 0.4
+  - name: ysvv_072
+    x: 3.5
+    y: 3.742
+    yaw: -1.548593
+    pass_radius: 0.4
+  - name: ysvv_071
+    x: 3.5
+    y: 3.658
+    yaw: -1.559593
+    pass_radius: 0.4
+  - name: ysvv_070
+    x: 3.5
+    y: 3.578
+    yaw: -1.560593
+    pass_radius: 0.4
+  - name: ysvv_069
+    x: 3.5
+    y: 3.494
+    yaw: -1.609593
+    pass_radius: 0.4
+  - name: ysvv_068
+    x: 3.5
+    y: 3.413
+    yaw: -1.702593
+    pass_radius: 0.4
+  - name: ysvv_067
+    x: 3.5
+    y: 3.332
+    yaw: -1.787593
+    pass_radius: 0.4
+  - name: ysvv_066
+    x: 3.5
+    y: 3.253
+    yaw: -1.900593
+    pass_radius: 0.4
+  - name: ysvv_065
+    x: 3.5
+    y: 3.172
+    yaw: -2.069593
+    pass_radius: 0.4
+  - name: ysvv_064
+    x: 3.5
+    y: 2.85
+    yaw: -2.230593
+    pass_radius: 0.4
+  - name: ysvv_063
+    x: 3.487
+    y: 2.8
+    yaw: -2.412593
+    pass_radius: 0.4
+  - name: ysvv_062
+    x: 3.423
+    y: 2.8
+    yaw: -2.582593
+    pass_radius: 0.4
+  - name: ysvv_061
+    x: 3.348
+    y: 2.7
+    yaw: -2.744593
+    pass_radius: 0.4
+  - name: ysvv_060
+    x: 3.272
+    y: 2.7
+    yaw: -2.875593
+    pass_radius: 0.4
+  - name: ysvv_059
+    x: 3.188
+    y: 2.7
+    yaw: -2.989593
+    pass_radius: 0.4
+  - name: ysvv_058
+    x: 3.107
+    y: 2.7
+    yaw: -3.077593
+    pass_radius: 0.4
+  - name: ysvv_057
+    x: 3.023
+    y: 2.7
+    yaw: 3.139593
+    pass_radius: 0.4
+  - name: ysvv_056
+    x: 2.941
+    y: 2.7
+    yaw: 3.137593
+    pass_radius: 0.4
+  - name: ysvv_055
+    x: 2.858
+    y: 2.7
+    yaw: 3.131593
+    pass_radius: 0.4
+  - name: ysvv_054
+    x: 2.776
+    y: 2.7
+    yaw: 3.136593
+    pass_radius: 0.4
+  - name: ysvv_053
+    x: 2.692
+    y: 2.7
+    yaw: 3.135593
+    pass_radius: 0.4
+  - name: ysvv_052
+    x: 2.611
+    y: 2.7
+    yaw: 3.133593
+    pass_radius: 0.4
+  - name: ysvv_051
+    x: 2.531
+    y: 2.7
+    yaw: -3.139593
+    pass_radius: 0.4
+  - name: ysvv_050
+    x: 2.451
+    y: 2.7
+    yaw: -3.072593
+    pass_radius: 0.4
+  - name: ysvv_049
+    x: 2.368
+    y: 2.7
+    yaw: -2.956593
+    pass_radius: 0.4
+  - name: ysvv_048
+    x: 2.286
+    y: 2.7
+    yaw: -2.834593
+    pass_radius: 0.4
+  - name: ysvv_047
+    x: 2.206
+    y: 2.7
+    yaw: -2.725593
+    pass_radius: 0.4
+  - name: ysvv_046
+    x: 2.132
+    y: 2.7
+    yaw: -2.594593
+    pass_radius: 0.4
+  - name: ysvv_045
+    x: 2.1
+    y: 2.7
+    yaw: -2.497593
+    pass_radius: 0.4
+  - name: ysvv_044
+    x: 2.1
+    y: 2.699
+    yaw: -2.358593
+    pass_radius: 0.4
+  - name: ysvv_043
+    x: 2.1
+    y: 2.639
+    yaw: -2.212593
+    pass_radius: 0.4
+  - name: ysvv_042
+    x: 2.1
+    y: 2.564
+    yaw: -2.101593
+    pass_radius: 0.4
+  - name: ysvv_041
+    x: 2.1
+    y: 2.491
+    yaw: -1.964593
+    pass_radius: 0.4
+  - name: ysvv_040
+    x: 2.1
+    y: 2.411
+    yaw: -1.810593
+    pass_radius: 0.4
+  - name: ysvv_039
+    x: 2.1
+    y: 2.331
+    yaw: -1.709593
+    pass_radius: 0.4
+  - name: ysvv_038
+    x: 2.1
+    y: 2.245
+    yaw: -1.700593
+    pass_radius: 0.4
+  - name: ysvv_037
+    x: 2.1
+    y: 2.163
+    yaw: -1.746593
+    pass_radius: 0.4
+  - name: ysvv_036
+    x: 2.1
+    y: 2.078
+    yaw: -1.790593
+    pass_radius: 0.4
+  - name: ysvv_035
+    x: 2.1
+    y: 1.987
+    yaw: -1.847593
+    pass_radius: 0.4
+  - name: ysvv_034
+    x: 2.1
+    y: 1.904
+    yaw: -1.895593
+    pass_radius: 0.4
+  - name: ysvv_033
+    x: 2.1
+    y: 1.823
+    yaw: -1.923593
+    pass_radius: 0.4
+  counterclockwise:
+  - name: ysvv_033
+    x: 2.1
+    y: 1.823
+    yaw: 1.218
+    pass_radius: 0.4
+  - name: ysvv_034
+    x: 2.1
+    y: 1.904
+    yaw: 1.246
+    pass_radius: 0.4
+  - name: ysvv_035
+    x: 2.1
+    y: 1.987
+    yaw: 1.294
+    pass_radius: 0.4
+  - name: ysvv_036
+    x: 2.1
+    y: 2.078
+    yaw: 1.351
+    pass_radius: 0.4
+  - name: ysvv_037
+    x: 2.1
+    y: 2.163
+    yaw: 1.395
+    pass_radius: 0.4
+  - name: ysvv_038
+    x: 2.1
+    y: 2.245
+    yaw: 1.441
+    pass_radius: 0.4
+  - name: ysvv_039
+    x: 2.1
+    y: 2.331
+    yaw: 1.432
+    pass_radius: 0.4
+  - name: ysvv_040
+    x: 2.1
+    y: 2.411
+    yaw: 1.331
+    pass_radius: 0.4
+  - name: ysvv_041
+    x: 2.1
+    y: 2.491
+    yaw: 1.177
+    pass_radius: 0.4
+  - name: ysvv_042
+    x: 2.1
+    y: 2.564
+    yaw: 1.04
+    pass_radius: 0.4
+  - name: ysvv_043
+    x: 2.1
+    y: 2.639
+    yaw: 0.929
+    pass_radius: 0.4
+  - name: ysvv_044
+    x: 2.1
+    y: 2.699
+    yaw: 0.783
+    pass_radius: 0.4
+  - name: ysvv_045
+    x: 2.1
+    y: 2.7
+    yaw: 0.644
+    pass_radius: 0.4
+  - name: ysvv_046
+    x: 2.132
+    y: 2.7
+    yaw: 0.547
+    pass_radius: 0.4
+  - name: ysvv_047
+    x: 2.206
+    y: 2.7
+    yaw: 0.416
+    pass_radius: 0.4
+  - name: ysvv_048
+    x: 2.286
+    y: 2.7
+    yaw: 0.307
+    pass_radius: 0.4
+  - name: ysvv_049
+    x: 2.368
+    y: 2.7
+    yaw: 0.185
+    pass_radius: 0.4
+  - name: ysvv_050
+    x: 2.451
+    y: 2.7
+    yaw: 0.069
+    pass_radius: 0.4
+  - name: ysvv_051
+    x: 2.531
+    y: 2.7
+    yaw: 0.002
+    pass_radius: 0.4
+  - name: ysvv_052
+    x: 2.611
+    y: 2.7
+    yaw: -0.008
+    pass_radius: 0.4
+  - name: ysvv_053
+    x: 2.692
+    y: 2.7
+    yaw: -0.006
+    pass_radius: 0.4
+  - name: ysvv_054
+    x: 2.776
+    y: 2.7
+    yaw: -0.005
+    pass_radius: 0.4
+  - name: ysvv_055
+    x: 2.858
+    y: 2.7
+    yaw: -0.01
+    pass_radius: 0.4
+  - name: ysvv_056
+    x: 2.941
+    y: 2.7
+    yaw: -0.004
+    pass_radius: 0.4
+  - name: ysvv_057
+    x: 3.023
+    y: 2.7
+    yaw: -0.002
+    pass_radius: 0.4
+  - name: ysvv_058
+    x: 3.107
+    y: 2.7
+    yaw: 0.064
+    pass_radius: 0.4
+  - name: ysvv_059
+    x: 3.188
+    y: 2.7
+    yaw: 0.152
+    pass_radius: 0.4
+  - name: ysvv_060
+    x: 3.272
+    y: 2.7
+    yaw: 0.266
+    pass_radius: 0.4
+  - name: ysvv_061
+    x: 3.348
+    y: 2.7
+    yaw: 0.397
+    pass_radius: 0.4
+  - name: ysvv_062
+    x: 3.423
+    y: 2.8
+    yaw: 0.559
+    pass_radius: 0.4
+  - name: ysvv_063
+    x: 3.487
+    y: 2.8
+    yaw: 0.729
+    pass_radius: 0.4
+  - name: ysvv_064
+    x: 3.5
+    y: 2.85
+    yaw: 0.911
+    pass_radius: 0.4
+  - name: ysvv_065
+    x: 3.5
+    y: 3.172
+    yaw: 1.072
+    pass_radius: 0.4
+  - name: ysvv_066
+    x: 3.5
+    y: 3.253
+    yaw: 1.241
+    pass_radius: 0.4
+  - name: ysvv_067
+    x: 3.5
+    y: 3.332
+    yaw: 1.354
+    pass_radius: 0.4
+  - name: ysvv_068
+    x: 3.5
+    y: 3.413
+    yaw: 1.439
+    pass_radius: 0.4
+  - name: ysvv_069
+    x: 3.5
+    y: 3.494
+    yaw: 1.532
+    pass_radius: 0.4
+  - name: ysvv_070
+    x: 3.5
+    y: 3.578
+    yaw: 1.581
+    pass_radius: 0.4
+  - name: ysvv_071
+    x: 3.5
+    y: 3.658
+    yaw: 1.582
+    pass_radius: 0.4
+  - name: ysvv_072
+    x: 3.5
+    y: 3.742
+    yaw: 1.593
+    pass_radius: 0.4
+  - name: ysvv_073
+    x: 3.5
+    y: 3.833
+    yaw: 1.726
+    pass_radius: 0.4
+  - name: ysvv_074
+    x: 3.5
+    y: 3.915
+    yaw: 1.871
+    pass_radius: 0.4
+  - name: ysvv_075
+    x: 3.5
+    y: 3.992
+    yaw: 2.022
+    pass_radius: 0.4
+  - name: ysvv_076
+    x: 3.5
+    y: 4.058
+    yaw: 2.216
+    pass_radius: 0.4
+  - name: ysvv_077
+    x: 3.489
+    y: 4.116
+    yaw: 2.394
+    pass_radius: 0.4
+  - name: ysvv_078
+    x: 3.427
+    y: 4.162
+    yaw: 2.585
+    pass_radius: 0.4
+  - name: ysvv_079
+    x: 3.362
+    y: 4.20
+    yaw: 2.762
+    pass_radius: 0.4
+  - name: ysvv_080
+    x: 3.294
+    y: 4.23
+    yaw: 2.952
+    pass_radius: 0.4
+  - name: ysvv_081
+    x: 3.208
+    y: 4.26
+    yaw: 3.113
+    pass_radius: 0.4
+  - name: ysvv_082
+    x: 3.12
+    y: 4.3
+    yaw: -3.107
+    pass_radius: 0.4
+  - name: ysvv_083
+    x: 3.037
+    y: 4.3
+    yaw: -3.108
+    pass_radius: 0.4
+  - name: ysvv_084
+    x: 2.955
+    y: 4.3
+    yaw: -3.101
+    pass_radius: 0.4
+  - name: ysvv_085
+    x: 2.867
+    y: 4.3
+    yaw: -3.109
+    pass_radius: 0.4
+  - name: ysvv_086
+    x: 2.787
+    y: 4.3
+    yaw: -3.129
+    pass_radius: 0.4
+  - name: ysvv_087
+    x: 2.704
+    y: 4.3
+    yaw: 3.118
+    pass_radius: 0.4
+  - name: ysvv_088
+    x: 2.624
+    y: 4.30
+    yaw: 3.12
+    pass_radius: 0.4
+  - name: ysvv_089
+    x: 2.543
+    y: 4.30
+    yaw: 3.12
+    pass_radius: 0.4
+  - name: ysvv_090
+    x: 2.463
+    y: 4.30
+    yaw: 3.124
+    pass_radius: 0.4
+  - name: ysvv_091
+    x: 2.382
+    y: 4.30
+    yaw: 3.122
+    pass_radius: 0.4
+  - name: ysvv_092
+    x: 2.302
+    y: 4.30
+    yaw: 3.124
+    pass_radius: 0.4
+  - name: ysvv_093
+    x: 2.218
+    y: 4.30
+    yaw: 3.126
+    pass_radius: 0.4
+  - name: ysvv_094
+    x: 2.128
+    y: 4.30
+    yaw: 3.114
+    pass_radius: 0.4
+  - name: ysvv_095
+    x: 2.048
+    y: 4.30
+    yaw: 3.108
+    pass_radius: 0.4
+  - name: ysvv_096
+    x: 1.958
+    y: 4.30
+    yaw: 3.11
+    pass_radius: 0.4
+  - name: ysvv_097
+    x: 1.874
+    y: 4.30
+    yaw: 3.109
+    pass_radius: 0.4
+  - name: ysvv_098
+    x: 1.7
+    y: 4.30
+    yaw: 3.116
+    pass_radius: 0.4
+  - name: ysvv_099
+    x: 1.65
+    y: 4.30
+    yaw: 3.119
+    pass_radius: 0.4
+  - name: ysvv_100
+    x: 1.617
+    y: 4.30
+    yaw: 3.134
+    pass_radius: 0.4
+  - name: ysvv_101
+    x: 1.529
+    y: 4.30
+    yaw: 3.135
+    pass_radius: 0.4
+  - name: ysvv_102
+    x: 1.44
+    y: 4.30
+    yaw: 3.129
+    pass_radius: 0.4
+  - name: ysvv_103
+    x: 1.358
+    y: 4.30
+    yaw: 3.134
+    pass_radius: 0.4
+  - name: ysvv_104
+    x: 1.277
+    y: 4.30
+    yaw: 3.131
+    pass_radius: 0.4
+  - name: ysvv_105
+    x: 1.196
+    y: 4.30
+    yaw: 3.128
+    pass_radius: 0.4
+  - name: ysvv_106
+    x: 1.116
+    y: 4.30
+    yaw: 3.116
+    pass_radius: 0.4
+  - name: ysvv_107
+    x: 1.03
+    y: 4.30
+    yaw: 3.128
+    pass_radius: 0.4
+  - name: ysvv_108
+    x: 0.942
+    y: 4.30
+    yaw: 3.116
+    pass_radius: 0.4
+  - name: ysvv_109
+    x: 0.861
+    y: 4.30
+    yaw: 3.119
+    pass_radius: 0.4
+  - name: ysvv_110
+    x: 0.774
+    y: 4.30
+    yaw: -3.126
+    pass_radius: 0.4
+  - name: ysvv_111
+    x: 0.69
+    y: 4.30
+    yaw: -3.06
+    pass_radius: 0.4
+  - name: ysvv_112
+    x: 0.602
+    y: 4.30
+    yaw: -3.002
+    pass_radius: 0.4
+  - name: ysvv_113
+    x: 0.519
+    y: 4.30
+    yaw: -2.941
+    pass_radius: 0.4
+  - name: ysvv_114
+    x: 0.437
+    y: 4.30
+    yaw: -2.815
+    pass_radius: 0.4
+  - name: ysvv_115
+    x: 0.1
+    y: 4.08
+    yaw: -2.682
+    pass_radius: 0.4
+  - name: ysvv_116
+    x: 0.1
+    y: 4.031
+    yaw: -2.52
+    pass_radius: 0.4
+  - name: ysvv_117
+    x: 0.1
+    y: 3.974
+    yaw: -2.364
+    pass_radius: 0.4
+  - name: ysvv_118
+    x: 0.1
+    y: 3.914
+    yaw: -2.224
+    pass_radius: 0.4
+  - name: ysvv_119
+    x: 0.1
+    y: 3.847
+    yaw: -2.074
+    pass_radius: 0.4
+  - name: ysvv_120
+    x: 0.1
+    y: 3.77
+    yaw: -1.905
+    pass_radius: 0.4
+  - name: ysvv_121
+    x: 0.1
+    y: 3.691
+    yaw: -1.755
+    pass_radius: 0.4
+  - name: ysvv_122
+    x: 0.1
+    y: 3.61
+    yaw: -1.684
+    pass_radius: 0.4
+  - name: ysvv_123
+    x: 0.1
+    y: 3.529
+    yaw: -1.673
+    pass_radius: 0.4
+  - name: ysvv_124
+    x: 0.1
+    y: 3.447
+    yaw: -1.577
+    pass_radius: 0.4
+  - name: ysvv_125
+    x: 0.1
+    y: 3.367
+    yaw: -1.439
+    pass_radius: 0.4
+  - name: ysvv_126
+    x: 0.1
+    y: 3.308
+    yaw: -1.267
+    pass_radius: 0.4
+  - name: ysvv_127
+    x: 0.1
+    y: 3.239
+    yaw: -1.077
+    pass_radius: 0.4
+  - name: ysvv_128
+    x: 0.1
+    y: 3.168
+    yaw: -0.901
+    pass_radius: 0.4
+  - name: ysvv_129
+    x: 0.1
+    y: 3.103
+    yaw: -0.724
+    pass_radius: 0.4
+  - name: ysvv_130
+    x: 0.1
+    y: 3.049
+    yaw: -0.549
+    pass_radius: 0.4
+  - name: ysvv_131
+    x: 0.1
+    y: 3.003
+    yaw: -0.357
+    pass_radius: 0.4
+  - name: ysvv_132
+    x: 0.15
+    y: 2.972
+    yaw: -0.182
+    pass_radius: 0.4
+  - name: ysvv_133
+    x: 0.451
+    y: 2.955
+    yaw: -0.049
+    pass_radius: 0.4
+  - name: ysvv_134
+    x: 0.54
+    y: 2.945
+    yaw: -0.032
+    pass_radius: 0.4
+  - name: ysvv_135
+    x: 0.621
+    y: 2.939
+    yaw: -0.038
+    pass_radius: 0.4
+  - name: ysvv_136
+    x: 0.704
+    y: 2.935
+    yaw: -0.04
+    pass_radius: 0.4
+  - name: ysvv_137
+    x: 0.786
+    y: 2.937
+    yaw: -0.04
+    pass_radius: 0.4
+  - name: ysvv_138
+    x: 0.871
+    y: 2.934
+    yaw: -0.03
+    pass_radius: 0.4
+  - name: ysvv_139
+    x: 0.96
+    y: 2.936
+    yaw: -0.031
+    pass_radius: 0.4
+  - name: ysvv_140
+    x: 1.044
+    y: 2.928
+    yaw: -0.06
+    pass_radius: 0.4
+  - name: ysvv_141
+    x: 1.124
+    y: 2.922
+    yaw: -0.175
+    pass_radius: 0.4
+  - name: ysvv_142
+    x: 1.204
+    y: 2.912
+    yaw: -0.297
+    pass_radius: 0.4
+  - name: ysvv_143
+    x: 1.29
+    y: 2.889
+    yaw: -0.435
+    pass_radius: 0.4
+  - name: ysvv_144
+    x: 1.365
+    y: 2.86
+    yaw: -0.566
+    pass_radius: 0.4
+  - name: ysvv_145
+    x: 1.435
+    y: 2.818
+    yaw: -0.698
+    pass_radius: 0.4
+  - name: ysvv_146
+    x: 1.496
+    y: 2.765
+    yaw: -0.852
+    pass_radius: 0.4
+  - name: ysvv_147
+    x: 1.554
+    y: 2.705
+    yaw: -0.962
+    pass_radius: 0.4
+  - name: ysvv_148
+    x: 1.6
+    y: 2.639
+    yaw: -1.062
+    pass_radius: 0.4
+  - name: ysvv_149
+    x: 1.6
+    y: 2.564
+    yaw: -1.158
+    pass_radius: 0.4
+  - name: ysvv_150
+    x: 1.6
+    y: 2.489
+    yaw: -1.266
+    pass_radius: 0.4
+  - name: ysvv_151
+    x: 1.6
+    y: 2.406
+    yaw: -1.374
+    pass_radius: 0.4
+  - name: ysvv_152
+    x: 1.6
+    y: 2.321
+    yaw: -1.493
+    pass_radius: 0.4

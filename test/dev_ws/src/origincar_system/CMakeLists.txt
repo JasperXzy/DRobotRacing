@@ -7,6 +7,7 @@ endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
@@ -16,7 +17,7 @@ find_package(yaml-cpp REQUIRED)
 
 add_executable(smooth_path_follower src/smooth_path_follower.cpp)
 target_include_directories(smooth_path_follower PRIVATE include)
-ament_target_dependencies(smooth_path_follower rclcpp geometry_msgs sensor_msgs std_msgs tf2 tf2_ros)
+ament_target_dependencies(smooth_path_follower rclcpp geometry_msgs nav_msgs sensor_msgs std_msgs tf2 tf2_ros)
 target_link_libraries(smooth_path_follower yaml-cpp)
 
 install(TARGETS

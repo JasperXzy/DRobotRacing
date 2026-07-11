@@ -19,6 +19,7 @@ def generate_launch_description():
     nav2_params_file = LaunchConfiguration('nav2_params_file')
     qr_detector_params_file = LaunchConfiguration('qr_detector_params_file')
     perception_detector_params_file = LaunchConfiguration('perception_detector_params_file')
+    line_detector_params_file = LaunchConfiguration('line_detector_params_file')
     vlm_trigger_value = LaunchConfiguration('vlm_trigger_value')
     vlm_camera_topic = LaunchConfiguration('vlm_camera_topic')
     qr_stop_on_detect = LaunchConfiguration('qr_stop_on_detect')
@@ -48,7 +49,12 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'perception_detector_params_file',
             default_value='/root/D_Robot/dev_ws/config/perception/perception_detector.yaml',
-            description='Mainline perception detector params file.',
+            description='Mainline obstacle, parking sign and QR target detector params file.',
+        ),
+        DeclareLaunchArgument(
+            'line_detector_params_file',
+            default_value='/root/D_Robot/dev_ws/config/perception/line_detector.yaml',
+            description='Mainline racing line detector params file.',
         ),
         DeclareLaunchArgument(
             'vlm_trigger_value',
@@ -168,6 +174,15 @@ def generate_launch_description():
         parameters=[perception_detector_params_file],
     )
 
+    line_detector_node = Node(
+        package='line_detector',
+        executable='line_detector_node',
+        name='GetLineCoordinate',
+        output='screen',
+        parameters=[line_detector_params_file],
+        arguments=['--ros-args', '--log-level', 'info'],
+    )
+
     vlm_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([
@@ -232,9 +247,10 @@ def generate_launch_description():
             amcl_lifecycle_manager,
         ]),
 
-        # t=7s: camera perception and VLM/TTS.
+        # t=7s: camera perception, line detection and VLM/TTS.
         TimerAction(period=7.0, actions=[
             perception_detector_node,
+            line_detector_node,
             vlm_launch,
         ]),
 

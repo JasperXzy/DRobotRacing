@@ -80,6 +80,10 @@ private:
     bool isTrackLineCentered(const ai_msgs::msg::PerceptionTargets::SharedPtr& line_msg) const; //检查赛道线是否位于图像中心区域
     std::string pub_control_topic_ = "cmd_vel";
     bool debug_control_logs_ = false;
+    bool clear_detection_cache_on_resume_ = false;
+    bool drive_straight_without_initial_line_ = false;
+    bool enable_parking_before_path_ = true;
+    bool enable_qr_after_path_ = true;
     std::mutex point_target_mutex_;
     std::atomic<bool> process_stop_{false};
     std::shared_ptr<std::thread> msg_process_;
@@ -128,9 +132,11 @@ private:
     // 最新消息存储
     ai_msgs::msg::PerceptionTargets::SharedPtr latest_point_msg_;
     ai_msgs::msg::PerceptionTargets::SharedPtr latest_targets_msg_;
+    std::atomic<bool> waiting_for_fresh_line_{true};
 
     // 挂起/恢复状态标志
     std::atomic<bool> is_suspended_{false};
+    std::atomic<bool> path_handoff_completed_{false};
 };
 
 #endif  // VISUAL_CONTROL_H_

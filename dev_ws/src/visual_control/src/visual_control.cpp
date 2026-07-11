@@ -22,16 +22,19 @@ const int CONTROL_IMAGE_HEIGHT = 480;
 RacingControlNode::RacingControlNode(const std::string& node_name,const rclcpp::NodeOptions& options)
   : rclcpp::Node(node_name, options) {
 
-  if (!msg_process_) {
-    msg_process_ = std::make_shared<std::thread>(
-        std::bind(&RacingControlNode::MessageProcess, this));
-  }
-
-  // 参数声明和获取 
+  // 参数声明和获取
   this->declare_parameter<std::string>("pub_control_topic", pub_control_topic_);
   this->get_parameter<std::string>("pub_control_topic", pub_control_topic_);
   this->declare_parameter<bool>("debug_control_logs", debug_control_logs_);
   this->get_parameter<bool>("debug_control_logs", debug_control_logs_);
+  this->declare_parameter<bool>("clear_detection_cache_on_resume", clear_detection_cache_on_resume_);
+  this->get_parameter<bool>("clear_detection_cache_on_resume", clear_detection_cache_on_resume_);
+  this->declare_parameter<bool>("drive_straight_without_initial_line", drive_straight_without_initial_line_);
+  this->get_parameter<bool>("drive_straight_without_initial_line", drive_straight_without_initial_line_);
+  this->declare_parameter<bool>("enable_parking_before_path", enable_parking_before_path_);
+  this->get_parameter<bool>("enable_parking_before_path", enable_parking_before_path_);
+  this->declare_parameter<bool>("enable_qr_after_path", enable_qr_after_path_);
+  this->get_parameter<bool>("enable_qr_after_path", enable_qr_after_path_);
 
   // 巡线参数
   this->declare_parameter<float>("follow_linear_speed", follow_linear_speed_);
@@ -107,7 +110,12 @@ RacingControlNode::RacingControlNode(const std::string& node_name,const rclcpp::
     std::bind(&RacingControlNode::sign_callback, this, std::placeholders::_1));
   
   publisher_ = this->create_publisher<geometry_msgs::msg::Twist>(pub_control_topic_, 5);
-  
+
+  if (!msg_process_) {
+    msg_process_ = std::make_shared<std::thread>(
+        std::bind(&RacingControlNode::MessageProcess, this));
+  }
+
   RCLCPP_INFO(rclcpp::get_logger("RacingControlNode"), "RacingControlNode initialized!");
 }
 
@@ -197,12 +205,27 @@ void RacingControlNode::sign_callback(const std_msgs::msg::Int32::SharedPtr msg)
 
   } else if (sign_value == 6) {
     // 收到6时，恢复控制
-    RCLCPP_WARN(this->get_logger(), "恢复控制节点");
-    is_suspended_ = false;
+    path_handoff_completed_ = true;
+    if (enable_qr_after_path_) {
+      RCLCPP_WARN(this->get_logger(), "恢复控制节点");
+    } else {
+      RCLCPP_WARN(this->get_logger(), "恢复控制节点，进入停车阶段（忽略二维码）");
+    }
+    if (clear_detection_cache_on_resume_) {
+      std::unique_lock<std::mutex> lock(point_target_mutex_);
+      latest_point_msg_.reset();
+      latest_targets_msg_.reset();
+      waiting_for_fresh_line_ = true;
+    }
     // 将状态机重置为默认巡线状态，避免从异常状态恢复
     current_state_ = State::LINE_FOLLOWING;
     flag_ratio_change_ = 1;
     has_valid_twist_ = false; // 清除旧的指令历史
+    last_valid_twist_ = geometry_msgs::msg::Twist();
+    last_avoidance_angular_z_ = 0.0f;
+    last_avoidance_direction_ = 0.0f;
+    last_obstacle_bottom_y_ = 0;
+    is_suspended_ = false;
   }
 }
 
@@ -214,6 +237,7 @@ void RacingControlNode::subscription_callback_point(const ai_msgs::msg::Percepti
   {
     std::unique_lock<std::mutex> lock(point_target_mutex_);
     latest_point_msg_ = point_msg;
+    waiting_for_fresh_line_ = false;
   }
 }
 
@@ -254,7 +278,17 @@ void RacingControlNode::MessageProcess(){
     lock.unlock();
 
     if (!current_line_msg) {
-        if (debug_control_logs_) {
+        if (drive_straight_without_initial_line_ && waiting_for_fresh_line_ &&
+            current_state_ == State::LINE_FOLLOWING) {
+          auto twist_msg = geometry_msgs::msg::Twist();
+          twist_msg.linear.x = follow_linear_speed_;
+          publisher_->publish(twist_msg);
+          if (debug_control_logs_) {
+            RCLCPP_DEBUG_THROTTLE(
+              this->get_logger(), *this->get_clock(), 1000,
+              "等待第一帧中线，先按巡线速度直走: %.2f", follow_linear_speed_);
+          }
+        } else if (debug_control_logs_) {
           RCLCPP_DEBUG(this->get_logger(), "等待中线消息");
         }
         loop_rate.sleep();
@@ -561,6 +595,7 @@ void RacingControlNode::ObstaclesAvoiding(const ai_msgs::msg::Target& obstacle, 
 bool RacingControlNode::hasValidTrackLine(const ai_msgs::msg::PerceptionTargets::SharedPtr& line_msg) const {
     return line_msg && !line_msg->targets.empty() &&
            !line_msg->targets[0].points.empty() &&
+           !line_msg->targets[0].points[0].point.empty() &&
            !line_msg->targets[0].points[0].confidence.empty() &&
            line_msg->targets[0].points[0].confidence[0] >= line_confidence_threshold_;
 }
@@ -569,6 +604,9 @@ bool RacingControlNode::hasValidTrackLine(const ai_msgs::msg::PerceptionTargets:
 // *************************查找一个可以用来跟随的停车标志****************************
 // ********************************************************************************
 std::optional<ai_msgs::msg::Target> RacingControlNode::findFollowableParkingSign(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const {
+    if (!path_handoff_completed_.load() && !enable_parking_before_path_) {
+        return std::nullopt;
+    }
     if (targets_msg && !targets_msg->targets.empty()) {
         for (const auto& target : targets_msg->targets) {
             if (target.type == "parking_sign" && !target.rois.empty() &&
@@ -585,6 +623,9 @@ std::optional<ai_msgs::msg::Target> RacingControlNode::findFollowableParkingSign
 // *************************查找一个可以用来跟随的二维码标志**************************
 // ********************************************************************************
 std::optional<ai_msgs::msg::Target> RacingControlNode::findFollowableQrCode(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const {
+    if (path_handoff_completed_.load() && !enable_qr_after_path_) {
+        return std::nullopt;
+    }
     if (targets_msg && !targets_msg->targets.empty()) {
         for (const auto& target : targets_msg->targets) {
             // 检查目标类型是否为 "qr_code"，并且ROI有效，置信度达标
