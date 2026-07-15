@@ -1,22 +1,14 @@
 """
 Full test bringup using lidar_location instead of AMCL.
 
-The original test_bringup.launch.py remains unchanged for A/B comparison.
+Keep non-localization behavior aligned with test_bringup.launch.py for A/B comparison.
 """
 
 import os
 
 from launch import LaunchDescription
-from launch.actions import (
-    DeclareLaunchArgument,
-    ExecuteProcess,
-    IncludeLaunchDescription,
-    LogInfo,
-    RegisterEventHandler,
-    TimerAction,
-)
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
 from launch.conditions import IfCondition
-from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_xml.launch_description_sources import XMLLaunchDescriptionSource
@@ -158,6 +150,8 @@ def generate_launch_description():
         }.items(),
     )
 
+    # Start the driver directly so the test flow publishes exactly one
+    # base_link -> laser transform using the measured horizontal offset.
     lidar_node = LifecycleNode(
         package='lidar_driver',
         executable='lidar_driver_node',
@@ -299,41 +293,6 @@ def generate_launch_description():
         ],
     )
 
-    wait_for_first_localization_lock = ExecuteProcess(
-        cmd=[
-            'ros2', 'topic', 'echo', '--no-daemon',
-            '--filter', "m.data == 'LOCKED'", '--once',
-            '/lidar_location/state', 'std_msgs/msg/String',
-        ],
-        output='screen',
-    )
-
-    startup_complete_announcement = ExecuteProcess(
-        cmd=[
-            'ros2', 'topic', 'pub', '--once',
-            '/tts_text', 'std_msgs/msg/String',
-            "{data: '启动完成'}",
-        ],
-        output='screen',
-    )
-
-    def start_qr_after_localization_lock(event, _context):
-        if event.returncode == 0:
-            return [
-                LogInfo(msg='定位已锁定，启动二维码检测。'),
-                qr_detector_node,
-            ]
-        return [
-            LogInfo(msg='错误：等待定位锁定的进程异常退出，二维码检测未启动。'),
-        ]
-
-    qr_start_handler = RegisterEventHandler(
-        OnProcessExit(
-            target_action=wait_for_first_localization_lock,
-            on_exit=start_qr_after_localization_lock,
-        )
-    )
-
     foxglove_launch = IncludeLaunchDescription(
         XMLLaunchDescriptionSource(
             PathJoinSubstitution([
@@ -347,7 +306,6 @@ def generate_launch_description():
 
     return LaunchDescription([
         *args,
-        qr_start_handler,
 
         # t=0s: hardware, the single measured laser TF and visualization bridge.
         chassis_launch,
@@ -356,27 +314,24 @@ def generate_launch_description():
         camera_launch,
         foxglove_launch,
 
-        # t=4s: EKF publishes odom -> base_link.
-        TimerAction(period=4.0, actions=[ekf_launch]),
+        # t=3s: odom fusion and required IMU static TFs.
+        TimerAction(period=3.0, actions=[ekf_launch]),
 
-        # t=7s: map servers plus lidar_location; start waiting for its first LOCKED state.
-        TimerAction(period=7.0, actions=[
+        # t=5s: physical map, restriction map and lidar_location.
+        TimerAction(period=5.0, actions=[
             map_server_node,
             restriction_map_server_node,
             lidar_location_node,
             map_lifecycle_manager,
-            wait_for_first_localization_lock,
         ]),
 
-        # t=15s: camera perception, line detection and VLM/TTS.
-        TimerAction(period=15.0, actions=[
+        # t=7s: camera perception, line detection and VLM/TTS.
+        TimerAction(period=7.0, actions=[
             perception_detector_node,
             line_detector_node,
             vlm_launch,
         ]),
 
-        # t=18s: allow the TTS subscriber to start, then announce once.
-        TimerAction(period=18.0, actions=[startup_complete_announcement]),
-
-        # QR detector is started by qr_start_handler after the first LOCKED state.
+        # t=9s: QR detector.
+        TimerAction(period=9.0, actions=[qr_detector_node]),
     ])

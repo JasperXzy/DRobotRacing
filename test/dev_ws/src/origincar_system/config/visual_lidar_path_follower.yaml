@@ -12,9 +12,9 @@ visual_lidar_path_follower:
     enable_debug_visualization: true  # 是否发布 Foxglove 中的 waypoints、圆锥圆心和拟合圆
     # 正向追点
     control_frequency: 50.0  # 控制循环频率，单位 Hz
-    linear_speed: 0.9  # 正常巡点线速度，单位 m/s
-    turn_angular_gain: 2.0  # 正向航向误差到角速度的比例增益
-    lookahead_distance: 0.65  # 正常巡点目标的前瞻距离，单位 m
+    linear_speed: 0.85  # 正常巡点线速度，单位 m/s
+    turn_angular_gain: 1.5  # 正向航向误差到角速度的比例增益
+    lookahead_distance: 0.5  # 正常巡点目标的前瞻距离，单位 m
     pass_radius: 0.6  # 航点未单独配置时使用的默认通过半径，单位 m
     route_projection_max_distance: 1.2  # 允许车辆匹配当前路线段的最大横向距离，单位 m
     segment_advance_t: 0.6  # 车辆投影超过当前线段此比例时推进路线进度
@@ -38,11 +38,11 @@ visual_lidar_path_follower:
     cone_circle_max_rmse: 0.015   # 接受圆拟合的最大径向均方根误差，单位 m
     waypoint_shift_clearance_radius: 0.60   # 从点云簇中心沿路线横截方向搜索禁行区域的最大距离，单位 m
     waypoint_shift_occupied_threshold: 50   # 横截方向判断的地图占据阈值；软禁行区和真实墙体都应达到该值
-    waypoint_shift_check_count: 80          # waypoint_shift模式每帧从当前追踪点开始检查的航点数量
-    waypoint_cloud_check_radius: 0.30       # 点云距未来路线小于该距离才触发平移，单位 m；提前距离由check_count决定
-    waypoint_shift_target_clearance: 0.3   # 偏移后的路线在空旷侧横截方向越过点云最外沿的目标净距，单位 m
-    waypoint_shift_points_before: 40        # 障碍物最近路线点之前、车与障碍物之间统一偏移的点数
-    waypoint_shift_points_after: 30          # 障碍物最近路线点之后、离车更远方向统一偏移的点数
+    waypoint_shift_check_count: 100          # waypoint_shift模式每帧从当前追踪点开始检查的航点数量
+    waypoint_cloud_check_radius: 0.5       # 点云距未来路线小于该距离才触发平移，单位 m；提前距离由check_count决定
+    waypoint_shift_target_clearance: 0.25   # 偏移后的路线在空旷侧横截方向越过点云最外沿的目标净距，单位 m
+    waypoint_shift_points_before: 20        # 障碍物最近路线点之前、车与障碍物之间统一偏移的点数
+    waypoint_shift_points_after: 10          # 障碍物最近路线点之后、离车更远方向统一偏移的点数
     enable_static_map_filter: true          # 是否同时用race_modify和race_keepout过滤真实墙体及软禁行区域点云
     require_map_for_lidar_assist: true      # 任一地图未收到时是否暂停需要非静态点云的辅助判断和二维码后撤检查
     static_map_occupied_threshold: 90       # race_modify真实墙体的点云过滤占据阈值
