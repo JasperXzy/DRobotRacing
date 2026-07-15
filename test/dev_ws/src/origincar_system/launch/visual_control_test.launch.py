@@ -10,7 +10,10 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'pub_control_topic',
             default_value='/cmd_vel',
-            description='Real chassis cmd_vel topic. QR handoff suspends visual_control before visual_lidar_path_follower takes over.',
+            description=(
+                'Real chassis cmd_vel topic. Visual control is suspended at QR; '
+                'the waypoint follower owns post-QR obstacle avoidance.'
+            ),
         ),
         DeclareLaunchArgument(
             'avoid_angular_ratio',

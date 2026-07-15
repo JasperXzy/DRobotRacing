@@ -185,6 +185,10 @@ private:
 	std::string cmd_vel;
 	int serial_baud_rate;
 	int cmd_vel_timeout_ms_ = 300;
+	double linear_position_scale_ = 1.0;
+	double lateral_position_scale_ = 1.0;
+	double positive_angular_scale_ = 1.1958;
+	double negative_angular_scale_ = 1.1578;
 	std::mutex serial_write_mutex_;
 	std::atomic<bool> control_suspended_{false};
 	std::atomic<bool> command_active_{false};

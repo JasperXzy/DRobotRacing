@@ -6,6 +6,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 find_package(ament_cmake REQUIRED)
+find_package(ai_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
@@ -20,7 +21,7 @@ add_executable(visual_lidar_path_follower src/visual_lidar_path_follower.cpp)
 target_include_directories(visual_lidar_path_follower PRIVATE include)
 ament_target_dependencies(
   visual_lidar_path_follower
-  geometry_msgs nav_msgs rclcpp sensor_msgs std_msgs tf2 tf2_ros visualization_msgs)
+  ai_msgs geometry_msgs nav_msgs rclcpp sensor_msgs std_msgs tf2 tf2_ros visualization_msgs)
 target_link_libraries(visual_lidar_path_follower yaml-cpp)
 
 install(TARGETS

@@ -251,7 +251,7 @@ namespace lidar_driver
 			FrequencyStatusParam(&diag_min_freq, &diag_max_freq, 0.1, 10),
 			TimeStampStatusParam()));
 
-		int hz = 10;
+		int hz = 12;
 		// if (lidar_name == "M10_P") hz = 12; ... // removed for N10 fixed model
 		
 		double packet_rate = hz * 24;
@@ -497,9 +497,9 @@ namespace lidar_driver
 						scan_points_[k].intensity = 0;
 					}
 					pre_time_ = time_;
+					time_ = get_clock()->now();
 					lock.unlock();
 					pubscan_cond_.notify_one();
-					time_ = get_clock()->now();
 				}
 				else
 				{
@@ -540,8 +540,10 @@ namespace lidar_driver
                 float scan_time;
                 this->getScan(points, start_time, scan_time);
                 scan->header.frame_id = frame_id;
-                // N10 does not use GPS TS
-                scan->header.stamp = this->now();
+                // LaserScan timestamps represent the acquisition time of the first ray.
+                // Using publish time makes an entire revolution look current and causes
+                // visible map/scan misalignment while the robot is turning.
+                scan->header.stamp = start_time;
 
                 if (angle_able_max > 360)
                 {

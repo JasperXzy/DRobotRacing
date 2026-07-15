@@ -381,9 +381,23 @@ void chassis_driver::Control()
       current_time = rclcpp::Node::now();
       Sampling_Time = (current_time - last_time).seconds();
       if (true == Get_Sensor_Data()) {
-        Robot_Pos.X+=1.03*(Robot_Vel.X * cos(Robot_Pos.Z) - Robot_Vel.Y * sin(Robot_Pos.Z)) * Sampling_Time;
-        Robot_Pos.Y+=1.125*(Robot_Vel.X * sin(Robot_Pos.Z) + Robot_Vel.Y * cos(Robot_Pos.Z)) * Sampling_Time;
-        Robot_Pos.Z+=Robot_Vel.Z * Sampling_Time;
+        // These calibration factors affect only the accumulated raw pose.
+        // Robot_Vel remains unchanged, so the EKF twist inputs keep their
+        // existing behavior and the calibrated EKF closed-loop result is not disturbed.
+        const double calibrated_linear_velocity =
+          static_cast<double>(Robot_Vel.X) * linear_position_scale_;
+        const double calibrated_lateral_velocity =
+          static_cast<double>(Robot_Vel.Y) * lateral_position_scale_;
+        const double angular_scale =
+          Robot_Vel.Z >= 0.0F ? positive_angular_scale_ : negative_angular_scale_;
+
+        Robot_Pos.X +=
+          (calibrated_linear_velocity * cos(Robot_Pos.Z) -
+          calibrated_lateral_velocity * sin(Robot_Pos.Z)) * Sampling_Time;
+        Robot_Pos.Y +=
+          (calibrated_linear_velocity * sin(Robot_Pos.Z) +
+          calibrated_lateral_velocity * cos(Robot_Pos.Z)) * Sampling_Time;
+        Robot_Pos.Z += angular_scale * static_cast<double>(Robot_Vel.Z) * Sampling_Time;
 
         Quaternion_Solution(Mpu6050.angular_velocity.x, Mpu6050.angular_velocity.y, Mpu6050.angular_velocity.z,\
                   Mpu6050.linear_acceleration.x, Mpu6050.linear_acceleration.y, Mpu6050.linear_acceleration.z);
@@ -430,6 +444,10 @@ chassis_driver::chassis_driver()
   this->declare_parameter<std::string>("robot_frame_id", "base_link");
   this->declare_parameter<std::string>("gyro_frame_id", "gyro_link");
   this->declare_parameter<int>("cmd_vel_timeout_ms", cmd_vel_timeout_ms_);
+  this->declare_parameter<double>("linear_position_scale", linear_position_scale_);
+  this->declare_parameter<double>("lateral_position_scale", lateral_position_scale_);
+  this->declare_parameter<double>("positive_angular_scale", positive_angular_scale_);
+  this->declare_parameter<double>("negative_angular_scale", negative_angular_scale_);
 
   this->get_parameter("serial_baud_rate", serial_baud_rate);
   this->get_parameter("usart_port_name", usart_port_name);
@@ -439,6 +457,10 @@ chassis_driver::chassis_driver()
   this->get_parameter("robot_frame_id", robot_frame_id);
   this->get_parameter("gyro_frame_id", gyro_frame_id);
   this->get_parameter("cmd_vel_timeout_ms", cmd_vel_timeout_ms_);
+  this->get_parameter("linear_position_scale", linear_position_scale_);
+  this->get_parameter("lateral_position_scale", lateral_position_scale_);
+  this->get_parameter("positive_angular_scale", positive_angular_scale_);
+  this->get_parameter("negative_angular_scale", negative_angular_scale_);
   last_cmd_vel_time_ = this->now();
 
   odom_publisher = create_publisher<nav_msgs::msg::Odometry>("chassis/odom", 10);

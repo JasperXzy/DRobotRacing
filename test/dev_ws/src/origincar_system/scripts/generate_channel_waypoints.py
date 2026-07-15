@@ -17,13 +17,13 @@ DEFAULT_PREVIEW_OUTPUT = PACKAGE_DIR / "map" / "waypoints_channel_on_restriction
 # The route is modeled as 7 straight center-line segments. Each gap between
 # adjacent segments is connected by a smooth cubic Bezier transition.
 STRAIGHT_SEGMENTS: list[tuple[tuple[float, float], tuple[float, float]]] = [
-    ((1.95, 2.00), (1.95, 2.50)),
+    ((1.95, 1.80), (1.95, 2.50)),
     ((2.35, 2.90), (3.30, 2.90)),
     ((3.60, 3.20), (3.60, 3.85)),
     ((3.30, 4.05), (0.45, 4.05)),
     ((0.15, 3.85), (0.15, 3.20)),
     ((0.45, 2.90), (1.55, 2.90)),
-    ((1.95, 2.50), (1.95, 2.00)),
+    ((1.95, 2.50), (1.95, 1.80)),
 ]
 
 TARGET_SPACING = 0.02

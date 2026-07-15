@@ -7,6 +7,7 @@ qr_detector_node:
     small_roi_min_size: 120
     small_roi_upscale_factor: 2.0
     stop_on_detect: true
+    # 扫码后立即停掉 visual_control；perception_detector 已使用独立数值，不会被 5 关闭。
     suspend_visual_control_on_detect: true
     visual_control_suspend_topic: /sign4return
     visual_control_suspend_value: 5
