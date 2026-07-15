@@ -1,0 +1,128 @@
+{
+  "configById": {
+    "3D!drobot": {
+      "layers": {
+        "drobot-grid": {
+          "visible": false,
+          "frameLocked": true,
+          "label": "Grid",
+          "instanceId": "drobot-grid",
+          "layerId": "foxglove.Grid",
+          "size": 10,
+          "divisions": 20,
+          "lineWidth": 1,
+          "color": "#90a4ae55",
+          "position": [0, 0, 0],
+          "rotation": [0, 0, 0],
+          "order": 1
+        }
+      },
+      "cameraState": {
+        "perspective": false,
+        "distance": 5,
+        "phi": 0,
+        "thetaOffset": 0,
+        "targetOffset": [0, 0, 0],
+        "target": [0, 0, 0],
+        "targetOrientation": [0, 0, 0, 1],
+        "fovy": 45,
+        "near": 0.01,
+        "far": 5000
+      },
+      "followMode": "follow-pose",
+      "followTf": "map",
+      "scene": {
+        "labelScaleFactor": 0.8
+      },
+      "transforms": {
+        "frame:map": {"visible": false},
+        "frame:odom": {"visible": false},
+        "frame:base_link": {"visible": false}
+      },
+      "topics": {
+        "/map": {
+          "visible": true,
+          "drawBehind": true,
+          "frameLocked": true,
+          "minColor": "#f5f5f5ff",
+          "maxColor": "#202020ff",
+          "unknownColor": "#55555566"
+        },
+        "/scan": {
+          "visible": false,
+          "pointSize": 3,
+          "colorMode": "flat",
+          "flatColor": "#ffffffff",
+          "decayTime": 0
+        },
+        "/visual_lidar_path_follower/debug_path": {
+          "visible": false,
+          "type": "line",
+          "lineWidth": 0.025,
+          "gradient": ["#1976d2cc", "#42a5f5cc"]
+        },
+        "/visual_lidar_path_follower/debug_markers": {
+          "visible": true
+        },
+        "/visual_lidar_path_follower/debug_route_markers": {
+          "visible": true
+        }
+      },
+      "publish": {
+        "type": "point",
+        "poseTopic": "/goal_pose",
+        "pointTopic": "/clicked_point",
+        "poseEstimateTopic": "/initialpose",
+        "poseEstimateXDeviation": 0.5,
+        "poseEstimateYDeviation": 0.5,
+        "poseEstimateThetaDeviation": 0.26179939
+      },
+      "imageMode": {},
+      "foxglovePanelTitle": "Waypoints · 圆锥圆心 · 圆锥圆"
+    },
+    "Image!camera": {
+      "cameraState": {
+        "distance": 20,
+        "perspective": true,
+        "phi": 60,
+        "target": [0, 0, 0],
+        "targetOffset": [0, 0, 0],
+        "targetOrientation": [0, 0, 0, 1],
+        "thetaOffset": 60,
+        "fovy": 45,
+        "near": 0.5,
+        "far": 5000
+      },
+      "followMode": "follow-pose",
+      "scene": {},
+      "transforms": {},
+      "topics": {},
+      "layers": {},
+      "publish": {
+        "type": "point",
+        "poseTopic": "/goal_pose",
+        "pointTopic": "/clicked_point",
+        "poseEstimateTopic": "/initialpose",
+        "poseEstimateXDeviation": 0.5,
+        "poseEstimateYDeviation": 0.5,
+        "poseEstimateThetaDeviation": 0.26179939
+      },
+      "imageMode": {
+        "imageTopic": "/camera/image",
+        "calibrationTopic": "/camera/camera_info"
+      },
+      "foxglovePanelTitle": "相机"
+    }
+  },
+  "globalVariables": {},
+  "userNodes": {},
+  "playbackConfig": {
+    "speed": 1
+  },
+  "layout": {
+    "direction": "row",
+    "first": "3D!drobot",
+    "second": "Image!camera",
+    "splitPercentage": 76
+  }
+}

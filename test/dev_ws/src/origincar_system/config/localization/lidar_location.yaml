@@ -1,0 +1,95 @@
+lidar_location:
+  ros__parameters:
+    use_sim_time: false
+
+    # 与现有 EKF、雷达静态 TF 和 waypoint_shift 的 frame 完全一致。
+    global_frame: map
+    odom_frame: odom
+    base_frame: base_link
+    laser_frame: laser
+
+    # 保持 AMCL 的外部接口名称，其他节点无需修改。
+    map_topic: /map
+    scan_topic: /scan
+    initial_pose_topic: /initialpose
+    pose_topic: /amcl_pose
+    scan_cloud_topic: /lidar_location/scan_cloud
+
+    tf_broadcast: true
+    tf_publish_rate: 30.0
+    transform_tolerance: 0.3
+    tf_lookup_timeout: 0.2
+
+    # 沿用现有 waypoint 使用的地图坐标基准，从地图原点启动；也可以在
+    # RViz/Foxglove 向 /initialpose 发布新初始位姿。
+    set_initial_pose: true
+    reset_pose_on_map: false
+    initial_pose:
+      x: 0.0
+      y: 0.0
+      yaw: 0.0
+
+    # 扫描匹配参数。
+    occupied_threshold: 65
+    likelihood_field_radius: 0.30
+    linear_search_step: 0.0       # 0 表示自动使用地图分辨率
+    angular_search_step_deg: 1.0
+    refinement_levels: 3          # 每帧在基础步长上继续做3级精细搜索
+    refinement_step_scale: 0.5    # 每级将位移和角度步长减半
+    max_iterations: 80
+    max_translation_correction: 0.15
+    max_rotation_correction_deg: 5.0
+    max_beams: 180
+    min_valid_beams: 20
+    min_match_score: 0.05        # 兼容参数，仅作为绝对硬下限
+    min_laser_range: 0.1
+    max_laser_range: 5.0
+
+    # 质量门控：低质结果不再直接修改 map -> odom。
+    quality:
+      lost_score: 0.20
+      recovery_score: 0.45
+      locked_score: 0.55
+      lost_confirm_frames: 3
+      recovery_confirm_frames: 5
+      min_inlier_ratio: 0.50
+      inlier_likelihood_threshold: 0.35
+      trim_ratio: 0.25
+      min_score_improvement: 0.02
+      large_correction_translation: 0.05
+      large_correction_rotation_deg: 2.0
+      degraded_correction_gain: 0.20
+      max_locked_translation_step: 0.03
+      max_locked_rotation_step_deg: 1.0
+      max_degraded_translation_step: 0.01
+      max_degraded_rotation_step_deg: 0.3
+
+    # 剔除与左右相邻束都不连续的单点回波。
+    filter:
+      isolated_point_enabled: true
+      isolated_range_threshold: 0.10
+      static_wall_enabled: true  # 定位只使用预测端点靠近race_modify固定墙体的雷达点
+      static_wall_max_distance: 0.25  # 雷达端点距固定墙体不超过该距离才参与匹配，单位m
+      static_wall_min_points: 20  # 每帧至少保留这么多固定墙体点才执行定位匹配
+
+    # 使用扫描起止 odom 位姿将各束补偿到扫描起始时刻。
+    deskew:
+      enabled: true
+      max_scan_time: 0.15
+
+    # 起点允许存在小量测误差，但不允许正方形外墙触发大范围粗搜索。
+    coarse_search:
+      enabled: false
+      trigger_score: 0.45
+      linear_range: 0.75
+      angular_range_deg: 30.0
+      linear_step: 0.10
+      angular_step_deg: 3.0
+      interval_frames: 3
+      prior_translation_weight: 0.50
+      prior_rotation_weight: 0.50
+
+    covariance:
+      x: 0.05
+      y: 0.05
+      yaw: 0.03

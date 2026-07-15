@@ -62,30 +62,20 @@ ros2 launch origincar_system visual_control_test.launch.py \
 追点结束后恢复：赛道线 + 停车位 + 障碍物，忽略二维码
 ```
 
-### 终端三：避障版本二选一
-
-雷达避障版本：
+### 终端三：视觉触发、雷达辅助方向决策的追点链路
 
 ```bash
-ros2 launch origincar_system smooth_path_follower.launch.xml
+ros2 launch origincar_system visual_lidar_path_follower.launch.xml
 ```
 
-该版本由 `smooth_path_follower` 直接向 `/cmd_vel` 发布速度，追点阶段使用
-`/scan` 雷达避障。
+组合节点的运行参数统一放在：
 
-视觉避障版本：
-
-```bash
-ros2 launch visual_path_avoidance visual_path_follower.launch.xml
+```text
+/root/D_Robot/test/dev_ws/src/origincar_system/config/visual_lidar_path_follower.yaml
 ```
 
-该命令同时启动 `smooth_path_follower` 和 `visual_path_avoidance`。追点器先向
-`/visual_path_cmd_vel` 发布速度，再由视觉避障节点处理锥桶并输出到 `/cmd_vel`；
-追点器自身的雷达避障会自动关闭。
-
-> 终端三只能选择一个版本，禁止同时启动两个 launch，否则会争抢 `/cmd_vel`。
-> 切换版本时先停车并关闭当前终端三，再启动另一个版本；建议同时重启终端二，
-> 让 `visual_control` 的阶段状态重新开始。
+正常调参只修改这一份 YAML。该命令启动一个 `visual_lidar_path_follower` 节点，
+节点内部完成路径追踪、视觉触发和雷达点云簇辅助方向决策，并直接输出 `/cmd_vel`。
 
 ## 单节点启动参考
 
@@ -133,19 +123,18 @@ ros2 launch visual_control visual_control.launch.py avoid_angular_ratio:=-0.005 
   -> 第二次visual_control（线+停车位+障碍物）
 ```
 
-此实验不会修改原来的雷达避障版。追点器将原始速度发布到
-`/visual_path_cmd_vel`，`visual_path_avoidance` 根据
-`/racing_obstacle_detection` 的锥桶检测结果修正速度，再发布到
-`/cmd_vel`。
+`visual_lidar_path_follower` 在同一个控制循环中先计算巡点速度，再根据
+`/racing_obstacle_detection` 的锥桶检测结果决定是否覆盖为避障速度，最后直接
+发布到 `/cmd_vel`。
 
 - `/sign4return=5`：挂起 `visual_control`，启用视觉追点避障。
 - `/sign4return=6`：停止视觉追点避障输出，恢复 `visual_control`。
 - 第一次 `visual_control` 忽略停车位，避免在扫码前误停车。
 - 第二次 `visual_control` 忽略二维码，只寻找赛道线、障碍物和停车位。
-- `visual_path_avoidance` 只处理 `construction_cone`，不会跟随二维码或停车位。
-- 避障方向优先采用当前航点的追踪方向。
+- `visual_lidar_path_follower` 只处理 `construction_cone`，不会跟随二维码或停车位。
+- 避障方向由路径方向参考点与最近非墙点云簇的相对角度决定。
 - 障碍物消失后直接恢复追点，不执行回线操作。
-- 视觉检测或追点速度超时后停车。
+- 缺少路径方向目标、雷达或有效点云簇时停车等待，不回退到纯视觉方向。
 - 前视相机无法观察车后方，倒车航点不启用视觉避障。
 
 编译：
@@ -154,7 +143,7 @@ ros2 launch visual_control visual_control.launch.py avoid_angular_ratio:=-0.005 
 cd /root/D_Robot/test/dev_ws
 source /opt/tros/humble/setup.bash
 source /root/D_Robot/dev_ws/install/setup.bash
-colcon build --packages-select visual_path_avoidance
+colcon build --packages-select origincar_system
 source install/setup.bash
 ```
 
@@ -173,31 +162,10 @@ cd /root/D_Robot/test/dev_ws
 source /opt/tros/humble/setup.bash
 source /root/D_Robot/dev_ws/install/setup.bash
 source install/setup.bash
-ros2 launch visual_path_avoidance visual_path_follower.launch.xml
+ros2 launch origincar_system visual_lidar_path_follower.launch.xml
 ```
 
-上面的命令会同时启动：
-
-```text
-smooth_path_follower
-visual_path_avoidance
-```
-
-因此不要再单独启动 `smooth_path_follower.launch.xml`，也不需要另外执行
-`ros2 run visual_path_avoidance visual_path_avoidance`。
-
-只调试视觉避障过滤器、不启动追点器时，可以单独运行：
-
-```bash
-ros2 run visual_path_avoidance visual_path_avoidance --ros-args \
-  -p active_on_start:=true \
-  -p path_cmd_vel_topic:=/visual_path_cmd_vel \
-  -p output_cmd_vel_topic:=/cmd_vel \
-  -p detection_topic:=/racing_obstacle_detection
-```
-
-单独运行时还必须有节点持续向 `/visual_path_cmd_vel` 发布追点速度；正常跑完整
-流程时使用上面的一键 launch 即可。
+上面的命令只启动一个组合节点，不需要额外运行追点器或避障过滤器。
 
 实验版默认沿用上面的中速参数：
 

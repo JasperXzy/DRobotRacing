@@ -1,0 +1,92 @@
+# 二维码后巡点和 waypoint_shift 点云航点平移的唯一参数入口。
+visual_lidar_path_follower:
+  ros__parameters:
+    # 航点、坐标系与输出
+    waypoints_file: /root/D_Robot/test/dev_ws/src/origincar_system/config/waypoints_qr.yaml  # 兼容模式下扫码前行驶的航点文件
+    route_waypoints_file: /root/D_Robot/test/dev_ws/src/origincar_system/config/waypoints_channel.yaml  # 扫码后巡点路线文件
+    frame_id: map  # 航点所在的地图坐标系
+    base_frame_id: base_link  # 车辆本体坐标系
+    cmd_vel_topic: /cmd_vel  # 速度指令发布话题
+    debug_control_logs: true  # 是否输出详细控制日志
+    wait_for_qr_before_start: true  # 启动后是否停车等待二维码再开始巡点
+    enable_debug_visualization: true  # 是否发布 Foxglove 中的 waypoints、圆锥圆心和拟合圆
+    # 正向追点
+    control_frequency: 50.0  # 控制循环频率，单位 Hz
+    linear_speed: 0.9  # 正常巡点线速度，单位 m/s
+    turn_angular_gain: 2.0  # 正向航向误差到角速度的比例增益
+    lookahead_distance: 0.65  # 正常巡点目标的前瞻距离，单位 m
+    pass_radius: 0.6  # 航点未单独配置时使用的默认通过半径，单位 m
+    route_projection_max_distance: 1.2  # 允许车辆匹配当前路线段的最大横向距离，单位 m
+    segment_advance_t: 0.6  # 车辆投影超过当前线段此比例时推进路线进度
+
+    # 倒车追点；倒车时不更新 waypoint_shift
+    reverse_angular_gain: 1.1  # 倒车航向误差到角速度的比例增益
+    reverse_goal_lookahead_distance: 0.25  # 倒车目标允许的最大前瞻距离，单位 m
+    reverse_pass_radius: 0.25  # 倒车航点未单独配置时的通过半径，单位 m
+
+    # 雷达和地图输入
+    scan_topic: /scan  # 雷达扫描数据话题
+    map_topic: /map  # race_modify 定位地图；同时用于过滤真实固定墙体点云
+    restriction_map_topic: /restriction_map  # race_keepout 禁行地图；用于决定waypoint_shift方向并过滤软禁行区域点云
+
+    # waypoint_shift 点云簇与 Foxglove 圆锥圆显示
+    cluster_max_point_gap: 0.06   # 同一点云簇相邻点允许的最大空间间距，单位 m
+    cluster_max_range_jump: 0.10  # 同一点云簇相邻点允许的最大距离突变，单位 m
+    cluster_min_points: 3         # 有效圆锥点云簇至少包含的雷达点数
+    cone_circle_min_radius: 0.03  # 接受的圆锥截面拟合最小半径，单位 m；对应约7cm直径
+    cone_circle_max_radius: 0.07  # 接受的圆锥截面拟合最大半径，单位 m；对应约13cm直径
+    cone_circle_max_rmse: 0.015   # 接受圆拟合的最大径向均方根误差，单位 m
+    waypoint_shift_clearance_radius: 0.60   # 从点云簇中心沿路线横截方向搜索禁行区域的最大距离，单位 m
+    waypoint_shift_occupied_threshold: 50   # 横截方向判断的地图占据阈值；软禁行区和真实墙体都应达到该值
+    waypoint_shift_check_count: 80          # waypoint_shift模式每帧从当前追踪点开始检查的航点数量
+    waypoint_cloud_check_radius: 0.30       # 点云距未来路线小于该距离才触发平移，单位 m；提前距离由check_count决定
+    waypoint_shift_target_clearance: 0.3   # 偏移后的路线在空旷侧横截方向越过点云最外沿的目标净距，单位 m
+    waypoint_shift_points_before: 40        # 障碍物最近路线点之前、车与障碍物之间统一偏移的点数
+    waypoint_shift_points_after: 30          # 障碍物最近路线点之后、离车更远方向统一偏移的点数
+    enable_static_map_filter: true          # 是否同时用race_modify和race_keepout过滤真实墙体及软禁行区域点云
+    require_map_for_lidar_assist: true      # 任一地图未收到时是否暂停需要非静态点云的辅助判断和二维码后撤检查
+    static_map_occupied_threshold: 90       # race_modify真实墙体的点云过滤占据阈值
+    static_map_inflation_cells: 0           # 两张地图的静态占据区域过滤时统一向周围扩展的栅格数
+
+    # 扫到二维码后、开始追通道点前的点云后撤
+    qr_escape_check_distance: 0.50  # 左右比较矩形从车辆中心向前延伸的距离，单位 m
+    qr_escape_rear_extension: 0.0  # 左右比较矩形向后延伸的距离，应覆盖车屁股，单位 m
+    qr_escape_half_width: 0.25  # 左右比较矩形的左右半宽，单位 m
+    qr_escape_min_points: 1  # 比较矩形内非墙点达到该数量时触发二维码后撤
+    qr_reverse_linear_speed: 0.70  # 二维码保护默认右后撤使用的倒车速度绝对值，单位 m/s
+    qr_reverse_angular_speed: 2.0  # 二维码保护默认右后撤使用的转向量绝对值
+    qr_rear_warning_start_distance: 0.00  # 警戒矩形近端距base_link中心的后向距离，位于车屁股之后，单位 m
+    qr_rear_check_distance: 0.25  # 警戒矩形远端距base_link中心的后向距离，单位 m
+    qr_rear_half_width: 0.25  # 后方警戒矩形的左右半宽，单位 m
+    qr_rear_min_points: 2  # 后方警戒区非墙点达到该数量时结束倒车并恢复巡点
+    qr_protect_exit_waypoint_distance: 0.25  # 扫码后保护保持到车辆进入最近通道航点该距离内，单位 m
+
+    # QR 选路和 visual_control 接管切换
+    route_direction: auto  # 未通过二维码指定时的路线方向；auto 使用航点文件设置
+    enable_qr_direction_select: true  # 是否根据二维码内容选择顺逆时针路线
+    qr_topic: /qr_code  # 二维码识别结果话题
+    suspend_visual_control_on_qr: true  # 扫码接管巡点时是否通知 visual_control 挂起
+    resume_visual_control_on_finish: true  # 巡点结束后是否通知 visual_control 恢复
+    visual_control_suspend_topic: /sign4return  # visual_control 接管状态切换话题
+    visual_control_suspend_value: 5  # 通知 visual_control 挂起时发布的整数值
+    visual_control_resume_value: 6  # 通知 visual_control 恢复时发布的整数值
+    use_qr_parity_direction: true  # 是否使用奇数顺时针、偶数逆时针的选路规则
+    clockwise_qr_value: 1  # 不使用奇偶规则时代表顺时针的二维码值
+    counterclockwise_qr_value: 2  # 不使用奇偶规则时代表逆时针的二维码值
+
+    # 独立图生文拍照直线；运行时用“对齐点->拍照点”替换附近圆弧，不受waypoint编号变化影响
+    enable_image_analysis_trigger: false  # 是否在环线中到达所选拍照点后触发一次图生文
+    image_capture_clockwise_align_x: 3.3  # 顺时针右侧对齐点map坐标x，单位m
+    image_capture_clockwise_align_y: 4.05  # 顺时针右侧对齐点map坐标y，单位m
+    image_capture_clockwise_x: 3.4  # 顺时针使用的右侧车辆拍照点map坐标x，单位m
+    image_capture_clockwise_y: 4.05  # 顺时针使用的右侧车辆拍照点map坐标y，单位m
+    image_capture_counterclockwise_align_x: 0.45  # 逆时针左侧对齐点map坐标x，单位m
+    image_capture_counterclockwise_align_y: 4.05  # 逆时针左侧对齐点map坐标y，单位m
+    image_capture_counterclockwise_x: 0.45  # 逆时针使用的左侧车辆拍照点map坐标x，单位m
+    image_capture_counterclockwise_y: 4.05  # 逆时针使用的左侧车辆拍照点map坐标y，单位m
+    image_capture_radius: 0.3  # 必须真正进入此距离才算到达，且路线进度不能跳过该点，单位m
+    image_capture_slow_distance: 0.50  # 距拍照点小于此距离开始限速，单位m
+    image_capture_slow_speed: 0.5  # 接近拍照点时的最大线速度，单位m/s
+    image_capture_stop_time: 0.1  # 到点后先停车稳定这么久再拍照，单位s
+    image_capture_trigger_value: 8  # 发布到图生文触发话题的整数值
+    image_analysis_trigger_topic: /sign4return  # 图像分析触发整数消息的发布话题
