@@ -14,9 +14,9 @@ visual_lidar_path_follower:
     # 正向追点
     control_frequency: 50.0  # 控制循环频率，单位 Hz
     linear_speed: 0.95  # 正常巡点线速度，单位 m/s
-    turn_angular_gain: 1.5  # 正向航向误差到下位机前轮目标转角的比例增益
+    turn_angular_gain: 2.0  # 正向航向误差到下位机前轮目标转角的比例增益
     enable_turn_speed_slowdown: true  # 是否根据下位机目标舵机PWM行程直接降低巡点线速度
-    max_turn_speed_reduction_percent: 30.0  # 舵机左右打满时的最大降速百分比，允许范围0～90
+    max_turn_speed_reduction_percent: 20.0  # 舵机左右打满时的最大降速百分比，允许范围0～90
     lookahead_distance: 0.5  # 正常巡点目标的前瞻距离，单位 m
     pass_radius: 0.6  # 航点未单独配置时使用的默认通过半径，单位 m
     route_projection_max_distance: 1.2  # 允许车辆匹配当前路线段的最大横向距离，单位 m
@@ -43,9 +43,9 @@ visual_lidar_path_follower:
     waypoint_shift_occupied_threshold: 50   # 横截方向判断的地图占据阈值；软禁行区和真实墙体都应达到该值
     waypoint_shift_check_count: 100          # waypoint_shift模式每帧从当前追踪点开始检查的航点数量
     waypoint_cloud_check_radius: 0.5       # 点云距未来路线小于该距离才触发平移，单位 m；提前距离由check_count决定
-    waypoint_shift_target_clearance: 0.3   # 偏移后的路线在空旷侧横截方向越过点云最外沿的目标净距，单位 m
-    waypoint_shift_points_before: 35        # 障碍物最近路线点之前、车与障碍物之间统一偏移的点数
-    waypoint_shift_points_after: 25          # 障碍物最近路线点之后、离车更远方向统一偏移的点数
+    waypoint_shift_target_clearance: 0.25   # 偏移后的路线在空旷侧横截方向越过点云最外沿的目标净距，单位 m
+    waypoint_shift_points_before: 25        # 障碍物最近路线点之前、车与障碍物之间统一偏移的点数
+    waypoint_shift_points_after: 15          # 障碍物最近路线点之后、离车更远方向统一偏移的点数
     waypoint_shift_confirm_scans: 3          # 同方向候选偏移连续命中这么多帧后才真正刷新路线
     waypoint_shift_release_scans: 8          # 连续这么多帧未命中后释放已提交偏移，回到原始航点
     waypoint_shift_min_change: 0.02          # 已提交偏移变化小于该值时不刷新路线，单位 m
@@ -53,6 +53,51 @@ visual_lidar_path_follower:
     require_map_for_lidar_assist: true      # 任一地图未收到时是否暂停需要非静态点云的辅助判断和二维码后撤检查
     static_map_occupied_threshold: 90       # race_modify真实墙体的点云过滤占据阈值
     static_map_inflation_cells: 2           # 两张地图的静态占据区域过滤时统一向周围扩展的栅格数
+
+    # ========================================================================
+    # waypoint_shift方案切换
+    #   1：完整保留原来的“运动中实时定位+当前窗口动态偏移”逻辑
+    #   2：静止阶段全channel规划，可信发车时冻结绿色旧簇，运行中只更新红色新簇
+    # ========================================================================
+    waypoint_shift_logic: 2
+
+    # --------------------------- 逻辑2：静止规划 ----------------------------
+    logic2_static_route_direction: clockwise  # 扫码前绘图用的基准channel；扫码后会按QR方向重算并覆盖前两张图
+    logic2_static_cluster_match_radius: 0.15  # 静止阶段相邻帧簇中心小于该距离视为同一簇，单位m
+    logic2_static_cluster_confirm_scans: 3    # 连续命中这么多帧才允许进入最终绿色快照
+    logic2_static_cluster_release_scans: 5    # 连续消失这么多帧便从静止快照移除，可排除离场后的裁判脚
+
+    # ------------------------- 逻辑2：可信发车判定 --------------------------
+    logic2_odom_topic: /chassis/odom          # 直接使用底盘编码器里程计，不用map->base_link TF判断发车
+    logic2_motion_speed_threshold: 0.03       # 编码器平移速度门限，单位m/s；明显高于已测静止零漂
+    logic2_motion_displacement_threshold: 0.01  # 速度未报出时的累计位移备份门限，单位m
+    logic2_motion_confirm_messages: 2         # 连续两条运动消息才冻结；第一条先锁住上一静止快照
+    logic2_enable_tts: true
+    logic2_tts_topic: /tts_text
+    logic2_route_ready_text: 路线已规划完毕
+
+    # ------------------------- 逻辑2：运行中新点云 --------------------------
+    logic2_old_cluster_radius: 0.50           # 绿色旧簇锁定/抑制半径，单位m；圆内不更新路线
+    logic2_runtime_roi_width: 2.0             # 以车为中心的新簇检测矩形宽度，单位m
+    logic2_runtime_roi_height: 2.0            # 以车为中心的新簇检测矩形高度，单位m
+    logic2_red_history_merge_radius: 0.20     # 仅用于第三张图合并同一红簇记录，不参与控制抑制，单位m
+
+    # ---------------------- 逻辑2：规划专用稳定坐标 -------------------------
+    # live_lidar_location：完全沿用实时map定位
+    # frozen_map_odom：冻结发车时map->odom，只用EKF odom->base传播
+    # filtered_map_odom：推荐；EKF传播，并让lidar_location只做慢速限幅校正
+    logic2_planning_pose_source: filtered_map_odom
+    logic2_odom_frame_id: odom
+    logic2_pose_correction_deadband_xy: 0.005   # 小于该平移差不修正，防止路线随定位细抖，单位m
+    logic2_pose_correction_deadband_yaw: 0.003  # 小于该航向差不修正，单位rad
+    logic2_pose_correction_rate_xy: 0.02        # map->odom每秒最多校正的平移量，单位m/s
+    logic2_pose_correction_rate_yaw: 0.02       # map->odom每秒最多校正的航向量，单位rad/s
+    logic2_pose_outlier_xy: 0.20                # 超过该差值视为lidar_location跳变，本帧拒绝，单位m
+    logic2_pose_outlier_yaw: 0.15               # 超过该航向差视为跳变，本帧拒绝，单位rad
+
+    # --------------------------- 逻辑2：三张图 ------------------------------
+    logic2_output_root: /root/D_Robot/test/dev_ws/src/origincar_system/path
+    logic2_restriction_map_yaml: /root/D_Robot/test/dev_ws/src/origincar_system/map/race_keepout.yaml
 
     # 扫到二维码后立即追 channel；进场阶段保留视觉覆盖与一次性点云后撤
     qr_reverse_min_map_x: 2.8  # 扫码瞬间 map.x 大于该值才允许本轮最多触发一次倒车；左侧直接跳过

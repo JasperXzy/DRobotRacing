@@ -33,6 +33,7 @@ install(DIRECTORY launch config foxglove map DESTINATION share/${PROJECT_NAME})
 
 install(PROGRAMS
   scripts/open_foxglove.sh
+  scripts/route_snapshot_renderer.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

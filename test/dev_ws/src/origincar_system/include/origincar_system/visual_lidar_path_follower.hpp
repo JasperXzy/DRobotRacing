@@ -11,6 +11,7 @@
 #include "ai_msgs/msg/perception_targets.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
+#include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/laser_scan.hpp"
@@ -108,6 +109,23 @@ private:
     int rear_right_count{0};
   };
 
+  struct Logic2TrackedCluster
+  {
+    ScanPointCluster cluster;
+    int hit_count{0};
+    int missing_count{0};
+  };
+
+  struct Logic2PlanningSnapshot
+  {
+    bool valid{false};
+    double stamp_seconds{0.0};
+    std::vector<Waypoint> original_route;
+    std::vector<Waypoint> shifted_route;
+    std::vector<double> offsets;
+    std::vector<ScanPointCluster> clusters;
+  };
+
   // 参数与路线状态
   std::string waypoints_file_;
   std::string route_waypoints_clockwise_file_;
@@ -168,6 +186,36 @@ private:
   bool require_map_for_lidar_assist_{true};
   int static_map_occupied_threshold_{90};
   int static_map_inflation_cells_{4};
+
+  // waypoint_shift 方案选择：1=原有实时方案，2=静止快照冻结+运行中新簇方案。
+  int waypoint_shift_logic_{1};
+  std::string logic2_static_route_direction_{"clockwise"};
+  std::string logic2_odom_topic_{"/chassis/odom"};
+  std::string logic2_odom_frame_id_{"odom"};
+  std::string logic2_planning_pose_source_{"filtered_map_odom"};
+  std::string logic2_output_root_{
+    "/root/D_Robot/test/dev_ws/src/origincar_system/path"};
+  std::string logic2_restriction_map_yaml_{
+    "/root/D_Robot/test/dev_ws/src/origincar_system/map/race_keepout.yaml"};
+  std::string logic2_tts_topic_{"/tts_text"};
+  std::string logic2_route_ready_text_{"路线已规划完毕"};
+  double logic2_motion_speed_threshold_{0.03};
+  double logic2_motion_displacement_threshold_{0.01};
+  int logic2_motion_confirm_messages_{2};
+  double logic2_old_cluster_radius_{0.50};
+  double logic2_runtime_roi_width_{2.0};
+  double logic2_runtime_roi_height_{2.0};
+  double logic2_static_cluster_match_radius_{0.15};
+  int logic2_static_cluster_confirm_scans_{3};
+  int logic2_static_cluster_release_scans_{5};
+  double logic2_red_history_merge_radius_{0.20};
+  double logic2_pose_correction_deadband_xy_{0.005};
+  double logic2_pose_correction_deadband_yaw_{0.003};
+  double logic2_pose_correction_rate_xy_{0.02};
+  double logic2_pose_correction_rate_yaw_{0.02};
+  double logic2_pose_outlier_xy_{0.20};
+  double logic2_pose_outlier_yaw_{0.15};
+  bool logic2_enable_tts_{true};
 
   double qr_escape_check_distance_{0.60};
   double qr_escape_rear_extension_{0.20};
@@ -246,12 +294,41 @@ private:
   nav_msgs::msg::OccupancyGrid::ConstSharedPtr latest_map_;
   nav_msgs::msg::OccupancyGrid::ConstSharedPtr latest_restriction_map_;
 
+  // 逻辑2状态：发车前持续快照，可信运动后冻结绿色簇，运行中仅处理红色新簇。
+  std::vector<Logic2TrackedCluster> logic2_static_cluster_tracks_;
+  std::vector<Logic2TrackedCluster> logic2_runtime_red_tracks_;
+  Logic2PlanningSnapshot logic2_latest_snapshot_;
+  Logic2PlanningSnapshot logic2_motion_pending_snapshot_;
+  std::vector<ScanPointCluster> logic2_green_clusters_;
+  std::vector<Point2D> logic2_red_cluster_history_;
+  std::vector<double> logic2_frozen_base_offsets_;
+  std::vector<Waypoint> logic2_frozen_original_route_;
+  std::vector<Waypoint> logic2_frozen_route_;
+  std::vector<Waypoint> logic2_visualization_route_;
+  std::vector<double> logic2_visualization_offsets_;
+  bool logic2_motion_candidate_{false};
+  bool logic2_route_frozen_{false};
+  bool logic2_odom_reference_valid_{false};
+  bool logic2_map_odom_plan_valid_{false};
+  bool logic2_replay_frozen_clusters_{false};
+  bool logic2_force_full_route_{false};
+  bool logic2_force_confirm_{false};
+  bool logic2_final_snapshot_published_{false};
+  int logic2_motion_candidate_count_{0};
+  double logic2_odom_reference_x_{0.0};
+  double logic2_odom_reference_y_{0.0};
+  RobotPose logic2_map_odom_plan_;
+  std::chrono::steady_clock::time_point logic2_last_pose_correction_at_;
+  std::string logic2_session_id_;
+
   // ROS 通信对象
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_pub_;
   rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr image_analysis_trigger_pub_;
   rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr visual_control_suspend_pub_;
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr logic2_tts_pub_;
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr logic2_snapshot_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr debug_marker_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr debug_route_marker_pub_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr debug_path_pub_;
@@ -260,6 +337,7 @@ private:
   rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr restriction_map_sub_;
   rclcpp::Subscription<ai_msgs::msg::PerceptionTargets>::SharedPtr visual_detection_sub_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr qr_sub_;
+  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr logic2_odom_sub_;
   rclcpp::TimerBase::SharedPtr timer_;
 
   const char * control_state_name(ControlState state) const;
@@ -313,6 +391,21 @@ private:
   void reset_waypoint_shift_state();
   void update_waypoint_shifts(
     const RobotPose & robot_pose, std::size_t target_waypoint_index);
+  bool logic2_cluster_hits_route_window(
+    const ScanPointCluster & cluster, std::size_t first_index,
+    std::size_t last_index) const;
+  void update_logic2_static_cluster_tracks(
+    const std::vector<ScanPointCluster> & clusters);
+  void update_logic2_runtime_red_tracks(
+    const std::vector<ScanPointCluster> & clusters);
+  std::vector<ScanPointCluster> logic2_confirmed_static_clusters() const;
+  void logic2_odom_callback(const nav_msgs::msg::Odometry::ConstSharedPtr msg);
+  void freeze_logic2_route();
+  void apply_logic2_frozen_clusters_to_current_route();
+  void update_logic2_visualization_route();
+  void publish_logic2_snapshot(const std::string & event);
+  std::string make_logic2_session_id() const;
+  bool lookup_logic2_planning_pose(RobotPose & pose);
 
   void publish_debug_route();
   void publish_debug_visualization(const RobotPose & pose);

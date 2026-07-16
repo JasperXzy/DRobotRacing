@@ -26,4 +26,10 @@
       name="route_waypoints_counterclockwise_file"
       value="$(var route_waypoints_counterclockwise_file)"/>
   </node>
+
+  <node
+    pkg="origincar_system"
+    exec="route_snapshot_renderer.py"
+    name="route_snapshot_renderer"
+    output="screen"/>
 </launch>
