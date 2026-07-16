@@ -1,14 +1,17 @@
-import os
-
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
+from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
-    default_config_file = os.path.normpath(
-        '/root/D_Robot/dev_ws/config/localization/ekf_test.yaml')
+    default_config_file = PathJoinSubstitution([
+        FindPackageShare('origincar_system'),
+        'config',
+        'localization',
+        'ekf.yaml',
+    ])
 
     use_sim_time_arg = DeclareLaunchArgument(
         'use_sim_time',

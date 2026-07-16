@@ -6,19 +6,25 @@ from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_xml.launch_description_sources import XMLLaunchDescriptionSource
-from launch_ros.actions import Node
+from launch_ros.actions import LifecycleNode, Node
 from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
     launch_dir = os.path.dirname(os.path.abspath(__file__))
+    test_share = FindPackageShare('origincar_system')
 
+    camera_config_file = LaunchConfiguration('camera_config_file')
+    chassis_config_file = LaunchConfiguration('chassis_config_file')
     lidar_config_file = LaunchConfiguration('lidar_config_file')
     ekf_config_file = LaunchConfiguration('ekf_config_file')
     nav2_params_file = LaunchConfiguration('nav2_params_file')
+    map_yaml_file = LaunchConfiguration('map_yaml_file')
+    restriction_map_yaml_file = LaunchConfiguration('restriction_map_yaml_file')
     qr_detector_params_file = LaunchConfiguration('qr_detector_params_file')
     perception_detector_params_file = LaunchConfiguration('perception_detector_params_file')
+    line_detector_params_file = LaunchConfiguration('line_detector_params_file')
     vlm_trigger_value = LaunchConfiguration('vlm_trigger_value')
     vlm_camera_topic = LaunchConfiguration('vlm_camera_topic')
     qr_stop_on_detect = LaunchConfiguration('qr_stop_on_detect')
@@ -26,29 +32,74 @@ def generate_launch_description():
 
     args = [
         DeclareLaunchArgument(
+            'camera_config_file',
+            default_value=PathJoinSubstitution([
+                test_share, 'config', 'drivers', 'camera_driver.yaml',
+            ]),
+            description='Camera config maintained in the test workspace.',
+        ),
+        DeclareLaunchArgument(
+            'chassis_config_file',
+            default_value=PathJoinSubstitution([
+                test_share, 'config', 'drivers', 'chassis_driver.yaml',
+            ]),
+            description='Chassis config maintained in the test workspace.',
+        ),
+        DeclareLaunchArgument(
             'lidar_config_file',
-            default_value='/root/D_Robot/dev_ws/config/drivers/lidar_driver_test.yaml',
-            description='Test lidar config file. Mainline lidar_driver.yaml is not modified.',
+            default_value=PathJoinSubstitution([
+                test_share, 'config', 'drivers', 'lidar_driver.yaml',
+            ]),
+            description='Lidar config maintained in the test workspace.',
         ),
         DeclareLaunchArgument(
             'ekf_config_file',
-            default_value='/root/D_Robot/dev_ws/config/localization/ekf_test.yaml',
-            description='Test EKF config file. Mainline ekf.yaml is not modified.',
+            default_value=PathJoinSubstitution([
+                test_share, 'config', 'localization', 'ekf.yaml',
+            ]),
+            description='EKF config maintained in the test workspace.',
         ),
         DeclareLaunchArgument(
             'nav2_params_file',
-            default_value='/root/D_Robot/dev_ws/config/nav2/nav2_test.yaml',
-            description='Test map_server and AMCL params file.',
+            default_value=PathJoinSubstitution([
+                test_share, 'config', 'nav2', 'nav2.yaml',
+            ]),
+            description='Map server and AMCL config maintained in the test workspace.',
+        ),
+        DeclareLaunchArgument(
+            'map_yaml_file',
+            default_value=PathJoinSubstitution([
+                test_share, 'map', 'race_modify.yaml',
+            ]),
+            description='Physical-wall map used by AMCL localization.',
+        ),
+        DeclareLaunchArgument(
+            'restriction_map_yaml_file',
+            default_value=PathJoinSubstitution([
+                test_share, 'map', 'race_keepout.yaml',
+            ]),
+            description='Keepout map used for waypoint_shift direction and static scan filtering.',
         ),
         DeclareLaunchArgument(
             'qr_detector_params_file',
-            default_value='/root/D_Robot/dev_ws/config/perception/qr_detector.yaml',
-            description='Mainline QR detector params file.',
+            default_value=PathJoinSubstitution([
+                test_share, 'config', 'perception', 'qr_detector.yaml',
+            ]),
+            description='QR detector config maintained in the test workspace.',
         ),
         DeclareLaunchArgument(
             'perception_detector_params_file',
-            default_value='/root/D_Robot/dev_ws/config/perception/perception_detector.yaml',
-            description='Mainline perception detector params file.',
+            default_value=PathJoinSubstitution([
+                test_share, 'config', 'perception', 'perception_detector.yaml',
+            ]),
+            description='Perception detector config maintained in the test workspace.',
+        ),
+        DeclareLaunchArgument(
+            'line_detector_params_file',
+            default_value=PathJoinSubstitution([
+                test_share, 'config', 'perception', 'line_detector.yaml',
+            ]),
+            description='Line detector config maintained in the test workspace.',
         ),
         DeclareLaunchArgument(
             'vlm_trigger_value',
@@ -62,12 +113,12 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'qr_stop_on_detect',
-            default_value='false',
-            description='Keep QR publishing in test flow so smooth_path_follower can start later.',
+            default_value='true',
+            description='Stop QR decoding after the first valid code selects the channel route.',
         ),
         DeclareLaunchArgument(
             'start_foxglove',
-            default_value='false',
+            default_value='true',
             description='Start foxglove_bridge together with the test bringup.',
         ),
     ]
@@ -79,20 +130,38 @@ def generate_launch_description():
                 'launch',
                 'camera.launch.py',
             ])
-        )
-    )
-
-    lidar_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            PathJoinSubstitution([
-                FindPackageShare('lidar_driver'),
-                'launch',
-                'lidar.launch.py',
-            ])
         ),
         launch_arguments={
-            'lidar_config_file': lidar_config_file,
+            'camera_config_file': camera_config_file,
         }.items(),
+    )
+
+    # Start the driver directly so the test flow publishes exactly one
+    # base_link -> laser transform using the measured horizontal offset.
+    lidar_node = LifecycleNode(
+        package='lidar_driver',
+        executable='lidar_driver_node',
+        name='lidar_driver_node',
+        namespace='',
+        output='screen',
+        emulate_tty=True,
+        parameters=[lidar_config_file],
+    )
+
+    laser_static_tf = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='base_link_to_laser',
+        arguments=[
+            '--x', '0.0325',
+            '--y', '0.0',
+            '--z', '0.05',
+            '--roll', '0.0',
+            '--pitch', '0.0',
+            '--yaw', '0.0',
+            '--frame-id', 'base_link',
+            '--child-frame-id', 'laser',
+        ],
     )
 
     chassis_launch = IncludeLaunchDescription(
@@ -102,17 +171,10 @@ def generate_launch_description():
                 'launch',
                 'chassis.launch.py',
             ])
-        )
-    )
-
-    description_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            PathJoinSubstitution([
-                FindPackageShare('origincar_description'),
-                'launch',
-                'display.launch.py',
-            ])
-        )
+        ),
+        launch_arguments={
+            'chassis_config_file': chassis_config_file,
+        }.items(),
     )
 
     ekf_launch = IncludeLaunchDescription(
@@ -129,7 +191,23 @@ def generate_launch_description():
         executable='map_server',
         name='map_server',
         output='screen',
-        parameters=[nav2_params_file],
+        parameters=[
+            nav2_params_file,
+            {'yaml_filename': map_yaml_file},
+        ],
+    )
+
+    restriction_map_server_node = Node(
+        package='nav2_map_server',
+        executable='map_server',
+        name='restriction_map_server',
+        output='screen',
+        parameters=[{
+            'use_sim_time': False,
+            'yaml_filename': restriction_map_yaml_file,
+            'topic_name': 'restriction_map',
+            'frame_id': 'map',
+        }],
     )
 
     amcl_node = Node(
@@ -151,7 +229,7 @@ def generate_launch_description():
         parameters=[{
             'use_sim_time': False,
             'autostart': True,
-            'node_names': ['map_server', 'amcl'],
+            'node_names': ['map_server', 'restriction_map_server', 'amcl'],
         }],
     )
 
@@ -161,6 +239,15 @@ def generate_launch_description():
         name='perception_detector_node',
         output='screen',
         parameters=[perception_detector_params_file],
+    )
+
+    line_detector_node = Node(
+        package='line_detector',
+        executable='line_detector_node',
+        name='GetLineCoordinate',
+        output='screen',
+        parameters=[line_detector_params_file],
+        arguments=['--ros-args', '--log-level', 'info'],
     )
 
     vlm_launch = IncludeLaunchDescription(
@@ -177,6 +264,8 @@ def generate_launch_description():
             'camera_topic': vlm_camera_topic,
             'trigger_value': vlm_trigger_value,
             'infer_on_capture': 'true',
+            'captured_image_file':
+                '/root/D_Robot/test/dev_ws/captures/vlm_tts_demo_capture.jpg',
         }.items(),
     )
 
@@ -207,29 +296,31 @@ def generate_launch_description():
     return LaunchDescription([
         *args,
 
-        # t=0s: hardware, robot model and optional visualization bridge.
+        # t=0s: hardware, the single measured laser TF and visualization bridge.
         chassis_launch,
-        lidar_launch,
+        lidar_node,
+        laser_static_tf,
         camera_launch,
-        description_launch,
         foxglove_launch,
 
         # t=3s: odom fusion and required IMU static TFs.
         TimerAction(period=3.0, actions=[ekf_launch]),
 
-        # t=5s: map_server + AMCL, then lifecycle manager activates both.
+        # t=5s: physical map, restriction map and AMCL.
         TimerAction(period=5.0, actions=[
             map_server_node,
+            restriction_map_server_node,
             amcl_node,
             amcl_lifecycle_manager,
         ]),
 
-        # t=7s: camera perception and VLM/TTS.
+        # t=7s: camera perception, line detection and VLM/TTS.
         TimerAction(period=7.0, actions=[
             perception_detector_node,
+            line_detector_node,
             vlm_launch,
         ]),
 
-        # t=9s: QR detector. It keeps publishing in test flow by default.
+        # t=9s: QR detector.
         TimerAction(period=9.0, actions=[qr_detector_node]),
     ])

@@ -3,11 +3,12 @@
 <package format="3">
   <name>origincar_system</name>
   <version>0.0.0</version>
-  <description>.....</description>
+  <description>Waypoint following with stored lidar-cluster waypoint shifts.</description>
   <maintainer email="1234567890@163.com">root</maintainer>
   <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>ai_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>rclcpp</depend>
@@ -15,14 +16,17 @@
   <depend>std_msgs</depend>
   <depend>tf2</depend>
   <depend>tf2_ros</depend>
+  <depend>visualization_msgs</depend>
   <depend>yaml-cpp</depend>
 
-  <!-- Hardware, QR detection, and VLM/image analysis are provided by the mainline
-       /root/D_Robot/dev_ws workspace. Keep this test package focused on the
-       waypoint follower so it can be built without the old demo hardware stack. -->
+  <!-- Hardware, detector executables, model binaries and VLM/image analysis are
+       provided by the mainline workspace. All test-adjustable configs, maps,
+       waypoints and launch files are maintained in this package. -->
   <exec_depend>nav2_amcl</exec_depend>
+  <exec_depend>lidar_location</exec_depend>
   <exec_depend>nav2_lifecycle_manager</exec_depend>
   <exec_depend>nav2_map_server</exec_depend>
+  <exec_depend>foxglove_bridge</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
