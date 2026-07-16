@@ -19,9 +19,16 @@
   <depend>visualization_msgs</depend>
   <depend>yaml-cpp</depend>
 
-  <!-- Hardware, detector executables, model binaries and VLM/image analysis are
-       provided by the mainline workspace. All test-adjustable configs, maps,
-       waypoints and launch files are maintained in this package. -->
+  <!-- Runtime packages launched by the lidar_location/AMCL test bringups. -->
+  <exec_depend>camera_driver</exec_depend>
+  <exec_depend>chassis_driver</exec_depend>
+  <exec_depend>lidar_driver</exec_depend>
+  <exec_depend>line_detector</exec_depend>
+  <exec_depend>perception_detector</exec_depend>
+  <exec_depend>qr_detector_cpp</exec_depend>
+  <exec_depend>robot_localization</exec_depend>
+  <exec_depend>visual_control</exec_depend>
+  <exec_depend>vlm_tts_demo</exec_depend>
   <exec_depend>nav2_amcl</exec_depend>
   <exec_depend>lidar_location</exec_depend>
   <exec_depend>nav2_lifecycle_manager</exec_depend>

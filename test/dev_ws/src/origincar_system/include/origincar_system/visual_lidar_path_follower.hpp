@@ -110,7 +110,8 @@ private:
 
   // 参数与路线状态
   std::string waypoints_file_;
-  std::string route_waypoints_file_;
+  std::string route_waypoints_clockwise_file_;
+  std::string route_waypoints_counterclockwise_file_;
   std::string frame_id_{"map"};
   std::string base_frame_id_{"base_link"};
   std::string cmd_vel_topic_{"/cmd_vel"};
@@ -118,8 +119,8 @@ private:
   std::string map_topic_{"/map"};
   std::string restriction_map_topic_{"/restriction_map"};
   std::string qr_topic_{"/qr_info"};
-  std::string visual_detection_topic_{"/racing_obstacle_detection"};
-  std::string visual_obstacle_class_name_{"construction_cone"};
+  std::string qr_channel_visual_detection_topic_{"/racing_obstacle_detection"};
+  std::string qr_channel_visual_obstacle_class_name_{"construction_cone"};
   std::string visual_control_suspend_topic_{"/sign4return"};
   std::string route_direction_{"auto"};
   std::string selected_route_direction_;
@@ -181,33 +182,30 @@ private:
   double qr_reverse_min_map_x_{2.0};
   double qr_visual_handoff_waypoint_distance_{0.25};
 
-  double visual_obstacle_confidence_threshold_{0.5};
-  int visual_obstacle_bottom_threshold_{305};
-  double visual_obstacle_delta_x_ratio_{0.0};
-  double visual_avoid_linear_speed_{0.45};
-  double visual_avoid_angular_ratio_{-0.005};
-  double visual_detection_timeout_{0.30};
-  int visual_detection_source_width_{1920};
-  int visual_detection_source_height_{1080};
-  int visual_control_image_width_{640};
-  int visual_control_image_height_{480};
+  double qr_channel_visual_obstacle_confidence_threshold_{0.5};
+  int qr_channel_visual_obstacle_bottom_threshold_{305};
+  double qr_channel_visual_obstacle_delta_x_ratio_{0.0};
+  double qr_channel_visual_avoid_linear_speed_{0.45};
+  double qr_channel_visual_avoid_angular_ratio_{-0.005};
+  double qr_channel_visual_detection_timeout_{0.30};
+  int qr_channel_visual_detection_source_width_{1920};
+  int qr_channel_visual_detection_source_height_{1080};
+  int qr_channel_visual_control_image_width_{640};
+  int qr_channel_visual_control_image_height_{480};
 
   bool enable_qr_direction_select_{true};
   bool use_qr_parity_direction_{true};
   bool suspend_visual_control_on_qr_{true};
   bool resume_visual_control_on_finish_{true};
   bool enable_image_analysis_trigger_{true};
-  double image_capture_clockwise_align_x_{3.15};
-  double image_capture_clockwise_align_y_{4.05};
   double image_capture_clockwise_x_{3.50};
   double image_capture_clockwise_y_{4.05};
-  double image_capture_counterclockwise_align_x_{0.60};
-  double image_capture_counterclockwise_align_y_{4.05};
   double image_capture_counterclockwise_x_{0.25};
   double image_capture_counterclockwise_y_{4.05};
   double image_capture_radius_{0.10};
   double image_capture_slow_distance_{0.50};
   double image_capture_slow_speed_{0.40};
+  double image_capture_angular_gain_{2.0};
   double image_capture_stop_time_{0.30};
   int image_capture_trigger_value_{8};
   std::string image_analysis_trigger_topic_{"/person_trigger"};
@@ -282,7 +280,7 @@ private:
   double waypoint_pass_radius(std::size_t index) const;
   bool is_segment_reverse(std::size_t segment_index) const;
   bool is_precision_waypoint(std::size_t index) const;
-  void insert_image_capture_waypoints(const std::string & direction);
+  void insert_image_capture_waypoint(const std::string & direction);
   bool handle_image_capture_stop(const RobotPose & pose);
   void apply_image_capture_speed_limit(
     const RobotPose & pose, geometry_msgs::msg::Twist & cmd) const;
@@ -309,9 +307,9 @@ private:
   bool apply_one_shot_qr_reverse(
     const RobotPose & robot_pose, geometry_msgs::msg::Twist & cmd);
   void update_qr_visual_avoidance_phase(const RobotPose & robot_pose);
-  bool apply_visual_obstacle_avoidance(geometry_msgs::msg::Twist & cmd);
-  int scale_visual_detection_x(int x) const;
-  int scale_visual_detection_y(int y) const;
+  bool apply_qr_channel_visual_obstacle_avoidance(geometry_msgs::msg::Twist & cmd);
+  int scale_qr_channel_visual_detection_x(int x) const;
+  int scale_qr_channel_visual_detection_y(int y) const;
   void reset_waypoint_shift_state();
   void update_waypoint_shifts(
     const RobotPose & robot_pose, std::size_t target_waypoint_index);
