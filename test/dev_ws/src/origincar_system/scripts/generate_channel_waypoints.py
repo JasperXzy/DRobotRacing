@@ -10,26 +10,57 @@ from typing import Callable, Sequence
 
 
 PACKAGE_DIR = Path(__file__).resolve().parents[1]
-DEFAULT_OUTPUT = PACKAGE_DIR / "config" / "waypoints_channel.yaml"
+DEFAULT_CLOCKWISE_OUTPUT = PACKAGE_DIR / "config" / "waypoints_channel_clockwise.yaml"
+DEFAULT_COUNTERCLOCKWISE_OUTPUT = PACKAGE_DIR / "config" / "waypoints_channel_counterclockwise.yaml"
 DEFAULT_MAP_YAML = PACKAGE_DIR / "map" / "race_keepout.yaml"
-DEFAULT_PREVIEW_OUTPUT = PACKAGE_DIR / "map" / "waypoints_channel_on_restriction_map.png"
+DEFAULT_CLOCKWISE_PREVIEW_OUTPUT = (
+    PACKAGE_DIR / "map" / "waypoints_channel_clockwise_on_restriction_map.png"
+)
+DEFAULT_COUNTERCLOCKWISE_PREVIEW_OUTPUT = (
+    PACKAGE_DIR / "map" / "waypoints_channel_counterclockwise_on_restriction_map.png"
+)
 
-# The route is modeled as 7 straight center-line segments. Each gap between
-# adjacent segments is connected by a smooth cubic Bezier transition.
-STRAIGHT_SEGMENTS: list[tuple[tuple[float, float], tuple[float, float]]] = [
+# 顺、逆时针分别维护完整的有序几何，不能再由另一方向反向读取。
+# 两套路线目前保持原有中心线形状；后续可单独修改最后两段和最后一个
+# TRANSITION_HANDLE_RATIOS，调整各自“出通道后对线”的弧度。
+COUNTERCLOCKWISE_SEGMENTS: list[tuple[tuple[float, float], tuple[float, float]]] = [
     ((1.95, 1.80), (1.95, 2.50)),
     ((2.35, 2.90), (3.30, 2.90)),
     ((3.60, 3.20), (3.60, 3.85)),
     ((3.30, 4.05), (0.45, 4.05)),
     ((0.15, 3.85), (0.15, 3.20)),
     ((0.45, 2.90), (1.55, 2.90)),
-    ((1.95, 2.50), (1.95, 1.80)),
+    ((1.75, 2.50), (1.75, 1.80)),
+]
+
+CLOCKWISE_SEGMENTS: list[tuple[tuple[float, float], tuple[float, float]]] = [
+    ((1.95, 1.80), (1.95, 2.50)),
+    ((1.55, 2.90), (0.45, 2.90)),
+    ((0.15, 3.20), (0.15, 3.85)),
+    ((0.45, 4.05), (3.30, 4.05)),
+    ((3.60, 3.85), (3.60, 3.20)),
+    ((3.30, 2.90), (2.35, 2.90)),
+    ((1.95, 2.50), (1.77, 1.80)),
 ]
 
 TARGET_SPACING = 0.02
-ROUTE_DIRECTION = "clockwise"
 POINT_PASS_RADIUS = 0.6
-SMOOTH_HANDLE_RATIO = 0.3
+COUNTERCLOCKWISE_TRANSITION_HANDLE_RATIOS = [
+    0.3,  # 进入环线
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.3,  # 出通道后对准直线
+]
+CLOCKWISE_TRANSITION_HANDLE_RATIOS = [
+    0.3,  # 进入环线
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.3,  # 出通道后对准直线
+]
 
 Point = tuple[float, float]
 
@@ -129,9 +160,14 @@ def bezier_piece(
     return Piece(kind="bezier", length=length, point_at=point_at)
 
 
-def build_pieces(segments: Sequence[tuple[Point, Point]]) -> list[Piece]:
+def build_pieces(
+    segments: Sequence[tuple[Point, Point]],
+    transition_handle_ratios: Sequence[float],
+) -> list[Piece]:
     if len(segments) < 1:
         raise ValueError("route needs at least one straight segment")
+    if len(transition_handle_ratios) != len(segments) - 1:
+        raise ValueError("each gap between straight segments needs one transition handle ratio")
     pieces: list[Piece] = []
     for index, segment in enumerate(segments):
         line = line_piece(segment[0], segment[1])
@@ -145,7 +181,7 @@ def build_pieces(segments: Sequence[tuple[Point, Point]]) -> list[Piece]:
                 normalize(sub(segment[1], segment[0])),
                 next_segment[0],
                 normalize(sub(next_segment[1], next_segment[0])),
-                SMOOTH_HANDLE_RATIO,
+                transition_handle_ratios[index],
             )
             if transition is not None:
                 pieces.append(transition)
@@ -186,16 +222,17 @@ def fmt(value: float) -> str:
     return f"{value:.6f}".rstrip("0").rstrip(".")
 
 
-def render_yaml(points: Sequence[Point], spacing: float) -> str:
+def render_yaml(points: Sequence[Point], spacing: float, direction: str) -> str:
+    direction_label = "顺时针" if direction == "clockwise" else "逆时针"
     lines = [
-        "# channel 环线只维护一份逆时针航点。",
-        "# 由 scripts/generate_channel_waypoints.py 生成：7 条直线段 + 6 段贝塞尔平滑过渡。",
-        f"# 逆时针按 point_001..point_{len(points):03d} 读取；顺时针由 visual_lidar_path_follower 自动反向读取。",
-        "# 修改轨迹时先改脚本里的 STRAIGHT_SEGMENTS，再重新运行脚本。",
+        f"# channel {direction_label}独立航点，禁止通过反向读取另一方向生成。",
+        "# 由 scripts/generate_channel_waypoints.py 生成：7 条直线段 + 6 段独立贝塞尔平滑过渡。",
+        f"# 按 point_001..point_{len(points):03d} 的文件顺序行驶。",
+        f"# 修改轨迹时请改脚本里的 {direction.upper()}_SEGMENTS 和对应过渡系数。",
         f"# target_spacing: {fmt(spacing)} m",
-        f"route_direction: {ROUTE_DIRECTION}",
+        f"route_direction: {direction}",
         "routes:",
-        "  counterclockwise:",
+        f"  {direction}:",
     ]
 
     for index, point in enumerate(points, start=1):
@@ -216,7 +253,9 @@ def spacing_stats(points: Sequence[Point]) -> tuple[float, float, float]:
     return min(distances), max(distances), sum(distances) / len(distances)
 
 
-def render_map_preview(points: Sequence[Point], map_yaml: Path, output: Path) -> None:
+def render_map_preview(
+    points: Sequence[Point], map_yaml: Path, output: Path, direction: str
+) -> None:
     try:
         import yaml
         from PIL import Image, ImageDraw
@@ -243,29 +282,79 @@ def render_map_preview(points: Sequence[Point], map_yaml: Path, output: Path) ->
 
     pixels = [world_to_pixel(point) for point in points]
     draw = ImageDraw.Draw(image)
+    route_color = (255, 145, 0) if direction == "clockwise" else (0, 150, 255)
+    direction_label = "CLOCKWISE (CW)" if direction == "clockwise" else "COUNTERCLOCKWISE (CCW)"
+
     if len(pixels) > 1:
-        draw.line(pixels, fill=(0, 170, 255), width=1)
-    for pixel_x, pixel_y in pixels:
+        draw.line(pixels, fill=route_color, width=2)
+    for pixel_x, pixel_y in pixels[::5]:
         draw.ellipse(
             (pixel_x - 1, pixel_y - 1, pixel_x + 1, pixel_y + 1),
-            fill=(255, 40, 40),
+            fill=route_color,
         )
+
+    # 沿 waypoint 顺序画三角箭头；即使两条路线几何重合，也能直接看出行驶方向。
+    if len(pixels) > 2:
+        arrow_step = max(1, len(pixels) // 10)
+        for index in range(arrow_step, len(pixels) - arrow_step // 2, arrow_step):
+            before = pixels[max(0, index - 4)]
+            after = pixels[min(len(pixels) - 1, index + 4)]
+            dx = float(after[0] - before[0])
+            dy = float(after[1] - before[1])
+            length = math.hypot(dx, dy)
+            if length <= 1e-9:
+                continue
+            ux = dx / length
+            uy = dy / length
+            px = -uy
+            py = ux
+            center_x, center_y = pixels[index]
+            tip = (center_x + 7.0 * ux, center_y + 7.0 * uy)
+            base_x = center_x - 4.0 * ux
+            base_y = center_y - 4.0 * uy
+            left = (base_x + 4.0 * px, base_y + 4.0 * py)
+            right = (base_x - 4.0 * px, base_y - 4.0 * py)
+            draw.polygon([tip, left, right], fill=route_color, outline=(0, 0, 0))
 
     if pixels:
         start_x, start_y = pixels[0]
+        end_x, end_y = pixels[-1]
         draw.ellipse(
-            (start_x - 3, start_y - 3, start_x + 3, start_y + 3),
-            fill=(0, 220, 70),
+            (start_x - 7, start_y - 7, start_x + 7, start_y + 7),
+            outline=(0, 190, 60),
+            width=3,
+        )
+        draw.rectangle(
+            (end_x - 4, end_y - 4, end_x + 4, end_y + 4),
+            fill=(230, 35, 35),
             outline=(0, 0, 0),
         )
+        draw.text((start_x + 9, start_y - 14), "START", fill=(0, 120, 35))
+        draw.text((end_x + 9, end_y + 3), "END", fill=(190, 0, 0))
+
+    draw.rectangle((6, 6, 176, 24), fill=(255, 255, 255), outline=route_color, width=2)
+    draw.text((11, 10), direction_label, fill=(0, 0, 0))
 
     output.parent.mkdir(parents=True, exist_ok=True)
     image.save(output, format="PNG", optimize=True)
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Generate channel waypoints from straight segments and smooth transitions.")
-    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT, help="YAML file to overwrite.")
+    parser = argparse.ArgumentParser(
+        description="Generate independent clockwise/counterclockwise channel routes and previews."
+    )
+    parser.add_argument(
+        "--clockwise-output",
+        type=Path,
+        default=DEFAULT_CLOCKWISE_OUTPUT,
+        help="Clockwise YAML file to overwrite.",
+    )
+    parser.add_argument(
+        "--counterclockwise-output",
+        type=Path,
+        default=DEFAULT_COUNTERCLOCKWISE_OUTPUT,
+        help="Counterclockwise YAML file to overwrite.",
+    )
     parser.add_argument("--spacing", type=float, default=TARGET_SPACING, help="Target point spacing in meters.")
     parser.add_argument(
         "--map-yaml",
@@ -274,35 +363,64 @@ def main() -> int:
         help="Restriction-map YAML used as the PNG preview background.",
     )
     parser.add_argument(
-        "--preview-output",
+        "--clockwise-preview-output",
         type=Path,
-        default=DEFAULT_PREVIEW_OUTPUT,
-        help="PNG preview file to overwrite.",
+        default=DEFAULT_CLOCKWISE_PREVIEW_OUTPUT,
+        help="Clockwise PNG preview file to overwrite.",
     )
-    parser.add_argument("--dry-run", action="store_true", help="Print the YAML instead of writing the file.")
+    parser.add_argument(
+        "--counterclockwise-preview-output",
+        type=Path,
+        default=DEFAULT_COUNTERCLOCKWISE_PREVIEW_OUTPUT,
+        help="Counterclockwise PNG preview file to overwrite.",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print both YAML documents instead of writing files.",
+    )
     args = parser.parse_args()
 
-    pieces = build_pieces(STRAIGHT_SEGMENTS)
-    points = sample_route(pieces, args.spacing)
-    rendered = render_yaml(points, args.spacing)
+    route_jobs = [
+        (
+            "clockwise",
+            CLOCKWISE_SEGMENTS,
+            CLOCKWISE_TRANSITION_HANDLE_RATIOS,
+            args.clockwise_output,
+            args.clockwise_preview_output,
+        ),
+        (
+            "counterclockwise",
+            COUNTERCLOCKWISE_SEGMENTS,
+            COUNTERCLOCKWISE_TRANSITION_HANDLE_RATIOS,
+            args.counterclockwise_output,
+            args.counterclockwise_preview_output,
+        ),
+    ]
 
-    if args.dry_run:
-        print(rendered, end="")
-    else:
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(rendered, encoding="utf-8")
-        render_map_preview(points, args.map_yaml, args.preview_output)
+    for direction, segments, transition_ratios, output, preview_output in route_jobs:
+        pieces = build_pieces(segments, transition_ratios)
+        points = sample_route(pieces, args.spacing)
+        rendered = render_yaml(points, args.spacing, direction)
 
-    min_spacing, max_spacing, avg_spacing = spacing_stats(points)
-    total_length = sum(piece.length for piece in pieces)
-    print(
-        f"generated {len(points)} points, length={total_length:.3f}m, "
-        f"spacing min/avg/max={min_spacing:.3f}/{avg_spacing:.3f}/{max_spacing:.3f}m",
-        file=sys.stderr,
-    )
-    print(f"output: {args.output}", file=sys.stderr)
-    if not args.dry_run:
-        print(f"preview: {args.preview_output}", file=sys.stderr)
+        if args.dry_run:
+            print(f"# ===== {direction} =====")
+            print(rendered, end="")
+        else:
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.write_text(rendered, encoding="utf-8")
+            render_map_preview(points, args.map_yaml, preview_output, direction)
+
+        min_spacing, max_spacing, avg_spacing = spacing_stats(points)
+        total_length = sum(piece.length for piece in pieces)
+        print(
+            f"{direction}: generated {len(points)} points, length={total_length:.3f}m, "
+            f"spacing min/avg/max={min_spacing:.3f}/{avg_spacing:.3f}/{max_spacing:.3f}m",
+            file=sys.stderr,
+        )
+        print(f"{direction} output: {output}", file=sys.stderr)
+        if not args.dry_run:
+            print(f"{direction} preview: {preview_output}", file=sys.stderr)
     return 0
 
 

@@ -6,8 +6,11 @@
     name="waypoints_file"
     default="$(find-pkg-share origincar_system)/config/waypoints_qr.yaml"/>
   <arg
-    name="route_waypoints_file"
-    default="$(find-pkg-share origincar_system)/config/waypoints_channel.yaml"/>
+    name="route_waypoints_clockwise_file"
+    default="$(find-pkg-share origincar_system)/config/waypoints_channel_clockwise.yaml"/>
+  <arg
+    name="route_waypoints_counterclockwise_file"
+    default="$(find-pkg-share origincar_system)/config/waypoints_channel_counterclockwise.yaml"/>
 
   <node
     pkg="origincar_system"
@@ -16,6 +19,11 @@
     output="screen">
     <param from="$(var params_file)"/>
     <param name="waypoints_file" value="$(var waypoints_file)"/>
-    <param name="route_waypoints_file" value="$(var route_waypoints_file)"/>
+    <param
+      name="route_waypoints_clockwise_file"
+      value="$(var route_waypoints_clockwise_file)"/>
+    <param
+      name="route_waypoints_counterclockwise_file"
+      value="$(var route_waypoints_counterclockwise_file)"/>
   </node>
 </launch>

@@ -4,11 +4,12 @@
 
 ```bash
 cd /root/D_Robot/test/dev_ws
+unset AMENT_PREFIX_PATH COLCON_PREFIX_PATH CMAKE_PREFIX_PATH LD_LIBRARY_PATH PYTHONPATH
 source /opt/tros/humble/setup.bash
-source /root/D_Robot/dev_ws/install/setup.bash
 colcon build --symlink-install --packages-select \
-  chassis_driver lidar_driver lidar_location perception_detector origincar_system \
-  --allow-overriding chassis_driver lidar_driver perception_detector
+  origincar_msg camera_driver chassis_driver lidar_driver lidar_location \
+  line_detector perception_detector qr_detector_cpp visual_control \
+  vlm_tts_demo origincar_system
 ```
 
 ## 2. 终端一：启动总系统

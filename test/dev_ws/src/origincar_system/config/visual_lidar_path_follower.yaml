@@ -3,7 +3,8 @@ visual_lidar_path_follower:
   ros__parameters:
     # 航点、坐标系与输出
     waypoints_file: /root/D_Robot/test/dev_ws/src/origincar_system/config/waypoints_qr.yaml  # 兼容模式下扫码前行驶的航点文件
-    route_waypoints_file: /root/D_Robot/test/dev_ws/src/origincar_system/config/waypoints_channel.yaml  # 扫码后巡点路线文件
+    route_waypoints_clockwise_file: /root/D_Robot/test/dev_ws/src/origincar_system/config/waypoints_channel_clockwise.yaml  # 扫码后顺时针独立路线
+    route_waypoints_counterclockwise_file: /root/D_Robot/test/dev_ws/src/origincar_system/config/waypoints_channel_counterclockwise.yaml  # 扫码后逆时针独立路线
     frame_id: map  # 航点所在的地图坐标系
     base_frame_id: base_link  # 车辆本体坐标系
     cmd_vel_topic: /cmd_vel  # 速度指令发布话题
@@ -13,7 +14,7 @@ visual_lidar_path_follower:
     # 正向追点
     control_frequency: 50.0  # 控制循环频率，单位 Hz
     linear_speed: 0.95  # 正常巡点线速度，单位 m/s
-    turn_angular_gain: 2.0  # 正向航向误差到下位机前轮目标转角的比例增益
+    turn_angular_gain: 1.5  # 正向航向误差到下位机前轮目标转角的比例增益
     enable_turn_speed_slowdown: true  # 是否根据下位机目标舵机PWM行程直接降低巡点线速度
     max_turn_speed_reduction_percent: 30.0  # 舵机左右打满时的最大降速百分比，允许范围0～90
     lookahead_distance: 0.5  # 正常巡点目标的前瞻距离，单位 m
@@ -56,30 +57,30 @@ visual_lidar_path_follower:
     # 扫到二维码后立即追 channel；进场阶段保留视觉覆盖与一次性点云后撤
     qr_reverse_min_map_x: 2.8  # 扫码瞬间 map.x 大于该值才允许本轮最多触发一次倒车；左侧直接跳过
     qr_visual_handoff_waypoint_distance: 0.3  # 到最近 channel 航点小于该距离时关闭视觉覆盖并启用 waypoint_shift，单位 m
-    qr_escape_check_distance: 0.50  # 左右比较矩形从车辆中心向前延伸的距离，单位 m
-    qr_escape_rear_extension: 0.0  # 左右比较矩形向后延伸的距离，应覆盖车屁股，单位 m
+    qr_escape_check_distance: 0.60  # 左右比较矩形从车辆中心向前延伸的距离，单位 m
+    qr_escape_rear_extension: 0.15  # 左右比较矩形向后延伸的距离，应覆盖车屁股，单位 m
     qr_escape_half_width: 0.25  # 左右比较矩形的左右半宽，单位 m
-    qr_escape_min_points: 1  # 比较矩形内非墙点达到该数量时触发二维码后撤
-    qr_reverse_linear_speed: 0.70  # 二维码保护默认右后撤使用的倒车速度绝对值，单位 m/s
-    qr_reverse_angular_speed: 2.0  # 二维码保护默认右后撤使用的转向量绝对值
-    qr_rear_warning_start_distance: 0.00  # 警戒矩形近端距base_link中心的后向距离，位于车屁股之后，单位 m
+    qr_escape_min_points: 3  # 比较矩形内非墙点达到该数量时触发二维码后撤
+    qr_reverse_linear_speed: 0.60  # 二维码保护默认右后撤使用的倒车速度绝对值，单位 m/s
+    qr_reverse_angular_speed: 0.5  # 二维码保护默认右后撤使用的转向量绝对值
+    qr_rear_warning_start_distance: 0.15  # 警戒矩形近端距base_link中心的后向距离，位于车屁股之后，单位 m
     qr_rear_check_distance: 0.25  # 警戒矩形远端距base_link中心的后向距离，单位 m
     qr_rear_half_width: 0.25  # 后方警戒矩形的左右半宽，单位 m
-    qr_rear_min_points: 2  # 后方警戒区非墙点达到该数量时永久解除本轮倒车并恢复追航点
+    qr_rear_min_points: 3  # 后方警戒区非墙点达到该数量时永久解除本轮倒车并恢复追航点
 
-    # 扫码后到进入 channel 前：航点跟踪是基础控制，以下视觉避障只临时覆盖有效障碍物
-    visual_detection_topic: /racing_obstacle_detection
-    visual_obstacle_class_name: construction_cone
-    visual_obstacle_confidence_threshold: 0.5
-    visual_obstacle_bottom_threshold: 305  # 检测框底边缩放到 640x480 后达到该值才避障
-    visual_obstacle_delta_x_ratio: 0.0  # 障碍物横向偏移对底边触发阈值的附加比例
-    visual_avoid_linear_speed: 0.45
-    visual_avoid_angular_ratio: -0.005
-    visual_detection_timeout: 0.30  # 超过该秒数的旧检测不再覆盖航点指令
-    visual_detection_source_width: 1920
-    visual_detection_source_height: 1080
-    visual_control_image_width: 640
-    visual_control_image_height: 480
+    # 扫码后到进入 channel 前的独立视觉避障组；不会影响 channel 内或恢复后的 visual_control
+    qr_channel_visual_detection_topic: /racing_obstacle_detection
+    qr_channel_visual_obstacle_class_name: construction_cone
+    qr_channel_visual_obstacle_confidence_threshold: 0.5
+    qr_channel_visual_obstacle_bottom_threshold: 295  # 检测框底边缩放到 640x480 后达到该值才避障
+    qr_channel_visual_obstacle_delta_x_ratio: 0.0  # 障碍物横向偏移对底边触发阈值的附加比例
+    qr_channel_visual_avoid_linear_speed: 0.45
+    qr_channel_visual_avoid_angular_ratio: -0.006
+    qr_channel_visual_detection_timeout: 0.30  # 超过该秒数的旧检测不再覆盖航点指令
+    qr_channel_visual_detection_source_width: 1920
+    qr_channel_visual_detection_source_height: 1080
+    qr_channel_visual_control_image_width: 640
+    qr_channel_visual_control_image_height: 480
 
     # QR 选路和 visual_control 接管切换
     route_direction: auto  # 未通过二维码指定时的路线方向；auto 使用航点文件设置
@@ -97,19 +98,16 @@ visual_lidar_path_follower:
     clockwise_qr_value: 1  # 不使用奇偶规则时代表顺时针的二维码值
     counterclockwise_qr_value: 2  # 不使用奇偶规则时代表逆时针的二维码值
 
-    # 独立图生文拍照直线；运行时用“对齐点->拍照点”替换附近圆弧，不受waypoint编号变化影响
-    enable_image_analysis_trigger: false  # 是否在环线中到达所选拍照点后触发一次图生文
-    image_capture_clockwise_align_x: 3.3  # 顺时针右侧对齐点map坐标x，单位m
-    image_capture_clockwise_align_y: 4.05  # 顺时针右侧对齐点map坐标y，单位m
+    # 独立图生文拍照点；运行时插入到最近路线段，可随 waypoint_shift 避障平移
+    enable_image_analysis_trigger: true  # 是否在环线中到达所选拍照点后触发一次图生文
     image_capture_clockwise_x: 3.4  # 顺时针使用的右侧车辆拍照点map坐标x，单位m
     image_capture_clockwise_y: 4.05  # 顺时针使用的右侧车辆拍照点map坐标y，单位m
-    image_capture_counterclockwise_align_x: 0.45  # 逆时针左侧对齐点map坐标x，单位m
-    image_capture_counterclockwise_align_y: 4.05  # 逆时针左侧对齐点map坐标y，单位m
     image_capture_counterclockwise_x: 0.45  # 逆时针使用的左侧车辆拍照点map坐标x，单位m
     image_capture_counterclockwise_y: 4.05  # 逆时针使用的左侧车辆拍照点map坐标y，单位m
-    image_capture_radius: 0.3  # 必须真正进入此距离才算到达，且路线进度不能跳过该点，单位m
+    image_capture_radius: 0.2  # 必须真正进入此距离才算到达，且路线进度不能跳过该点，单位m
     image_capture_slow_distance: 0.50  # 距拍照点小于此距离开始限速，单位m
-    image_capture_slow_speed: 0.5  # 接近拍照点时的最大线速度，单位m/s
+    image_capture_slow_speed: 0.50  # 接近拍照点时的最大线速度，单位m/s
+    image_capture_angular_gain: 2.0  # 追拍照点时航向误差到下位机前轮目标转角的专用比例增益
     image_capture_stop_time: 0.1  # 到点后先停车稳定这么久再拍照，单位s
     image_capture_trigger_value: 8  # 发布到图生文触发话题的整数值
     image_analysis_trigger_topic: /sign4return  # 图像分析触发整数消息的发布话题
