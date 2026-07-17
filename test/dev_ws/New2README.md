@@ -26,6 +26,7 @@ colcon build --symlink-install --packages-select \
 
 ```bash
 unset AMENT_PREFIX_PATH COLCON_PREFIX_PATH CMAKE_PREFIX_PATH LD_LIBRARY_PATH PYTHONPATH
+source /opt/tros/humble/setup.bash
 source /root/D_Robot/test/dev_ws/install/setup.bash
 ros2 launch origincar_system test_bringup.launch.py \
   start_foxglove:=true

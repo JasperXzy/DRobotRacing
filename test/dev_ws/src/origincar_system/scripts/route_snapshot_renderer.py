@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render logic-2 channel planning snapshots received as compact JSON events."""
+"""Render logic-2/3 channel planning snapshots received as compact JSON events."""
 
 import json
 import math
@@ -39,9 +39,11 @@ class RouteSnapshotRenderer(Node):
             self.get_logger().error(f'路线快照绘图失败: {exc}')
 
     def _render(self, data):
+        logic = int(data.get('logic', 2))
         event = str(data.get('event', ''))
         session = re.sub(r'[^0-9_]', '', str(data.get('session', '')))
-        if not session or event not in {'freeze', 'selected', 'final'}:
+        valid_events = {'selected', 'final'}
+        if not session or logic not in {2, 3} or event not in valid_events:
             raise ValueError('invalid snapshot event/session')
 
         output_root = Path(str(data['output_root'])).expanduser()
@@ -50,17 +52,59 @@ class RouteSnapshotRenderer(Node):
 
         base, world_to_pixel, pixels_per_meter = self._load_map(Path(str(data['map_yaml'])))
         original = data.get('original', [])
-        frozen = data.get('frozen', [])
+        baseline = data.get('baseline', [])
         route = data.get('route', [])
-        green = data.get('green', [])
         red = data.get('red', [])
-        green_radius = float(data.get('green_radius', 0.5))
+        red_identity_radius = float(data.get('red_identity_radius', 0.5))
 
+        if logic == 3:
+            self._render_logic3(
+                data, event, output_dir, base, world_to_pixel, pixels_per_meter,
+                original, baseline, route, red, red_identity_radius)
+            return
+
+        original_path = output_dir / '01_original_route.png'
+        final_path = output_dir / '02_final_dynamic_route.png'
+
+        if event == 'selected':
+            image = base.copy()
+            self._draw_route(image, original, world_to_pixel, (25, 93, 190, 255), 5)
+            self._draw_title(image, '01 Original unshifted channel route')
+            self._save_png(image, original_path)
+
+            image = base.copy()
+            self._draw_route(image, original, world_to_pixel, (75, 75, 75, 105), 3)
+            self._draw_route(image, baseline, world_to_pixel, (15, 90, 215, 255), 6)
+            self._draw_title(image, '02 Final dynamic route (waiting for task completion)')
+            self._save_png(image, final_path)
+            self.get_logger().info(f'已生成逻辑2原始路线图: {original_path}')
+            return
+
+        image = base.copy()
+        self._draw_route(image, original, world_to_pixel, (75, 75, 75, 90), 3)
+        self._draw_route(image, baseline, world_to_pixel, (15, 90, 215, 255), 6)
+        if red:
+            self._draw_route_changes(
+                image, baseline, route, world_to_pixel, (215, 40, 40, 255), 7)
+            self._draw_clusters(
+                image, red, world_to_pixel, pixels_per_meter,
+                red_identity_radius, (225, 35, 35), True)
+        self._draw_title(
+            image,
+            f'02 Final dynamic route / red clusters (identity R={red_identity_radius:.2f}m)')
+        self._save_png(image, final_path)
+        self.get_logger().info(f'已生成逻辑2任务结束路线图: {final_path}')
+
+    def _render_logic3(
+            self, data, event, output_dir, base, world_to_pixel, pixels_per_meter,
+            original, frozen, route, red, red_identity_radius):
+        green = data.get('green', [])
+        green_radius = float(data.get('green_radius', 0.5))
         original_path = output_dir / '01_original_route.png'
         frozen_path = output_dir / '02_frozen_route.png'
         final_path = output_dir / '03_final_route.png'
 
-        if event in {'freeze', 'selected'}:
+        if event == 'selected':
             image = base.copy()
             self._draw_route(image, original, world_to_pixel, (25, 93, 190, 255), 5)
             self._draw_title(image, '01 Original unshifted channel route')
@@ -73,27 +117,14 @@ class RouteSnapshotRenderer(Node):
                 image, green, world_to_pixel, pixels_per_meter,
                 green_radius, (20, 180, 65), True)
             self._draw_title(
-                image,
-                f'02 Frozen route / green old clusters (R={green_radius:.2f}m)')
+                image, f'02 Frozen route / green clusters (identity R={green_radius:.2f}m)')
             self._save_png(image, frozen_path)
-            # Before task completion the third image is an exact frozen baseline.
             shutil.copyfile(frozen_path, final_path)
-            self.get_logger().info(f'已生成逻辑2冻结路线图: {output_dir}')
+            self.get_logger().info(f'已生成逻辑3扫码方向冻结路线图: {output_dir}')
             return
 
-        if not red:
-            # This preserves the requested invariant: with no newly revealed obstacle,
-            # image 2 and image 3 are byte-for-byte identical.
-            if frozen_path.exists():
-                shutil.copyfile(frozen_path, final_path)
-            else:
-                image = base.copy()
-                self._draw_route(image, original, world_to_pixel, (75, 75, 75, 105), 3)
-                self._draw_route(image, frozen, world_to_pixel, (15, 90, 215, 255), 6)
-                self._draw_clusters(
-                    image, green, world_to_pixel, pixels_per_meter,
-                    green_radius, (20, 180, 65), True)
-                self._save_png(image, final_path)
+        if not red and frozen_path.exists():
+            shutil.copyfile(frozen_path, final_path)
         else:
             image = base.copy()
             self._draw_route(image, original, world_to_pixel, (75, 75, 75, 90), 3)
@@ -105,10 +136,12 @@ class RouteSnapshotRenderer(Node):
                 green_radius, (20, 180, 65), True)
             self._draw_clusters(
                 image, red, world_to_pixel, pixels_per_meter,
-                0.0, (225, 35, 35), False)
-            self._draw_title(image, '03 Final route / red newly revealed clusters')
+                red_identity_radius, (225, 35, 35), True)
+            self._draw_title(
+                image,
+                f'03 Final route / red clusters (identity R={red_identity_radius:.2f}m)')
             self._save_png(image, final_path)
-        self.get_logger().info(f'已生成逻辑2任务结束路线图: {final_path}')
+        self.get_logger().info(f'已生成逻辑3任务结束路线图: {final_path}')
 
     @staticmethod
     def _load_map(map_yaml_path):

@@ -24,8 +24,16 @@ ament_target_dependencies(
   ai_msgs geometry_msgs nav_msgs rclcpp sensor_msgs std_msgs tf2 tf2_ros visualization_msgs)
 target_link_libraries(visual_lidar_path_follower yaml-cpp)
 
+add_executable(visual_lidar_path_follower_szc src/visual_lidar_path_follower_szc.cpp)
+target_include_directories(visual_lidar_path_follower_szc PRIVATE include)
+ament_target_dependencies(
+  visual_lidar_path_follower_szc
+  ai_msgs geometry_msgs nav_msgs rclcpp sensor_msgs std_msgs tf2 tf2_ros visualization_msgs)
+target_link_libraries(visual_lidar_path_follower_szc yaml-cpp)
+
 install(TARGETS
   visual_lidar_path_follower
+  visual_lidar_path_follower_szc
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -34,6 +42,7 @@ install(DIRECTORY launch config foxglove map DESTINATION share/${PROJECT_NAME})
 install(PROGRAMS
   scripts/open_foxglove.sh
   scripts/route_snapshot_renderer.py
+  scripts/szc_route_snapshot_renderer.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
