@@ -151,6 +151,12 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   get_parameter(
     "logic3_static_restriction_map_topic",
     logic3_static_restriction_map_topic_);
+  declare_parameter<std::string>(
+    "logic3_runtime_restriction_map_topic",
+    logic3_runtime_restriction_map_topic_);
+  get_parameter(
+    "logic3_runtime_restriction_map_topic",
+    logic3_runtime_restriction_map_topic_);
   declare_parameter<bool>("debug_control_logs", debug_control_logs_);
   get_parameter("debug_control_logs", debug_control_logs_);
   declare_parameter<bool>("wait_for_qr_before_start", wait_for_qr_before_start_);
@@ -803,6 +809,13 @@ VisualLidarPathFollower::VisualLidarPathFollower()
         rclcpp::QoS(1).transient_local().reliable(),
         [this](nav_msgs::msg::OccupancyGrid::ConstSharedPtr msg) {
           latest_logic3_static_restriction_map_ = msg;
+        });
+    logic3_runtime_restriction_map_sub_ =
+      create_subscription<nav_msgs::msg::OccupancyGrid>(
+        logic3_runtime_restriction_map_topic_,
+        rclcpp::QoS(1).transient_local().reliable(),
+        [this](nav_msgs::msg::OccupancyGrid::ConstSharedPtr msg) {
+          latest_logic3_runtime_restriction_map_ = msg;
         });
   }
   visual_detection_sub_ = create_subscription<ai_msgs::msg::PerceptionTargets>(
@@ -1813,8 +1826,13 @@ VisualLidarPathFollower::collect_non_static_scan_clusters_map(
   if (!latest_scan_) {
     return {};
   }
+  const bool use_logic3_runtime_restriction_map =
+    waypoint_shift_logic_ == 3 && logic2_planning_pose_anchored_ &&
+    !use_logic3_static_restriction_map;
   const auto & active_restriction_map = use_logic3_static_restriction_map ?
-    latest_logic3_static_restriction_map_ : latest_restriction_map_;
+    latest_logic3_static_restriction_map_ :
+    (use_logic3_runtime_restriction_map ?
+    latest_logic3_runtime_restriction_map_ : latest_restriction_map_);
   const int active_restriction_inflation_cells =
     use_logic3_static_restriction_map ?
     logic3_static_restriction_inflation_cells_ : static_map_inflation_cells_;

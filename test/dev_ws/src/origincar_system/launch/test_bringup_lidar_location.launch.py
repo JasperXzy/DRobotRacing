@@ -32,6 +32,9 @@ def generate_launch_description():
     logic3_static_restriction_map_yaml_file = LaunchConfiguration(
         'logic3_static_restriction_map_yaml_file'
     )
+    logic3_runtime_restriction_map_yaml_file = LaunchConfiguration(
+        'logic3_runtime_restriction_map_yaml_file'
+    )
     qr_detector_params_file = LaunchConfiguration('qr_detector_params_file')
     perception_detector_params_file = LaunchConfiguration('perception_detector_params_file')
     line_detector_params_file = LaunchConfiguration('line_detector_params_file')
@@ -102,7 +105,14 @@ def generate_launch_description():
             default_value=PathJoinSubstitution([
                 test_share, 'map', 'race_keepout_logic3_static.yaml',
             ]),
-            description='Y-expanded keepout map used only for logic3 pre-launch green detection.',
+            description='Dedicated channel map used only for logic3 pre-launch green detection.',
+        ),
+        DeclareLaunchArgument(
+            'logic3_runtime_restriction_map_yaml_file',
+            default_value=PathJoinSubstitution([
+                test_share, 'map', 'race_keepout_logic3_runtime.yaml',
+            ]),
+            description='Map 4 used only to filter logic3 runtime dynamic red clusters.',
         ),
         DeclareLaunchArgument(
             'qr_detector_params_file',
@@ -247,6 +257,19 @@ def generate_launch_description():
         }],
     )
 
+    logic3_runtime_restriction_map_server_node = Node(
+        package='nav2_map_server',
+        executable='map_server',
+        name='logic3_runtime_restriction_map_server',
+        output='screen',
+        parameters=[{
+            'use_sim_time': False,
+            'yaml_filename': logic3_runtime_restriction_map_yaml_file,
+            'topic_name': 'logic3_runtime_restriction_map',
+            'frame_id': 'map',
+        }],
+    )
+
     lidar_location_node = Node(
         package='lidar_location',
         executable='lidar_location_node',
@@ -267,6 +290,7 @@ def generate_launch_description():
                 'map_server',
                 'restriction_map_server',
                 'logic3_static_restriction_map_server',
+                'logic3_runtime_restriction_map_server',
             ],
         }],
     )
@@ -349,6 +373,7 @@ def generate_launch_description():
             map_server_node,
             restriction_map_server_node,
             logic3_static_restriction_map_server_node,
+            logic3_runtime_restriction_map_server_node,
             lidar_location_node,
             map_lifecycle_manager,
         ]),

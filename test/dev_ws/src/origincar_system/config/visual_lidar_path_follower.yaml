@@ -14,9 +14,9 @@ visual_lidar_path_follower:
     # 正向追点
     control_frequency: 50.0  # 控制循环频率，单位 Hz
     linear_speed: 1.05  # 正常巡点线速度，单位 m/s
-    turn_angular_gain: 1.8  # 与SZC参数一致；正向航向误差到下位机前轮目标转角的比例增益
+    turn_angular_gain: 2.0  # 与SZC参数一致；正向航向误差到下位机前轮目标转角的比例增益
     enable_turn_speed_slowdown: true  # 是否根据车头朝向与当前追踪点连线的夹角进行余弦降速
-    min_turn_speed_percent: 30.0  # 几何夹角达到180度时的最低速度比例；0度保持100%，允许范围0～100
+    min_turn_speed_percent: 10.0  # 几何夹角达到180度时的最低速度比例；0度保持100%，允许范围0～100
     lookahead_distance: 0.50  # 与SZC参数一致；正常巡点目标的前瞻距离，单位 m
     pass_radius: 0.6  # 航点未单独配置时使用的默认通过半径，单位 m
     route_projection_max_distance: 0.6  # 允许车辆匹配当前路线段的最大横向距离，单位 m
@@ -30,7 +30,7 @@ visual_lidar_path_follower:
     # 雷达和地图输入
     scan_topic: /scan  # 雷达扫描数据话题
     map_topic: /map  # race_modify 定位地图；同时用于过滤真实固定墙体点云
-    restriction_map_topic: /restriction_map  # race_keepout 禁行地图；用于决定waypoint_shift方向并过滤软禁行区域点云
+    restriction_map_topic: /restriction_map  # 图2 race_keepout；始终用于判断偏移方向，逻辑1/2也用它过滤点云
 
     # waypoint_shift 点云簇与 Foxglove 圆锥圆显示
     cluster_max_point_gap: 0.06   # 同一点云簇相邻点允许的最大空间间距，单位 m
@@ -43,9 +43,9 @@ visual_lidar_path_follower:
     waypoint_shift_occupied_threshold: 50   # 横截方向判断的地图占据阈值；软禁行区和真实墙体都应达到该值
     waypoint_shift_check_count: 100          # waypoint_shift模式每帧从当前追踪点开始检查的航点数量
     waypoint_cloud_check_radius: 0.5       # 点云距未来路线小于该距离才触发平移，单位 m；提前距离由check_count决定
-    waypoint_shift_target_clearance: 0.3  # 与SZC参数一致；偏移后的路线在空旷侧横截方向越过点云最外沿的目标净距，单位 m
-    waypoint_shift_points_before: 35        # 障碍物最近路线点之前、车与障碍物之间统一偏移的点数
-    waypoint_shift_points_after: 15          # 障碍物最近路线点之后、离车更远方向统一偏移的点数
+    waypoint_shift_target_clearance: 0.35  # 与SZC参数一致；偏移后的路线在空旷侧横截方向越过点云最外沿的目标净距，单位 m
+    waypoint_shift_points_before: 40        # 障碍物最近路线点之前、车与障碍物之间统一偏移的点数
+    waypoint_shift_points_after: 20          # 障碍物最近路线点之后、离车更远方向统一偏移的点数
     waypoint_shift_confirm_scans: 3          # 同方向候选偏移连续命中这么多帧后首次提交；之后持续刷新
     waypoint_shift_release_scans: 8          # 连续这么多帧未命中后释放已提交偏移，回到原始航点
     waypoint_shift_min_change: 0.02          # 逻辑1/2及未进入逻辑3动态持续刷新时使用的最小变化，单位m
@@ -127,6 +127,7 @@ visual_lidar_path_follower:
     # ------------------------ 逻辑3：动态红簇避障 --------------------------
     logic3_runtime_roi_width: 3.0
     logic3_runtime_roi_height: 3.0
+    logic3_runtime_restriction_map_topic: /logic3_runtime_restriction_map  # 图4；仅过滤运行中的动态红簇
     logic3_runtime_channel_min_y: 1.60       # 动态红簇必须满足map.y严格大于该值，单位m
     logic3_red_history_merge_radius: 0.50     # 仅做红簇身份合并，不屏蔽逐帧动态避障
 
@@ -140,7 +141,10 @@ visual_lidar_path_follower:
     logic3_pose_outlier_xy: 0.20
     logic3_pose_outlier_yaw: 0.15
 
-    # --------------------------- 逻辑3：三张图 ------------------------------
+    # -------------------------- 逻辑3：地图分工 -----------------------------
+    # 图2：计算左右空旷度/偏移方向，并作为冻结路线图和最终路线图背景
+    # 图3：仅过滤发车前的静态绿色候选；话题由logic3_static_restriction_map_topic指定
+    # 图4：仅过滤发车后的动态红色候选；话题由logic3_runtime_restriction_map_topic指定
     logic3_output_root: /root/D_Robot/test/dev_ws/src/origincar_system/path
     logic3_restriction_map_yaml: /root/D_Robot/test/dev_ws/src/origincar_system/map/race_keepout.yaml
 

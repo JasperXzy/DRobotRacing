@@ -158,6 +158,8 @@ private:
   std::string restriction_map_topic_{"/restriction_map"};
   std::string logic3_static_restriction_map_topic_{
     "/logic3_static_restriction_map"};
+  std::string logic3_runtime_restriction_map_topic_{
+    "/logic3_runtime_restriction_map"};
   std::string qr_topic_{"/qr_info"};
   std::string qr_channel_visual_detection_topic_{"/racing_obstacle_detection"};
   std::string qr_channel_visual_obstacle_class_name_{"construction_cone"};
@@ -349,6 +351,7 @@ private:
   nav_msgs::msg::OccupancyGrid::ConstSharedPtr latest_map_;
   nav_msgs::msg::OccupancyGrid::ConstSharedPtr latest_restriction_map_;
   nav_msgs::msg::OccupancyGrid::ConstSharedPtr latest_logic3_static_restriction_map_;
+  nav_msgs::msg::OccupancyGrid::ConstSharedPtr latest_logic3_runtime_restriction_map_;
 
   // 逻辑2/3共用的可信运动、稳定规划位姿、动态红簇和绘图状态。
   std::vector<Logic2TrackedCluster> logic2_runtime_red_tracks_;
@@ -397,6 +400,8 @@ private:
   rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr restriction_map_sub_;
   rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr
     logic3_static_restriction_map_sub_;
+  rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr
+    logic3_runtime_restriction_map_sub_;
   rclcpp::Subscription<ai_msgs::msg::PerceptionTargets>::SharedPtr visual_detection_sub_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr qr_sub_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr logic2_odom_sub_;

@@ -62,3 +62,5 @@ costmap_converter/
 *.gguf
 *.hbm
 *.png
+
+test/zhy_car
