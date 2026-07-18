@@ -153,9 +153,13 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   declare_parameter<bool>("enable_turn_speed_slowdown", enable_turn_speed_slowdown_);
   get_parameter("enable_turn_speed_slowdown", enable_turn_speed_slowdown_);
   declare_parameter<double>(
-    "min_turn_speed_percent", min_turn_speed_percent_);
+    "turn_speed_full_steering_angle", turn_speed_full_steering_angle_);
   get_parameter(
-    "min_turn_speed_percent", min_turn_speed_percent_);
+    "turn_speed_full_steering_angle", turn_speed_full_steering_angle_);
+  declare_parameter<double>(
+    "max_turn_speed_reduction_percent", max_turn_speed_reduction_percent_);
+  get_parameter(
+    "max_turn_speed_reduction_percent", max_turn_speed_reduction_percent_);
   declare_parameter<double>("reverse_angular_gain", reverse_angular_gain_);
   get_parameter("reverse_angular_gain", reverse_angular_gain_);
   declare_parameter<double>("reverse_goal_lookahead_distance", reverse_goal_lookahead_distance_);
@@ -413,8 +417,10 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   lookahead_distance_ = std::max(0.05, lookahead_distance_);
   route_projection_max_distance_ = std::max(0.10, route_projection_max_distance_);
   segment_advance_t_ = std::max(0.50, std::min(1.20, segment_advance_t_));
-  min_turn_speed_percent_ = std::max(
-    0.0, std::min(100.0, min_turn_speed_percent_));
+  turn_speed_full_steering_angle_ = std::max(
+    0.01, std::abs(turn_speed_full_steering_angle_));
+  max_turn_speed_reduction_percent_ = std::clamp(
+    max_turn_speed_reduction_percent_, 0.0, 90.0);
   cluster_max_point_gap_ = std::max(0.01, cluster_max_point_gap_);
   cluster_max_range_jump_ = std::max(0.01, cluster_max_range_jump_);
   cluster_min_points_ = std::max(3, cluster_min_points_);
@@ -896,7 +902,7 @@ void VisualLidarPathFollower::control_once()
     cmd.linear.x = std::min(
       std::abs(cmd.linear.x), qr_channel_visual_cruise_linear_speed_);
   }
-  apply_turn_speed_limit(pose, target, cmd);
+  apply_turn_speed_limit(cmd);
   apply_image_capture_speed_limit(pose, cmd);
   if (lidar_approach_active) {
     apply_approach_lidar_obstacle_avoidance(pose, target, cmd);
@@ -1527,30 +1533,19 @@ geometry_msgs::msg::Twist VisualLidarPathFollower::compute_tracking_command(
   return cmd;
 }
 
-// 使用车头朝向与“车辆到当前追踪点”连线之间的几何夹角进行余弦降速：
-//   夹角 0 度时保持正常速度，夹角 180 度时降到配置的最低速度比例。
-// 该夹角不乘 turn_angular_gain，因此调整转向增益不会连带改变线速度。
+// 根据即将下发的目标前轮转角绝对值线性降速。左右相同目标转角使用相同
+// 降速比例；舵机 PWM 的 1050/2200 非对称映射仍由下位机处理。
 void VisualLidarPathFollower::apply_turn_speed_limit(
-  const VisualLidarPathFollower::RobotPose & pose,
-  const VisualLidarPathFollower::TargetPoint & target,
   geometry_msgs::msg::Twist & cmd) const
 {
   if (!enable_turn_speed_slowdown_ || std::abs(cmd.linear.x) <= 1.0e-9) {
     return;
   }
 
-  const double dx = target.point.x - pose.x;
-  const double dy = target.point.y - pose.y;
-  const double target_x_base = std::cos(pose.yaw) * dx + std::sin(pose.yaw) * dy;
-  const double target_y_base = -std::sin(pose.yaw) * dx + std::cos(pose.yaw) * dy;
-  const double heading_angle = std::abs(std::atan2(target_y_base, target_x_base));
-  const double cosine_ratio = 0.5 * (1.0 + std::cos(heading_angle));
-  const double min_speed_ratio = min_turn_speed_percent_ / 100.0;
-  const double speed_ratio =
-    min_speed_ratio + (1.0 - min_speed_ratio) * cosine_ratio;
-  const double speed_limit = std::abs(linear_speed_) * speed_ratio;
-  const double limited_speed = std::min(std::abs(cmd.linear.x), speed_limit);
-  cmd.linear.x = std::copysign(limited_speed, cmd.linear.x);
+  const double turn_ratio = std::clamp(
+    std::abs(cmd.angular.z) / turn_speed_full_steering_angle_, 0.0, 1.0);
+  const double reduction_ratio = max_turn_speed_reduction_percent_ / 100.0;
+  cmd.linear.x *= 1.0 - reduction_ratio * turn_ratio;
 }
 
 bool VisualLidarPathFollower::lookup_pose(

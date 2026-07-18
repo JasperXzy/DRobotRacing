@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 
-#include "ai_msgs/msg/perception_targets.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "nav_msgs/msg/odometry.hpp"
@@ -52,7 +51,7 @@ private:
   enum class QrEscapeState
   {
     IDLE,
-    CHECKING,
+    PENDING,
     BACKING_RIGHT
   };
 
@@ -100,13 +99,11 @@ private:
     Point2D center;
   };
 
-  struct QrEscapeObservation
+  struct QrLidarObstacle
   {
-    bool ready{false};
-    int area_left_count{0};
-    int area_right_count{0};
-    int rear_left_count{0};
-    int rear_right_count{0};
+    bool found{false};
+    double range{0.0};
+    double relative_angle{0.0};
   };
 
   struct Logic2TrackedCluster
@@ -161,8 +158,6 @@ private:
   std::string logic3_runtime_restriction_map_topic_{
     "/logic3_runtime_restriction_map"};
   std::string qr_topic_{"/qr_info"};
-  std::string qr_channel_visual_detection_topic_{"/racing_obstacle_detection"};
-  std::string qr_channel_visual_obstacle_class_name_{"construction_cone"};
   std::string visual_control_suspend_topic_{"/sign4return"};
   std::string route_direction_{"auto"};
   std::string selected_route_direction_;
@@ -173,7 +168,6 @@ private:
   int counterclockwise_qr_value_{2};
   int visual_control_suspend_value_{5};
   int visual_control_resume_value_{6};
-  int perception_obstacle_only_value_{7};
   int perception_full_resume_value_{9};
   int perception_pause_value_{10};
 
@@ -185,7 +179,8 @@ private:
 
   double turn_angular_gain_{1.4};
   bool enable_turn_speed_slowdown_{true};
-  double min_turn_speed_percent_{60.0};
+  double turn_speed_full_steering_angle_{0.55};
+  double max_turn_speed_reduction_percent_{50.0};
   double reverse_angular_gain_{1.1};
   double reverse_goal_lookahead_distance_{0.25};
   double reverse_pass_radius_{0.25};
@@ -273,29 +268,34 @@ private:
   bool logic3_enable_tts_{true};
   double logic3_static_status_log_rate_hz_{2.0};
 
-  double qr_escape_check_distance_{0.60};
-  double qr_escape_rear_extension_{0.20};
-  double qr_escape_half_width_{0.40};
-  int qr_escape_min_points_{3};
-  double qr_reverse_linear_speed_{0.10};
-  double qr_reverse_angular_speed_{0.25};
-  double qr_rear_warning_start_distance_{0.22};
-  double qr_rear_check_distance_{0.45};
-  double qr_rear_half_width_{0.40};
-  int qr_rear_min_points_{2};
-  double qr_reverse_min_map_x_{2.0};
-  double qr_visual_handoff_waypoint_distance_{0.25};
+  // 扫码后的 zhy 条件倒车；前后检测区均为“扇形与矩形走廊的交集”。
+  double qr_reverse_y_threshold_{0.70};
+  double qr_reverse_front_obstacle_distance_{0.40};
+  double qr_reverse_front_fov_deg_{120.0};
+  double qr_reverse_front_corridor_half_width_{0.35};
+  double qr_reverse_rear_obstacle_distance_{0.30};
+  double qr_reverse_rear_fov_deg_{120.0};
+  double qr_reverse_rear_corridor_half_width_{0.35};
+  double qr_reverse_linear_speed_{0.60};
+  double qr_reverse_angular_speed_{3.0};
 
-  double qr_channel_visual_obstacle_confidence_threshold_{0.5};
-  int qr_channel_visual_obstacle_bottom_threshold_{305};
-  double qr_channel_visual_obstacle_delta_x_ratio_{0.0};
-  double qr_channel_visual_avoid_linear_speed_{0.45};
-  double qr_channel_visual_avoid_angular_ratio_{-0.005};
-  double qr_channel_visual_detection_timeout_{0.30};
-  int qr_channel_visual_detection_source_width_{1920};
-  int qr_channel_visual_detection_source_height_{1080};
-  int qr_channel_visual_control_image_width_{640};
-  int qr_channel_visual_control_image_height_{480};
+  // 倒车结束后到进入 channel 前的 zhy 雷达避障。
+  double qr_channel_handoff_waypoint_distance_{0.30};
+  double qr_channel_lidar_lookahead_distance_{0.65};
+  double qr_channel_lidar_cruise_linear_speed_{1.15};
+  double qr_channel_lidar_turn_angular_gain_{1.0};
+  double qr_channel_lidar_min_turn_speed_percent_{30.0};
+  double qr_channel_lidar_avoid_distance_{0.65};
+  double qr_channel_lidar_avoid_fov_deg_{120.0};
+  double qr_channel_lidar_corridor_half_width_{0.35};
+  double qr_channel_lidar_avoid_linear_speed_{0.45};
+  double qr_channel_lidar_avoid_angular_gain_{1.60};
+
+  // 上述两段共用的雷达新鲜度与静态墙体过滤参数。
+  double qr_lidar_scan_timeout_{0.25};
+  bool qr_lidar_enable_static_map_filter_{true};
+  int qr_lidar_static_map_occupied_threshold_{50};
+  double qr_lidar_static_map_wall_padding_{0.08};
 
   bool enable_qr_direction_select_{true};
   bool use_qr_parity_direction_{true};
@@ -339,14 +339,8 @@ private:
   std::uint64_t scan_sequence_{0};
   std::uint64_t processed_waypoint_shift_scan_sequence_{0};
   QrEscapeState qr_escape_state_{QrEscapeState::IDLE};
-  QrEscapeObservation latest_qr_escape_observation_;
-  bool qr_visual_avoidance_active_{false};
-  bool qr_reverse_gate_evaluated_{false};
-  bool qr_reverse_eligible_{false};
-  bool qr_reverse_triggered_{false};
-  bool has_visual_detection_{false};
-  std::chrono::steady_clock::time_point latest_visual_detection_received_at_;
-  ai_msgs::msg::PerceptionTargets::ConstSharedPtr latest_visual_detection_;
+  bool qr_channel_approach_active_{false};
+  std::chrono::steady_clock::time_point latest_scan_received_at_;
   sensor_msgs::msg::LaserScan::ConstSharedPtr latest_scan_;
   nav_msgs::msg::OccupancyGrid::ConstSharedPtr latest_map_;
   nav_msgs::msg::OccupancyGrid::ConstSharedPtr latest_restriction_map_;
@@ -402,7 +396,6 @@ private:
     logic3_static_restriction_map_sub_;
   rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr
     logic3_runtime_restriction_map_sub_;
-  rclcpp::Subscription<ai_msgs::msg::PerceptionTargets>::SharedPtr visual_detection_sub_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr qr_sub_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr logic2_odom_sub_;
   rclcpp::TimerBase::SharedPtr timer_;
@@ -429,9 +422,7 @@ private:
   bool handle_image_capture_stop(const RobotPose & pose);
   void apply_image_capture_speed_limit(
     const RobotPose & pose, geometry_msgs::msg::Twist & cmd) const;
-  void apply_turn_speed_limit(
-    const RobotPose & pose, const TargetPoint & target,
-    geometry_msgs::msg::Twist & cmd) const;
+  void apply_turn_speed_limit(geometry_msgs::msg::Twist & cmd) const;
 
   geometry_msgs::msg::Twist compute_tracking_command(
     const RobotPose & pose, const TargetPoint & target) const;
@@ -454,14 +445,17 @@ private:
     bool use_logic3_static_restriction_map) const;
   bool fit_cone_circle(LidarCluster & cluster) const;
   std::vector<LidarCluster> collect_cone_clusters(const RobotPose & robot_pose) const;
-  QrEscapeObservation observe_qr_escape_point_cloud(const RobotPose & robot_pose) const;
-  void evaluate_qr_reverse_gate(const RobotPose & robot_pose);
-  bool apply_one_shot_qr_reverse(
+  bool latest_qr_lidar_scan_is_fresh() const;
+  bool prepare_qr_lidar_scan(RobotPose & scan_to_base, RobotPose & scan_to_map) const;
+  bool qr_lidar_map_point_is_wall(const Point2D & map_point) const;
+  QrLidarObstacle find_qr_lidar_obstacle(
+    double center_angle, double maximum_distance, double fov_deg,
+    double corridor_half_width, const RobotPose & scan_to_base,
+    const RobotPose & scan_to_map) const;
+  bool apply_qr_reverse_maneuver(
     const RobotPose & robot_pose, geometry_msgs::msg::Twist & cmd);
-  void update_qr_visual_avoidance_phase(const RobotPose & robot_pose);
-  bool apply_qr_channel_visual_obstacle_avoidance(geometry_msgs::msg::Twist & cmd);
-  int scale_qr_channel_visual_detection_x(int x) const;
-  int scale_qr_channel_visual_detection_y(int y) const;
+  void update_qr_channel_approach_phase(const RobotPose & robot_pose);
+  bool apply_qr_channel_lidar_obstacle_avoidance(geometry_msgs::msg::Twist & cmd);
   void reset_waypoint_shift_state();
   void update_waypoint_shifts(
     const RobotPose & robot_pose, std::size_t target_waypoint_index);

@@ -19,8 +19,9 @@ visual_lidar_path_follower_szc:
     control_frequency: 50.0  # 控制循环频率，单位 Hz
     linear_speed: 1.15  # 正常巡点线速度，单位 m/s
     turn_angular_gain: 1.4  # 正向航向误差到下位机前轮目标转角的比例增益
-    enable_turn_speed_slowdown: true  # 是否根据车头朝向与当前追踪点连线的夹角进行余弦降速
-    min_turn_speed_percent: 60.0  # 几何夹角达到180度时的最低速度比例；0度保持100%，允许范围0～100
+    enable_turn_speed_slowdown: true  # 是否根据即将下发的目标前轮转角绝对值线性降低巡点速度
+    turn_speed_full_steering_angle: 0.55  # 达到最大降速比例时的目标前轮转角绝对值，单位rad
+    max_turn_speed_reduction_percent: 50.0  # 达到上述转角时的最大降速百分比，允许范围0～90
     lookahead_distance: 0.50  # 正常巡点目标的前瞻距离，单位 m
     pass_radius: 0.6  # 航点未单独配置时使用的默认通过半径，单位 m
     route_projection_max_distance: 1.2  # 允许车辆匹配当前路线段的最大横向距离，单位 m

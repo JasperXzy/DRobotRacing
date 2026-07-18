@@ -184,9 +184,13 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   declare_parameter<bool>("enable_turn_speed_slowdown", enable_turn_speed_slowdown_);
   get_parameter("enable_turn_speed_slowdown", enable_turn_speed_slowdown_);
   declare_parameter<double>(
-    "min_turn_speed_percent", min_turn_speed_percent_);
+    "turn_speed_full_steering_angle", turn_speed_full_steering_angle_);
   get_parameter(
-    "min_turn_speed_percent", min_turn_speed_percent_);
+    "turn_speed_full_steering_angle", turn_speed_full_steering_angle_);
+  declare_parameter<double>(
+    "max_turn_speed_reduction_percent", max_turn_speed_reduction_percent_);
+  get_parameter(
+    "max_turn_speed_reduction_percent", max_turn_speed_reduction_percent_);
   declare_parameter<double>("reverse_angular_gain", reverse_angular_gain_);
   get_parameter("reverse_angular_gain", reverse_angular_gain_);
   declare_parameter<double>("reverse_goal_lookahead_distance", reverse_goal_lookahead_distance_);
@@ -407,90 +411,95 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   get_parameter(
     "logic3_static_status_log_rate_hz", logic3_static_status_log_rate_hz_);
 
-  // 扫码后开始追点前的点云后撤
-  declare_parameter<double>("qr_escape_check_distance", qr_escape_check_distance_);
-  get_parameter("qr_escape_check_distance", qr_escape_check_distance_);
-  declare_parameter<double>("qr_escape_rear_extension", qr_escape_rear_extension_);
-  get_parameter("qr_escape_rear_extension", qr_escape_rear_extension_);
-  declare_parameter<double>("qr_escape_half_width", qr_escape_half_width_);
-  get_parameter("qr_escape_half_width", qr_escape_half_width_);
-  declare_parameter<int>("qr_escape_min_points", qr_escape_min_points_);
-  get_parameter("qr_escape_min_points", qr_escape_min_points_);
+  // 扫码后的 zhy 条件倒车。前后视野和走廊分别可调，检测区均为扇形与矩形的交集。
+  declare_parameter<double>("qr_reverse_y_threshold", qr_reverse_y_threshold_);
+  get_parameter("qr_reverse_y_threshold", qr_reverse_y_threshold_);
+  declare_parameter<double>(
+    "qr_reverse_front_obstacle_distance", qr_reverse_front_obstacle_distance_);
+  get_parameter(
+    "qr_reverse_front_obstacle_distance", qr_reverse_front_obstacle_distance_);
+  declare_parameter<double>("qr_reverse_front_fov_deg", qr_reverse_front_fov_deg_);
+  get_parameter("qr_reverse_front_fov_deg", qr_reverse_front_fov_deg_);
+  declare_parameter<double>(
+    "qr_reverse_front_corridor_half_width", qr_reverse_front_corridor_half_width_);
+  get_parameter(
+    "qr_reverse_front_corridor_half_width", qr_reverse_front_corridor_half_width_);
+  declare_parameter<double>(
+    "qr_reverse_rear_obstacle_distance", qr_reverse_rear_obstacle_distance_);
+  get_parameter(
+    "qr_reverse_rear_obstacle_distance", qr_reverse_rear_obstacle_distance_);
+  declare_parameter<double>("qr_reverse_rear_fov_deg", qr_reverse_rear_fov_deg_);
+  get_parameter("qr_reverse_rear_fov_deg", qr_reverse_rear_fov_deg_);
+  declare_parameter<double>(
+    "qr_reverse_rear_corridor_half_width", qr_reverse_rear_corridor_half_width_);
+  get_parameter(
+    "qr_reverse_rear_corridor_half_width", qr_reverse_rear_corridor_half_width_);
   declare_parameter<double>("qr_reverse_linear_speed", qr_reverse_linear_speed_);
   get_parameter("qr_reverse_linear_speed", qr_reverse_linear_speed_);
   declare_parameter<double>("qr_reverse_angular_speed", qr_reverse_angular_speed_);
   get_parameter("qr_reverse_angular_speed", qr_reverse_angular_speed_);
-  declare_parameter<double>(
-    "qr_rear_warning_start_distance", qr_rear_warning_start_distance_);
-  get_parameter("qr_rear_warning_start_distance", qr_rear_warning_start_distance_);
-  declare_parameter<double>("qr_rear_check_distance", qr_rear_check_distance_);
-  get_parameter("qr_rear_check_distance", qr_rear_check_distance_);
-  declare_parameter<double>("qr_rear_half_width", qr_rear_half_width_);
-  get_parameter("qr_rear_half_width", qr_rear_half_width_);
-  declare_parameter<int>("qr_rear_min_points", qr_rear_min_points_);
-  get_parameter("qr_rear_min_points", qr_rear_min_points_);
-  declare_parameter<double>(
-    "qr_reverse_min_map_x", qr_reverse_min_map_x_);
-  get_parameter("qr_reverse_min_map_x", qr_reverse_min_map_x_);
-  declare_parameter<double>(
-    "qr_visual_handoff_waypoint_distance", qr_visual_handoff_waypoint_distance_);
-  get_parameter(
-    "qr_visual_handoff_waypoint_distance", qr_visual_handoff_waypoint_distance_);
 
-  // 只用于“扫码后 -> 进入 waypoint_channel 前”的独立视觉避障参数组。
-  declare_parameter<std::string>(
-    "qr_channel_visual_detection_topic", qr_channel_visual_detection_topic_);
-  get_parameter("qr_channel_visual_detection_topic", qr_channel_visual_detection_topic_);
-  declare_parameter<std::string>(
-    "qr_channel_visual_obstacle_class_name", qr_channel_visual_obstacle_class_name_);
-  get_parameter(
-    "qr_channel_visual_obstacle_class_name", qr_channel_visual_obstacle_class_name_);
+  // 倒车结束后到进入 channel 前，普通航点跟踪叠加 zhy 雷达避障。
   declare_parameter<double>(
-    "qr_channel_visual_obstacle_confidence_threshold",
-    qr_channel_visual_obstacle_confidence_threshold_);
+    "qr_channel_handoff_waypoint_distance", qr_channel_handoff_waypoint_distance_);
   get_parameter(
-    "qr_channel_visual_obstacle_confidence_threshold",
-    qr_channel_visual_obstacle_confidence_threshold_);
-  declare_parameter<int>(
-    "qr_channel_visual_obstacle_bottom_threshold",
-    qr_channel_visual_obstacle_bottom_threshold_);
-  get_parameter(
-    "qr_channel_visual_obstacle_bottom_threshold",
-    qr_channel_visual_obstacle_bottom_threshold_);
+    "qr_channel_handoff_waypoint_distance", qr_channel_handoff_waypoint_distance_);
   declare_parameter<double>(
-    "qr_channel_visual_obstacle_delta_x_ratio",
-    qr_channel_visual_obstacle_delta_x_ratio_);
+    "qr_channel_lidar_lookahead_distance", qr_channel_lidar_lookahead_distance_);
   get_parameter(
-    "qr_channel_visual_obstacle_delta_x_ratio",
-    qr_channel_visual_obstacle_delta_x_ratio_);
+    "qr_channel_lidar_lookahead_distance", qr_channel_lidar_lookahead_distance_);
   declare_parameter<double>(
-    "qr_channel_visual_avoid_linear_speed", qr_channel_visual_avoid_linear_speed_);
+    "qr_channel_lidar_cruise_linear_speed", qr_channel_lidar_cruise_linear_speed_);
   get_parameter(
-    "qr_channel_visual_avoid_linear_speed", qr_channel_visual_avoid_linear_speed_);
+    "qr_channel_lidar_cruise_linear_speed", qr_channel_lidar_cruise_linear_speed_);
   declare_parameter<double>(
-    "qr_channel_visual_avoid_angular_ratio", qr_channel_visual_avoid_angular_ratio_);
+    "qr_channel_lidar_turn_angular_gain", qr_channel_lidar_turn_angular_gain_);
   get_parameter(
-    "qr_channel_visual_avoid_angular_ratio", qr_channel_visual_avoid_angular_ratio_);
+    "qr_channel_lidar_turn_angular_gain", qr_channel_lidar_turn_angular_gain_);
   declare_parameter<double>(
-    "qr_channel_visual_detection_timeout", qr_channel_visual_detection_timeout_);
+    "qr_channel_lidar_min_turn_speed_percent",
+    qr_channel_lidar_min_turn_speed_percent_);
   get_parameter(
-    "qr_channel_visual_detection_timeout", qr_channel_visual_detection_timeout_);
+    "qr_channel_lidar_min_turn_speed_percent",
+    qr_channel_lidar_min_turn_speed_percent_);
+  declare_parameter<double>(
+    "qr_channel_lidar_avoid_distance", qr_channel_lidar_avoid_distance_);
+  get_parameter(
+    "qr_channel_lidar_avoid_distance", qr_channel_lidar_avoid_distance_);
+  declare_parameter<double>(
+    "qr_channel_lidar_avoid_fov_deg", qr_channel_lidar_avoid_fov_deg_);
+  get_parameter(
+    "qr_channel_lidar_avoid_fov_deg", qr_channel_lidar_avoid_fov_deg_);
+  declare_parameter<double>(
+    "qr_channel_lidar_corridor_half_width", qr_channel_lidar_corridor_half_width_);
+  get_parameter(
+    "qr_channel_lidar_corridor_half_width", qr_channel_lidar_corridor_half_width_);
+  declare_parameter<double>(
+    "qr_channel_lidar_avoid_linear_speed", qr_channel_lidar_avoid_linear_speed_);
+  get_parameter(
+    "qr_channel_lidar_avoid_linear_speed", qr_channel_lidar_avoid_linear_speed_);
+  declare_parameter<double>(
+    "qr_channel_lidar_avoid_angular_gain", qr_channel_lidar_avoid_angular_gain_);
+  get_parameter(
+    "qr_channel_lidar_avoid_angular_gain", qr_channel_lidar_avoid_angular_gain_);
+
+  // 上述两段共用雷达新鲜度和物理地图墙体过滤，不使用 restriction_map 过滤。
+  declare_parameter<double>(
+    "qr_lidar_scan_timeout", qr_lidar_scan_timeout_);
+  get_parameter(
+    "qr_lidar_scan_timeout", qr_lidar_scan_timeout_);
+  declare_parameter<bool>(
+    "qr_lidar_enable_static_map_filter", qr_lidar_enable_static_map_filter_);
+  get_parameter(
+    "qr_lidar_enable_static_map_filter", qr_lidar_enable_static_map_filter_);
   declare_parameter<int>(
-    "qr_channel_visual_detection_source_width", qr_channel_visual_detection_source_width_);
+    "qr_lidar_static_map_occupied_threshold", qr_lidar_static_map_occupied_threshold_);
   get_parameter(
-    "qr_channel_visual_detection_source_width", qr_channel_visual_detection_source_width_);
-  declare_parameter<int>(
-    "qr_channel_visual_detection_source_height", qr_channel_visual_detection_source_height_);
+    "qr_lidar_static_map_occupied_threshold", qr_lidar_static_map_occupied_threshold_);
+  declare_parameter<double>(
+    "qr_lidar_static_map_wall_padding", qr_lidar_static_map_wall_padding_);
   get_parameter(
-    "qr_channel_visual_detection_source_height", qr_channel_visual_detection_source_height_);
-  declare_parameter<int>(
-    "qr_channel_visual_control_image_width", qr_channel_visual_control_image_width_);
-  get_parameter(
-    "qr_channel_visual_control_image_width", qr_channel_visual_control_image_width_);
-  declare_parameter<int>(
-    "qr_channel_visual_control_image_height", qr_channel_visual_control_image_height_);
-  get_parameter(
-    "qr_channel_visual_control_image_height", qr_channel_visual_control_image_height_);
+    "qr_lidar_static_map_wall_padding", qr_lidar_static_map_wall_padding_);
 
   // QR 与图生文触发
   declare_parameter<std::string>("qr_topic", qr_topic_);
@@ -511,9 +520,6 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   get_parameter("visual_control_suspend_value", visual_control_suspend_value_);
   declare_parameter<int>("visual_control_resume_value", visual_control_resume_value_);
   get_parameter("visual_control_resume_value", visual_control_resume_value_);
-  declare_parameter<int>(
-    "perception_obstacle_only_value", perception_obstacle_only_value_);
-  get_parameter("perception_obstacle_only_value", perception_obstacle_only_value_);
   declare_parameter<int>("perception_full_resume_value", perception_full_resume_value_);
   get_parameter("perception_full_resume_value", perception_full_resume_value_);
   declare_parameter<int>("perception_pause_value", perception_pause_value_);
@@ -553,8 +559,10 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   lookahead_distance_ = std::max(0.05, lookahead_distance_);
   route_projection_max_distance_ = std::max(0.10, route_projection_max_distance_);
   segment_advance_t_ = std::max(0.50, std::min(1.20, segment_advance_t_));
-  min_turn_speed_percent_ = std::max(
-    0.0, std::min(100.0, min_turn_speed_percent_));
+  turn_speed_full_steering_angle_ = std::max(
+    0.01, std::abs(turn_speed_full_steering_angle_));
+  max_turn_speed_reduction_percent_ = std::clamp(
+    max_turn_speed_reduction_percent_, 0.0, 90.0);
   cluster_max_point_gap_ = std::max(0.01, cluster_max_point_gap_);
   cluster_max_range_jump_ = std::max(0.01, cluster_max_range_jump_);
   cluster_min_points_ = std::max(3, cluster_min_points_);
@@ -689,41 +697,41 @@ VisualLidarPathFollower::VisualLidarPathFollower()
     logic2_pose_outlier_xy_ = logic3_pose_outlier_xy_;
     logic2_pose_outlier_yaw_ = logic3_pose_outlier_yaw_;
   }
-  qr_escape_check_distance_ = std::max(0.05, qr_escape_check_distance_);
-  qr_escape_rear_extension_ = std::max(0.0, qr_escape_rear_extension_);
-  qr_escape_half_width_ = std::max(0.05, qr_escape_half_width_);
-  qr_escape_min_points_ = std::max(1, qr_escape_min_points_);
+  qr_reverse_front_obstacle_distance_ = std::max(
+    0.0, qr_reverse_front_obstacle_distance_);
+  qr_reverse_front_fov_deg_ = std::clamp(qr_reverse_front_fov_deg_, 1.0, 360.0);
+  qr_reverse_front_corridor_half_width_ = std::max(
+    0.01, qr_reverse_front_corridor_half_width_);
+  qr_reverse_rear_obstacle_distance_ = std::max(
+    0.0, qr_reverse_rear_obstacle_distance_);
+  qr_reverse_rear_fov_deg_ = std::clamp(qr_reverse_rear_fov_deg_, 1.0, 360.0);
+  qr_reverse_rear_corridor_half_width_ = std::max(
+    0.01, qr_reverse_rear_corridor_half_width_);
   qr_reverse_linear_speed_ = std::max(0.0, qr_reverse_linear_speed_);
-  qr_reverse_angular_speed_ = std::abs(qr_reverse_angular_speed_);
-  qr_rear_warning_start_distance_ = std::max(
-    qr_escape_rear_extension_, qr_rear_warning_start_distance_);
-  qr_rear_check_distance_ = std::max(
-    qr_rear_warning_start_distance_ + 0.05, qr_rear_check_distance_);
-  qr_rear_half_width_ = std::max(0.05, qr_rear_half_width_);
-  qr_rear_min_points_ = std::max(1, qr_rear_min_points_);
-  qr_visual_handoff_waypoint_distance_ = std::max(
-    0.01, qr_visual_handoff_waypoint_distance_);
-  qr_channel_visual_obstacle_confidence_threshold_ = std::max(
-    0.0, std::min(1.0, qr_channel_visual_obstacle_confidence_threshold_));
-  qr_channel_visual_obstacle_bottom_threshold_ = std::max(
-    0, qr_channel_visual_obstacle_bottom_threshold_);
-  qr_channel_visual_obstacle_delta_x_ratio_ = std::max(
-    0.0, qr_channel_visual_obstacle_delta_x_ratio_);
-  qr_channel_visual_avoid_linear_speed_ = std::max(
-    0.0, qr_channel_visual_avoid_linear_speed_);
-  qr_channel_visual_detection_timeout_ = std::max(
-    0.05, qr_channel_visual_detection_timeout_);
-  qr_channel_visual_detection_source_width_ = std::max(
-    1, qr_channel_visual_detection_source_width_);
-  qr_channel_visual_detection_source_height_ = std::max(
-    1, qr_channel_visual_detection_source_height_);
-  qr_channel_visual_control_image_width_ = std::max(
-    1, qr_channel_visual_control_image_width_);
-  qr_channel_visual_control_image_height_ = std::max(
-    1, qr_channel_visual_control_image_height_);
-  if (qr_channel_visual_obstacle_class_name_.empty()) {
-    qr_channel_visual_obstacle_class_name_ = "construction_cone";
-  }
+  qr_channel_handoff_waypoint_distance_ = std::max(
+    0.01, qr_channel_handoff_waypoint_distance_);
+  qr_channel_lidar_lookahead_distance_ = std::max(
+    0.01, qr_channel_lidar_lookahead_distance_);
+  qr_channel_lidar_cruise_linear_speed_ = std::max(
+    0.0, qr_channel_lidar_cruise_linear_speed_);
+  qr_channel_lidar_turn_angular_gain_ = std::max(
+    0.0, qr_channel_lidar_turn_angular_gain_);
+  qr_channel_lidar_min_turn_speed_percent_ = std::clamp(
+    qr_channel_lidar_min_turn_speed_percent_, 0.0, 100.0);
+  qr_channel_lidar_avoid_distance_ = std::max(0.0, qr_channel_lidar_avoid_distance_);
+  qr_channel_lidar_avoid_fov_deg_ = std::clamp(
+    qr_channel_lidar_avoid_fov_deg_, 1.0, 360.0);
+  qr_channel_lidar_corridor_half_width_ = std::max(
+    0.01, qr_channel_lidar_corridor_half_width_);
+  qr_channel_lidar_avoid_linear_speed_ = std::max(
+    0.0, qr_channel_lidar_avoid_linear_speed_);
+  qr_channel_lidar_avoid_angular_gain_ = std::max(
+    0.0, qr_channel_lidar_avoid_angular_gain_);
+  qr_lidar_scan_timeout_ = std::max(0.05, qr_lidar_scan_timeout_);
+  qr_lidar_static_map_occupied_threshold_ = std::clamp(
+    qr_lidar_static_map_occupied_threshold_, 1, 100);
+  qr_lidar_static_map_wall_padding_ = std::max(
+    0.0, qr_lidar_static_map_wall_padding_);
   image_capture_radius_ = std::max(0.01, image_capture_radius_);
   image_capture_slow_distance_ = std::max(image_capture_radius_, image_capture_slow_distance_);
   image_capture_slow_speed_ = std::max(0.0, image_capture_slow_speed_);
@@ -792,6 +800,7 @@ VisualLidarPathFollower::VisualLidarPathFollower()
     scan_topic_, rclcpp::SensorDataQoS().keep_last(1),
     [this](sensor_msgs::msg::LaserScan::ConstSharedPtr msg) {
       latest_scan_ = msg;
+      latest_scan_received_at_ = std::chrono::steady_clock::now();
       ++scan_sequence_;
     });
   map_sub_ = create_subscription<nav_msgs::msg::OccupancyGrid>(
@@ -818,13 +827,6 @@ VisualLidarPathFollower::VisualLidarPathFollower()
           latest_logic3_runtime_restriction_map_ = msg;
         });
   }
-  visual_detection_sub_ = create_subscription<ai_msgs::msg::PerceptionTargets>(
-    qr_channel_visual_detection_topic_, rclcpp::SensorDataQoS().keep_last(1),
-    [this](ai_msgs::msg::PerceptionTargets::ConstSharedPtr msg) {
-      latest_visual_detection_ = msg;
-      latest_visual_detection_received_at_ = std::chrono::steady_clock::now();
-      has_visual_detection_ = true;
-    });
   if (waypoint_shift_logic_ >= 2) {
     logic2_odom_sub_ = create_subscription<nav_msgs::msg::Odometry>(
       logic2_odom_topic_, rclcpp::SensorDataQoS().keep_last(10),
@@ -856,7 +858,7 @@ VisualLidarPathFollower::VisualLidarPathFollower()
     RCLCPP_INFO(
       get_logger(),
       "debug: 倒车点=%zu，扫码前=%s，顺时针=%s，逆时针=%s，控制前瞻=%.2f，"
-      "避障=进场视觉覆盖+channel waypoint_shift，线速度=%.2f。",
+      "避障=QR后zhy雷达覆盖+channel waypoint_shift，线速度=%.2f。",
       static_cast<std::size_t>(reverse_count), waypoints_file_.c_str(),
       route_waypoints_clockwise_file_.c_str(), route_waypoints_counterclockwise_file_.c_str(),
       lookahead_distance_, linear_speed_);
@@ -948,15 +950,15 @@ void VisualLidarPathFollower::control_once()
 
   next_control_state_ = ControlState::PATH_FOLLOWING;
 
-  if (qr_visual_avoidance_active_) {
-    update_qr_visual_avoidance_phase(pose);
+  if (qr_channel_approach_active_) {
     geometry_msgs::msg::Twist reverse_cmd;
-    if (qr_visual_avoidance_active_ && apply_one_shot_qr_reverse(pose, reverse_cmd)) {
+    if (apply_qr_reverse_maneuver(pose, reverse_cmd)) {
       publish_debug_visualization(pose);
       set_control_state(next_control_state_);
       cmd_pub_->publish(reverse_cmd);
       return;
     }
+    update_qr_channel_approach_phase(pose);
   }
 
   // 独立拍照点是不可跳过的精确点。进入到达半径后先停车稳定，再触发一次图生文。
@@ -986,21 +988,34 @@ void VisualLidarPathFollower::control_once()
     return;
   }
 
-  auto target = compute_lookahead_target(pose, lookahead_distance_);
-  if (!target.reverse && !qr_visual_avoidance_active_) {
+  const double active_lookahead_distance = qr_channel_approach_active_ ?
+    qr_channel_lidar_lookahead_distance_ : lookahead_distance_;
+  auto target = compute_lookahead_target(pose, active_lookahead_distance);
+  if (!target.reverse && !qr_channel_approach_active_) {
     if (waypoint_shift_logic_ == 3 && !logic2_planning_pose_anchored_) {
       logic3_force_full_route_ = true;
     }
     update_waypoint_shifts(pose, target.waypoint_index);
     logic3_force_full_route_ = false;
-    target = compute_lookahead_target(pose, lookahead_distance_);
+    target = compute_lookahead_target(pose, active_lookahead_distance);
   }
 
   auto cmd = compute_tracking_command(pose, target);
-  apply_turn_speed_limit(pose, target, cmd);
+  if (qr_channel_approach_active_ && !target.reverse) {
+    const double target_yaw = std::atan2(
+      target.point.y - pose.y, target.point.x - pose.x);
+    const double heading_error = normalize_angle(target_yaw - pose.yaw);
+    const double minimum_speed_ratio = qr_channel_lidar_min_turn_speed_percent_ / 100.0;
+    const double speed_ratio = minimum_speed_ratio +
+      (1.0 - minimum_speed_ratio) * 0.5 * (1.0 + std::cos(std::abs(heading_error)));
+    cmd.linear.x = qr_channel_lidar_cruise_linear_speed_ * speed_ratio;
+    cmd.angular.z = heading_error * qr_channel_lidar_turn_angular_gain_;
+  } else {
+    apply_turn_speed_limit(cmd);
+  }
   apply_image_capture_speed_limit(pose, cmd);
-  if (qr_visual_avoidance_active_) {
-    apply_qr_channel_visual_obstacle_avoidance(cmd);
+  if (qr_channel_approach_active_ && !target.reverse) {
+    apply_qr_channel_lidar_obstacle_avoidance(cmd);
   }
 
   publish_debug_visualization(pose);
@@ -1588,27 +1603,19 @@ geometry_msgs::msg::Twist VisualLidarPathFollower::compute_tracking_command(
   return cmd;
 }
 
-// 使用车头朝向与“车辆到当前追踪点”连线之间的几何夹角进行余弦降速：
-//   夹角 0 度时保持正常速度，夹角 180 度时降到配置的最低速度比例。
-// 该夹角不乘 turn_angular_gain，因此调整转向增益不会连带改变线速度。
+// 根据即将下发的目标前轮转角绝对值线性降速。左右相同目标转角使用相同
+// 降速比例；舵机 PWM 的 1050/2200 非对称映射仍由下位机处理。
 void VisualLidarPathFollower::apply_turn_speed_limit(
-  const VisualLidarPathFollower::RobotPose & pose,
-  const VisualLidarPathFollower::TargetPoint & target,
   geometry_msgs::msg::Twist & cmd) const
 {
   if (!enable_turn_speed_slowdown_ || std::abs(cmd.linear.x) <= 1.0e-9) {
     return;
   }
 
-  const double target_yaw = std::atan2(target.point.y - pose.y, target.point.x - pose.x);
-  const double heading_angle = std::abs(normalize_angle(target_yaw - pose.yaw));
-  const double cosine_ratio = 0.5 * (1.0 + std::cos(heading_angle));
-  const double min_speed_ratio = min_turn_speed_percent_ / 100.0;
-  const double speed_ratio =
-    min_speed_ratio + (1.0 - min_speed_ratio) * cosine_ratio;
-  const double speed_limit = std::abs(linear_speed_) * speed_ratio;
-  const double limited_speed = std::min(std::abs(cmd.linear.x), speed_limit);
-  cmd.linear.x = std::copysign(limited_speed, cmd.linear.x);
+  const double turn_ratio = std::clamp(
+    std::abs(cmd.angular.z) / turn_speed_full_steering_angle_, 0.0, 1.0);
+  const double reduction_ratio = max_turn_speed_reduction_percent_ / 100.0;
+  cmd.linear.x *= 1.0 - reduction_ratio * turn_ratio;
 }
 
 bool VisualLidarPathFollower::lookup_pose(
@@ -1919,196 +1926,229 @@ VisualLidarPathFollower::collect_non_static_scan_clusters_map(
   return clusters;
 }
 
-// 扫码后、开始追通道点前统计车辆周围点云：
-//   1. 左右比较矩形从车前延伸到车屁股后方，只统计地图过滤后的非墙点；
-//   2. 更靠后的警戒区也只统计非墙点，进入该区域后恢复巡点和 waypoint_shift。
-VisualLidarPathFollower::QrEscapeObservation
-VisualLidarPathFollower::observe_qr_escape_point_cloud(
-  const VisualLidarPathFollower::RobotPose & robot_pose) const
+bool VisualLidarPathFollower::latest_qr_lidar_scan_is_fresh() const
 {
-  QrEscapeObservation observation;
   if (!latest_scan_) {
-    return observation;
+    return false;
   }
-  if (enable_static_map_filter_ && require_map_for_lidar_assist_ &&
-    (!latest_map_ || !latest_restriction_map_))
-  {
-    return observation;
+  const double age = std::chrono::duration<double>(
+    std::chrono::steady_clock::now() - latest_scan_received_at_).count();
+  return age >= 0.0 && age <= qr_lidar_scan_timeout_;
+}
+
+// 为 QR 倒车和到 channel 避障准备同一帧雷达的坐标变换。
+// 开启墙体过滤时，地图或采样时刻 TF 缺失都视为数据未就绪，避免降级后把墙当障碍。
+bool VisualLidarPathFollower::prepare_qr_lidar_scan(
+  VisualLidarPathFollower::RobotPose & scan_to_base,
+  VisualLidarPathFollower::RobotPose & scan_to_map) const
+{
+  scan_to_base = RobotPose();
+  scan_to_map = RobotPose();
+  if (!latest_qr_lidar_scan_is_fresh()) {
+    return false;
   }
 
   const auto & scan = *latest_scan_;
-  RobotPose scan_to_base;
-  if (!scan.header.frame_id.empty() && scan.header.frame_id != base_frame_id_ &&
-    !lookup_pose(
-      base_frame_id_, scan.header.frame_id,
-      rclcpp::Time(0, 0, get_clock()->get_clock_type()), scan_to_base))
+  const std::string source_frame =
+    scan.header.frame_id.empty() ? base_frame_id_ : scan.header.frame_id;
+  const rclcpp::Time scan_stamp(scan.header.stamp, get_clock()->get_clock_type());
+  const rclcpp::Time lookup_stamp = scan_stamp.nanoseconds() == 0 ?
+    rclcpp::Time(0, 0, get_clock()->get_clock_type()) : scan_stamp;
+
+  if (source_frame != base_frame_id_ &&
+    !lookup_pose(base_frame_id_, source_frame, lookup_stamp, scan_to_base))
   {
-    return observation;
+    return false;
+  }
+  if (!qr_lidar_enable_static_map_filter_) {
+    return true;
+  }
+  if (!latest_map_) {
+    return false;
+  }
+  const auto & map = *latest_map_;
+  if (map.info.width == 0 || map.info.height == 0 || map.info.resolution <= 0.0 ||
+    map.data.size() < static_cast<std::size_t>(map.info.width) * map.info.height)
+  {
+    return false;
+  }
+  if (source_frame == frame_id_) {
+    return true;
+  }
+  return lookup_pose(frame_id_, source_frame, lookup_stamp, scan_to_map);
+}
+
+// 只用物理定位地图过滤墙体，不把 restriction_map 的软禁行区混入这两段判断。
+bool VisualLidarPathFollower::qr_lidar_map_point_is_wall(
+  const VisualLidarPathFollower::Point2D & map_point) const
+{
+  if (!qr_lidar_enable_static_map_filter_ || !latest_map_) {
+    return false;
   }
 
-  const double cos_scan = std::cos(scan_to_base.yaw);
-  const double sin_scan = std::sin(scan_to_base.yaw);
+  const auto & map = *latest_map_;
+  const int width = static_cast<int>(map.info.width);
+  const int height = static_cast<int>(map.info.height);
+  const double resolution = map.info.resolution;
+  if (width <= 0 || height <= 0 || resolution <= 0.0 ||
+    map.data.size() < static_cast<std::size_t>(width) * static_cast<std::size_t>(height))
+  {
+    return false;
+  }
+
+  const auto & origin = map.info.origin;
+  const auto & q = origin.orientation;
+  const double origin_yaw = std::atan2(
+    2.0 * (q.w * q.z + q.x * q.y),
+    1.0 - 2.0 * (q.y * q.y + q.z * q.z));
+  const double dx = map_point.x - origin.position.x;
+  const double dy = map_point.y - origin.position.y;
+  const double grid_x_m = std::cos(origin_yaw) * dx + std::sin(origin_yaw) * dy;
+  const double grid_y_m = -std::sin(origin_yaw) * dx + std::cos(origin_yaw) * dy;
+  const int cell_x = static_cast<int>(std::floor(grid_x_m / resolution));
+  const int cell_y = static_cast<int>(std::floor(grid_y_m / resolution));
+  const int padding_cells = static_cast<int>(
+    std::ceil(qr_lidar_static_map_wall_padding_ / resolution));
+
+  for (int y = cell_y - padding_cells; y <= cell_y + padding_cells; ++y) {
+    for (int x = cell_x - padding_cells; x <= cell_x + padding_cells; ++x) {
+      if (x < 0 || y < 0 || x >= width || y >= height) {
+        continue;
+      }
+      const auto index = static_cast<std::size_t>(y) * map.info.width +
+        static_cast<std::size_t>(x);
+      if (map.data[index] >= qr_lidar_static_map_occupied_threshold_) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// 在指定朝向上取最近障碍：总视野扇形、最大距离和矩形走廊必须同时命中。
+// center_angle=0 检查车前，center_angle=pi 检查车后。
+VisualLidarPathFollower::QrLidarObstacle
+VisualLidarPathFollower::find_qr_lidar_obstacle(
+  double center_angle, double maximum_distance, double fov_deg,
+  double corridor_half_width,
+  const VisualLidarPathFollower::RobotPose & scan_to_base,
+  const VisualLidarPathFollower::RobotPose & scan_to_map) const
+{
+  QrLidarObstacle result;
+  if (!latest_scan_ || maximum_distance <= 0.0) {
+    return result;
+  }
+
+  const auto & scan = *latest_scan_;
+  const double half_fov = std::max(fov_deg * M_PI / 360.0, 0.01);
+  const double cos_base = std::cos(scan_to_base.yaw);
+  const double sin_base = std::sin(scan_to_base.yaw);
+  const double cos_map = std::cos(scan_to_map.yaw);
+  const double sin_map = std::sin(scan_to_map.yaw);
   double angle = scan.angle_min;
   for (const auto value : scan.ranges) {
+    const double scan_angle = angle;
+    angle += scan.angle_increment;
     if (!std::isfinite(value) || value < scan.range_min || value > scan.range_max) {
-      angle += scan.angle_increment;
       continue;
     }
 
-    const double scan_x = static_cast<double>(value) * std::cos(angle);
-    const double scan_y = static_cast<double>(value) * std::sin(angle);
+    const double scan_x = static_cast<double>(value) * std::cos(scan_angle);
+    const double scan_y = static_cast<double>(value) * std::sin(scan_angle);
     const Point2D base_point{
-      scan_to_base.x + cos_scan * scan_x - sin_scan * scan_y,
-      scan_to_base.y + sin_scan * scan_x + cos_scan * scan_y};
-    const bool in_escape_area =
-      base_point.x >= -qr_escape_rear_extension_ &&
-      base_point.x <= qr_escape_check_distance_ &&
-      std::abs(base_point.y) <= qr_escape_half_width_;
-    const bool in_rear_warning_area =
-      base_point.x <= -qr_rear_warning_start_distance_ &&
-      base_point.x >= -qr_rear_check_distance_ &&
-      std::abs(base_point.y) <= qr_rear_half_width_;
-    if ((in_escape_area || in_rear_warning_area) &&
-      !is_static_map_point(robot_pose, base_point))
-    {
-      if (in_escape_area) {
-        if (base_point.y >= 0.0) {
-          ++observation.area_left_count;
-        } else {
-          ++observation.area_right_count;
-        }
-      } else if (base_point.y >= 0.0) {
-        ++observation.rear_left_count;
-      } else {
-        ++observation.rear_right_count;
+      scan_to_base.x + cos_base * scan_x - sin_base * scan_y,
+      scan_to_base.y + sin_base * scan_x + cos_base * scan_y};
+    const double point_range = std::hypot(base_point.x, base_point.y);
+    const double relative_angle = normalize_angle(
+      std::atan2(base_point.y, base_point.x) - center_angle);
+    if (point_range > maximum_distance || std::abs(relative_angle) > half_fov) {
+      continue;
+    }
+
+    const double forward = point_range * std::cos(relative_angle);
+    const double lateral = point_range * std::sin(relative_angle);
+    if (forward <= 0.0 || std::abs(lateral) > corridor_half_width) {
+      continue;
+    }
+
+    if (qr_lidar_enable_static_map_filter_) {
+      const Point2D map_point{
+        scan_to_map.x + cos_map * scan_x - sin_map * scan_y,
+        scan_to_map.y + sin_map * scan_x + cos_map * scan_y};
+      if (qr_lidar_map_point_is_wall(map_point)) {
+        continue;
       }
     }
-    angle += scan.angle_increment;
-  }
 
-  observation.ready = true;
-  return observation;
+    if (!result.found || point_range < result.range) {
+      result.found = true;
+      result.range = point_range;
+      result.relative_angle = relative_angle;
+    }
+  }
+  return result;
 }
 
-// 扫码瞬间只判断一次 map.x。阈值左侧永久跳过本轮后撤，右侧才把后撤置为待触发。
-void VisualLidarPathFollower::evaluate_qr_reverse_gate(
-  const VisualLidarPathFollower::RobotPose & robot_pose)
-{
-  if (qr_reverse_gate_evaluated_) {
-    return;
-  }
-
-  qr_reverse_gate_evaluated_ = true;
-  qr_reverse_eligible_ = robot_pose.x > qr_reverse_min_map_x_;
-  qr_escape_state_ = qr_reverse_eligible_ ? QrEscapeState::CHECKING : QrEscapeState::IDLE;
-  RCLCPP_INFO(
-    get_logger(),
-    "二维码后撤 x 门限判定：扫码位姿 map.x=%.3f，门限=%.3f，结果=%s。",
-    robot_pose.x, qr_reverse_min_map_x_,
-    qr_reverse_eligible_ ? "允许最多一次后撤" : "位于门限左侧，跳过后撤");
-}
-
-// 进入 channel 航点邻域后结束视觉覆盖；基础控制从扫码起就始终是航点跟踪。
-void VisualLidarPathFollower::update_qr_visual_avoidance_phase(
-  const VisualLidarPathFollower::RobotPose & robot_pose)
-{
-  evaluate_qr_reverse_gate(robot_pose);
-
-  // 扫码时位于门限右侧只代表“保留待触发资格”。倒车真正触发前，车辆一旦
-  // 前进到门限左侧，本轮资格永久失效；已经开始的倒车仍只由点云解除条件控制。
-  if (qr_reverse_eligible_ && !qr_reverse_triggered_ &&
-    qr_escape_state_ == QrEscapeState::CHECKING &&
-    robot_pose.x <= qr_reverse_min_map_x_)
-  {
-    qr_reverse_eligible_ = false;
-    qr_escape_state_ = QrEscapeState::IDLE;
-    RCLCPP_INFO(
-      get_logger(),
-      "二维码倒车待触发资格已取消：当前 map.x=%.3f 已进入门限 %.3f 左侧；"
-      "本轮后续不再倒车。",
-      robot_pose.x, qr_reverse_min_map_x_);
-  }
-
-  if (qr_escape_state_ == QrEscapeState::BACKING_RIGHT) {
-    return;
-  }
-
-  std::size_t nearest_waypoint_index = 0;
-  double nearest_waypoint_distance = std::numeric_limits<double>::infinity();
-  if (!find_nearest_waypoint(
-      robot_pose, nearest_waypoint_index, nearest_waypoint_distance) ||
-    nearest_waypoint_distance > qr_visual_handoff_waypoint_distance_)
-  {
-    return;
-  }
-
-  qr_visual_avoidance_active_ = false;
-  qr_escape_state_ = QrEscapeState::IDLE;
-  current_index_ = std::min(nearest_waypoint_index, waypoints_.size() - 1);
-  first_waypoint_reached_ = true;
-  set_perception_mode(perception_pause_value_, "暂停");
-  RCLCPP_INFO(
-    get_logger(),
-    "已进入 waypoint_channel：最近航点=%zu/%zu，距离=%.3fm；"
-    "关闭视觉障碍物覆盖，继续 waypoint_shift 巡点。",
-    current_index_ + 1, waypoints_.size(), nearest_waypoint_distance);
-}
-
-// 返回 true 时本周期由一次性二维码倒车覆盖航点指令；解除后下一周期直接恢复追航点。
-bool VisualLidarPathFollower::apply_one_shot_qr_reverse(
+// zhy 条件倒车：扫码后只判定一次；触发后固定向右后撤，直到后方命中，
+// 或 map.y 回到阈值内且前方已经清空。前后点云均过滤墙体并使用扇形+矩形。
+bool VisualLidarPathFollower::apply_qr_reverse_maneuver(
   const VisualLidarPathFollower::RobotPose & robot_pose,
   geometry_msgs::msg::Twist & cmd)
 {
-  if (!qr_reverse_eligible_ ||
-    (qr_reverse_triggered_ && qr_escape_state_ != QrEscapeState::BACKING_RIGHT))
-  {
+  if (qr_escape_state_ == QrEscapeState::IDLE) {
     return false;
   }
 
-  latest_qr_escape_observation_ = observe_qr_escape_point_cloud(robot_pose);
-  const auto & observation = latest_qr_escape_observation_;
-  if (!observation.ready) {
-    if (qr_escape_state_ == QrEscapeState::BACKING_RIGHT) {
-      RCLCPP_WARN_THROTTLE(
-        get_logger(), *get_clock(), 1000,
-        "二维码倒车期间缺少有效雷达或地图数据，停车等待数据恢复。");
-      return true;
-    }
+  RobotPose scan_to_base;
+  RobotPose scan_to_map;
+  if (!prepare_qr_lidar_scan(scan_to_base, scan_to_map)) {
+    cmd = geometry_msgs::msg::Twist();
     RCLCPP_WARN_THROTTLE(
-      get_logger(), *get_clock(), 2000,
-      "二维码后撤待触发，但雷达或地图尚未就绪；继续追 waypoint_channel。");
+      get_logger(), *get_clock(), 1000,
+      "二维码倒车等待新鲜雷达、物理地图及采样时刻TF，当前停车。");
+    return true;
+  }
+
+  const auto front_obstacle = find_qr_lidar_obstacle(
+    0.0, qr_reverse_front_obstacle_distance_, qr_reverse_front_fov_deg_,
+    qr_reverse_front_corridor_half_width_, scan_to_base, scan_to_map);
+  const auto rear_obstacle = find_qr_lidar_obstacle(
+    M_PI, qr_reverse_rear_obstacle_distance_, qr_reverse_rear_fov_deg_,
+    qr_reverse_rear_corridor_half_width_, scan_to_base, scan_to_map);
+
+  if (qr_escape_state_ == QrEscapeState::PENDING) {
+    if (robot_pose.y > qr_reverse_y_threshold_ || front_obstacle.found) {
+      qr_escape_state_ = QrEscapeState::BACKING_RIGHT;
+      RCLCPP_WARN(
+        get_logger(),
+        "开始 zhy 二维码倒车：map.y=%.3f（阈值 %.3f），前方障碍=%s；"
+        "输出 linear.x=-%.2f, angular.z=%.2f。",
+        robot_pose.y, qr_reverse_y_threshold_, front_obstacle.found ? "是" : "否",
+        qr_reverse_linear_speed_, qr_reverse_angular_speed_);
+    } else {
+      qr_escape_state_ = QrEscapeState::IDLE;
+      RCLCPP_INFO(
+        get_logger(),
+        "跳过二维码倒车：map.y=%.3f 不大于阈值 %.3f，且前方扇形走廊已清空。",
+        robot_pose.y, qr_reverse_y_threshold_);
+      return false;
+    }
+  }
+
+  if (rear_obstacle.found) {
+    qr_escape_state_ = QrEscapeState::IDLE;
+    RCLCPP_INFO(
+      get_logger(), "二维码倒车结束：后方非墙障碍进入 %.2fm 停车区。",
+      qr_reverse_rear_obstacle_distance_);
     return false;
   }
-
-  const int area_count = observation.area_left_count + observation.area_right_count;
-  const int rear_count = observation.rear_left_count + observation.rear_right_count;
-  if (qr_escape_state_ == QrEscapeState::CHECKING) {
-    if (rear_count >= qr_rear_min_points_) {
-      RCLCPP_WARN_THROTTLE(
-        get_logger(), *get_clock(), 1000,
-        "二维码后方警戒区有非墙点：左=%d，右=%d；暂不倒车，继续追航点。",
-        observation.rear_left_count, observation.rear_right_count);
-      return false;
-    }
-    if (area_count < qr_escape_min_points_) {
-      return false;
-    }
-
-    qr_escape_state_ = QrEscapeState::BACKING_RIGHT;
-    qr_reverse_triggered_ = true;
-    RCLCPP_WARN(
-      get_logger(),
-      "二维码后撤首次且唯一一次触发：框内左/右=%d/%d，临时覆盖航点指令向右后撤。",
-      observation.area_left_count, observation.area_right_count);
-  }
-
-  if (rear_count >= qr_rear_min_points_ || area_count < qr_escape_min_points_) {
+  if (!front_obstacle.found && robot_pose.y <= qr_reverse_y_threshold_) {
     qr_escape_state_ = QrEscapeState::IDLE;
     RCLCPP_INFO(
       get_logger(),
-      "二维码倒车已解除且锁止，不再二次触发：原因=%s；下一周期直接恢复追 waypoint_channel。",
-      rear_count >= qr_rear_min_points_ ? "后方警戒命中" : "前方触发区已清空");
-    return true;
+      "二维码倒车结束：前方扇形走廊已清空，map.y=%.3f 已回到阈值 %.3f 内。",
+      robot_pose.y, qr_reverse_y_threshold_);
+    return false;
   }
 
   cmd.linear.x = -qr_reverse_linear_speed_;
@@ -2116,86 +2156,92 @@ bool VisualLidarPathFollower::apply_one_shot_qr_reverse(
   if (debug_control_logs_) {
     RCLCPP_INFO_THROTTLE(
       get_logger(), *get_clock(), 500,
-      "debug: 二维码向右后撤，框内左/右=%d/%d，后方左/右=%d/%d，输出=%.2f/%.2f。",
-      observation.area_left_count, observation.area_right_count,
-      observation.rear_left_count, observation.rear_right_count,
-      cmd.linear.x, cmd.angular.z);
+      "debug: zhy二维码倒车，map.y=%.3f，前障碍=%s，后障碍=%s，输出=%.2f/%.2f。",
+      robot_pose.y, front_obstacle.found ? "是" : "否",
+      rear_obstacle.found ? "是" : "否", cmd.linear.x, cmd.angular.z);
   }
   return true;
 }
 
-int VisualLidarPathFollower::scale_qr_channel_visual_detection_x(int x) const
+// 进入 channel 航点邻域后关闭 zhy 进场雷达覆盖，恢复原有 waypoint_shift。
+void VisualLidarPathFollower::update_qr_channel_approach_phase(
+  const VisualLidarPathFollower::RobotPose & robot_pose)
 {
-  return static_cast<int>(std::round(
-    static_cast<double>(x) * qr_channel_visual_control_image_width_ /
-    qr_channel_visual_detection_source_width_));
+  if (qr_escape_state_ == QrEscapeState::BACKING_RIGHT) {
+    return;
+  }
+
+  if (waypoints_.empty()) {
+    return;
+  }
+  const double entry_waypoint_distance = std::hypot(
+    waypoints_.front().x - robot_pose.x, waypoints_.front().y - robot_pose.y);
+  bool crossed_entry_section = false;
+  if (waypoints_.size() >= 2) {
+    const double tangent_x = waypoints_[1].x - waypoints_[0].x;
+    const double tangent_y = waypoints_[1].y - waypoints_[0].y;
+    const double tangent_length = std::hypot(tangent_x, tangent_y);
+    if (tangent_length > 1.0e-8) {
+      const double unit_x = tangent_x / tangent_length;
+      const double unit_y = tangent_y / tangent_length;
+      const double relative_x = robot_pose.x - waypoints_[0].x;
+      const double relative_y = robot_pose.y - waypoints_[0].y;
+      const double along_route = relative_x * unit_x + relative_y * unit_y;
+      const double cross_track = std::abs(-relative_x * unit_y + relative_y * unit_x);
+      crossed_entry_section =
+        along_route >= 0.0 && cross_track <= waypoint_pass_radius(0);
+    }
+  }
+  if (entry_waypoint_distance > qr_channel_handoff_waypoint_distance_ &&
+    !crossed_entry_section)
+  {
+    return;
+  }
+
+  qr_channel_approach_active_ = false;
+  qr_escape_state_ = QrEscapeState::IDLE;
+  current_index_ = std::min(current_index_, waypoints_.size() - 1);
+  first_waypoint_reached_ = true;
+  RCLCPP_INFO(
+    get_logger(),
+    "已进入 waypoint_channel：入口首点距离=%.3fm，入口截面穿越=%s；"
+    "关闭 zhy 进场雷达覆盖，恢复原有 waypoint_shift。",
+    entry_waypoint_distance, crossed_entry_section ? "是" : "否");
 }
 
-int VisualLidarPathFollower::scale_qr_channel_visual_detection_y(int y) const
-{
-  return static_cast<int>(std::round(
-    static_cast<double>(y) * qr_channel_visual_control_image_height_ /
-    qr_channel_visual_detection_source_height_));
-}
-
-// 有有效障碍物时只覆盖当前航点速度；障碍物失效后不保留任何回线/丢线状态。
-bool VisualLidarPathFollower::apply_qr_channel_visual_obstacle_avoidance(
+// zhy 到 channel 雷达避障：取前方扇形走廊内最近的非墙点，障碍在左则右绕，
+// 障碍在右则左绕；转向量从中心线向扇形边缘线性衰减。
+bool VisualLidarPathFollower::apply_qr_channel_lidar_obstacle_avoidance(
   geometry_msgs::msg::Twist & cmd)
 {
-  if (!has_visual_detection_ || !latest_visual_detection_) {
-    return false;
+  RobotPose scan_to_base;
+  RobotPose scan_to_map;
+  if (!prepare_qr_lidar_scan(scan_to_base, scan_to_map)) {
+    cmd = geometry_msgs::msg::Twist();
+    RCLCPP_WARN_THROTTLE(
+      get_logger(), *get_clock(), 1000,
+      "QR到channel等待新鲜雷达、物理地图及采样时刻TF，当前停车。");
+    return true;
   }
-  const double detection_age = std::chrono::duration<double>(
-    std::chrono::steady_clock::now() - latest_visual_detection_received_at_).count();
-  if (detection_age > qr_channel_visual_detection_timeout_) {
+
+  const auto obstacle = find_qr_lidar_obstacle(
+    0.0, qr_channel_lidar_avoid_distance_, qr_channel_lidar_avoid_fov_deg_,
+    qr_channel_lidar_corridor_half_width_, scan_to_base, scan_to_map);
+  if (!obstacle.found) {
     return false;
   }
 
-  const ai_msgs::msg::Target * obstacle = nullptr;
-  int obstacle_center_x = 0;
-  int obstacle_bottom_y = 0;
-  const int image_center_x = qr_channel_visual_control_image_width_ / 2;
-  for (const auto & target : latest_visual_detection_->targets) {
-    if (target.type != qr_channel_visual_obstacle_class_name_ || target.rois.empty()) {
-      continue;
-    }
-    const auto & roi = target.rois.front();
-    const int center_x = scale_qr_channel_visual_detection_x(static_cast<int>(
-      roi.rect.x_offset + roi.rect.width / 2));
-    const int bottom_y = scale_qr_channel_visual_detection_y(static_cast<int>(
-      roi.rect.y_offset + roi.rect.height));
-    const int delta_x = std::abs(center_x - image_center_x);
-    const double avoid_threshold =
-      qr_channel_visual_obstacle_bottom_threshold_ +
-      delta_x * qr_channel_visual_obstacle_delta_x_ratio_;
-    if (roi.confidence >= qr_channel_visual_obstacle_confidence_threshold_ &&
-      bottom_y >= avoid_threshold)
-    {
-      obstacle = &target;
-      obstacle_center_x = center_x;
-      obstacle_bottom_y = bottom_y;
-      break;
-    }
-  }
-  if (!obstacle) {
-    return false;
-  }
-
-  double center_offset = static_cast<double>(obstacle_center_x - image_center_x);
-  if (center_offset >= 0.0 && center_offset < 5.0) {
-    center_offset = 5.0;
-  } else if (center_offset < 0.0 && center_offset > -5.0) {
-    center_offset = -5.0;
-  }
-  const double angular_command = center_offset > 0.0 ?
-    -qr_channel_visual_avoid_angular_ratio_ * (image_center_x - center_offset) :
-    -qr_channel_visual_avoid_angular_ratio_ * (-image_center_x - center_offset);
-  cmd.linear.x = qr_channel_visual_avoid_linear_speed_;
-  cmd.angular.z = angular_command;
+  const double half_fov = std::max(
+    qr_channel_lidar_avoid_fov_deg_ * M_PI / 360.0, 0.01);
+  const double center_weight = std::clamp(
+    1.0 - std::abs(obstacle.relative_angle) / half_fov, 0.0, 1.0);
+  const double avoid_direction = obstacle.relative_angle <= 0.0 ? 1.0 : -1.0;
+  cmd.linear.x = qr_channel_lidar_avoid_linear_speed_;
+  cmd.angular.z = avoid_direction * qr_channel_lidar_avoid_angular_gain_ * center_weight;
   RCLCPP_WARN_THROTTLE(
     get_logger(), *get_clock(), 500,
-    "视觉障碍物覆盖航点指令：center_x=%d，bottom_y=%d，confidence=%.2f，输出=%.2f/%.2f。",
-    obstacle_center_x, obstacle_bottom_y, obstacle->rois.front().confidence,
+    "QR到channel雷达避障：距离=%.3fm，相对角=%.1fdeg，输出=%.2f/%.2f。",
+    obstacle.range, obstacle.relative_angle * 180.0 / M_PI,
     cmd.linear.x, cmd.angular.z);
   return true;
 }
@@ -3830,16 +3876,9 @@ void VisualLidarPathFollower::qr_callback(const std_msgs::msg::String::ConstShar
   if (!direction.empty()) {
     if (switch_route(direction)) {
       qr_route_selected_ = true;
-      RobotPose qr_pose;
-      if (lookup_robot_pose(qr_pose.x, qr_pose.y, qr_pose.yaw)) {
-        evaluate_qr_reverse_gate(qr_pose);
-      } else {
-        RCLCPP_WARN(
-          get_logger(), "扫码回调暂未取得 map 位姿，将在第一帧有效定位时完成 x 门限判定。");
-      }
-      // visual_control 从此不再参与巡线/回线；YOLO 独立保持仅障碍物输出。
+      // visual_control 从此不再参与巡线/回线；QR到channel已改为雷达避障，立即暂停YOLO。
       suspend_visual_control();
-      set_perception_mode(perception_obstacle_only_value_, "仅障碍物识别");
+      set_perception_mode(perception_pause_value_, "暂停");
       if (qr_sub_) {
         qr_sub_.reset();
       }
@@ -3926,19 +3965,16 @@ bool VisualLidarPathFollower::switch_route(const std::string & direction)
   if (was_following_qr_path || was_waiting_for_qr) {
     current_index_ = 0;
     first_waypoint_reached_ = false;
-    qr_visual_avoidance_active_ = true;
-    qr_reverse_gate_evaluated_ = false;
-    qr_reverse_eligible_ = false;
-    qr_reverse_triggered_ = false;
-    qr_escape_state_ = QrEscapeState::IDLE;
-    latest_qr_escape_observation_ = QrEscapeObservation();
+    qr_channel_approach_active_ = true;
+    qr_escape_state_ = QrEscapeState::PENDING;
   } else {
     current_index_ = std::min(current_index_, waypoints_.size() - 1);
     first_waypoint_reached_ = current_index_ > 0;
   }
   const auto route_name = route_direction_name(selected_route_direction_);
   RCLCPP_INFO(
-    get_logger(), "QR 选择%s路线，立即追 waypoint_channel；视觉仅临时覆盖有效障碍物。",
+    get_logger(),
+    "QR 选择%s路线；先执行 zhy 条件倒车，再用 zhy 雷达避障追 waypoint_channel。",
     route_name.c_str());
   if (debug_control_logs_) {
     RCLCPP_INFO(

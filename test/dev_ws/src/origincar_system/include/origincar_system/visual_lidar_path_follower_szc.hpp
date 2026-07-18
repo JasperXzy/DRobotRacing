@@ -150,7 +150,8 @@ private:
   double segment_advance_t_{0.85};
   double turn_angular_gain_{1.4};
   bool enable_turn_speed_slowdown_{true};
-  double min_turn_speed_percent_{60.0};
+  double turn_speed_full_steering_angle_{0.55};
+  double max_turn_speed_reduction_percent_{50.0};
   double reverse_angular_gain_{1.1};
   double reverse_goal_lookahead_distance_{0.25};
   double reverse_pass_radius_{0.25};
@@ -328,9 +329,7 @@ private:
   bool handle_image_capture_stop(const RobotPose & pose);
   void apply_image_capture_speed_limit(
     const RobotPose & pose, geometry_msgs::msg::Twist & cmd) const;
-  void apply_turn_speed_limit(
-    const RobotPose & pose, const TargetPoint & target,
-    geometry_msgs::msg::Twist & cmd) const;
+  void apply_turn_speed_limit(geometry_msgs::msg::Twist & cmd) const;
   geometry_msgs::msg::Twist compute_tracking_command(
     const RobotPose & pose, const TargetPoint & target) const;
 
