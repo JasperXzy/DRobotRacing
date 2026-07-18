@@ -25,21 +25,21 @@ DEFAULT_COUNTERCLOCKWISE_PREVIEW_OUTPUT = (
 # TRANSITION_HANDLE_RATIOS，调整各自“出通道后对线”的弧度。
 COUNTERCLOCKWISE_SEGMENTS: list[tuple[tuple[float, float], tuple[float, float]]] = [
     ((1.95, 1.80), (1.95, 2.50)),
-    ((2.35, 2.90), (3.30, 2.90)),
-    ((3.60, 3.20), (3.60, 3.85)),
-    ((3.30, 4.05), (0.45, 4.05)),
+    ((2.35, 2.95), (3.30, 2.95)),
+    ((3.70, 3.20), (3.70, 3.85)),
+    ((3.30, 4.10), (0.45, 4.10)),
     ((0.15, 3.85), (0.15, 3.20)),
-    ((0.45, 2.90), (1.55, 2.90)),
+    ((0.45, 2.95), (1.55, 2.95)),
     ((1.95, 2.50), (1.75, 1.80)),
 ]
 
 CLOCKWISE_SEGMENTS: list[tuple[tuple[float, float], tuple[float, float]]] = [
     ((1.95, 1.80), (1.95, 2.50)),
-    ((1.55, 2.90), (0.45, 2.90)),
+    ((1.55, 2.95), (0.45, 2.95)),
     ((0.15, 3.20), (0.15, 3.85)),
-    ((0.45, 4.05), (3.30, 4.05)),
-    ((3.60, 3.85), (3.60, 3.20)),
-    ((3.30, 2.90), (2.35, 2.90)),
+    ((0.45, 4.10), (3.30, 4.10)),
+    ((3.70, 3.85), (3.70, 3.20)),
+    ((3.30, 2.95), (2.35, 2.95)),
     ((1.95, 2.50), (1.75, 1.80)),
 ]
 
@@ -332,11 +332,27 @@ def render_map_preview(
         draw.text((start_x + 9, start_y - 14), "START", fill=(0, 120, 35))
         draw.text((end_x + 9, end_y + 3), "END", fill=(190, 0, 0))
 
-    draw.rectangle((6, 6, 176, 24), fill=(255, 255, 255), outline=route_color, width=2)
-    draw.text((11, 10), direction_label, fill=(0, 0, 0))
+    # 标题放在地图上方的独立区域，避免遮挡地图和航点轨迹。
+    text_width, text_height = draw.textsize(direction_label)
+    title_padding_x = 6
+    title_padding_y = 5
+    title_height = text_height + 2 * title_padding_y
+
+    preview = Image.new("RGB", (width, height + title_height), (255, 255, 255))
+    preview.paste(image, (0, title_height))
+    preview_draw = ImageDraw.Draw(preview)
+    preview_draw.rectangle(
+        (0, 0, width - 1, title_height - 1),
+        fill=(255, 255, 255),
+        outline=route_color,
+        width=2,
+    )
+    title_x = max(title_padding_x, (width - text_width) // 2)
+    title_y = title_padding_y
+    preview_draw.text((title_x, title_y), direction_label, fill=(0, 0, 0))
 
     output.parent.mkdir(parents=True, exist_ok=True)
-    image.save(output, format="PNG", optimize=True)
+    preview.save(output, format="PNG", optimize=True)
 
 
 def main() -> int:

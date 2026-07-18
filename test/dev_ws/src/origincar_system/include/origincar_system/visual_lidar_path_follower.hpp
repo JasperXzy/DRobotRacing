@@ -252,6 +252,7 @@ private:
   int logic3_static_cluster_min_points_{1};
   int logic3_static_restriction_inflation_cells_{0};
   double logic3_static_channel_min_y_{1.60};
+  double logic3_entry_exit_overlap_max_y_{2.50};
   double logic3_static_cluster_match_radius_{0.40};
   double logic3_static_stability_duration_seconds_{1.0};
   double logic3_static_stability_radius_{0.10};
@@ -318,6 +319,7 @@ private:
   std::vector<double> waypoint_shift_pending_offsets_;
   std::vector<int> waypoint_shift_pending_counts_;
   std::vector<int> waypoint_shift_missing_counts_;
+  std::vector<int> waypoint_shift_dynamic_directions_;
   std::size_t current_index_{0};
   bool first_waypoint_reached_{false};
   bool waiting_for_qr_start_{false};

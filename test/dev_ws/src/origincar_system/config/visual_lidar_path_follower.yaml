@@ -13,13 +13,13 @@ visual_lidar_path_follower:
     enable_debug_visualization: true  # 是否发布 Foxglove 中的 waypoints、圆锥圆心和拟合圆
     # 正向追点
     control_frequency: 50.0  # 控制循环频率，单位 Hz
-    linear_speed: 1.15  # 正常巡点线速度，单位 m/s
+    linear_speed: 1.05  # 正常巡点线速度，单位 m/s
     turn_angular_gain: 1.8  # 与SZC参数一致；正向航向误差到下位机前轮目标转角的比例增益
     enable_turn_speed_slowdown: true  # 是否根据车头朝向与当前追踪点连线的夹角进行余弦降速
-    min_turn_speed_percent: 60.0  # 几何夹角达到180度时的最低速度比例；0度保持100%，允许范围0～100
+    min_turn_speed_percent: 30.0  # 几何夹角达到180度时的最低速度比例；0度保持100%，允许范围0～100
     lookahead_distance: 0.50  # 与SZC参数一致；正常巡点目标的前瞻距离，单位 m
     pass_radius: 0.6  # 航点未单独配置时使用的默认通过半径，单位 m
-    route_projection_max_distance: 1.2  # 允许车辆匹配当前路线段的最大横向距离，单位 m
+    route_projection_max_distance: 0.6  # 允许车辆匹配当前路线段的最大横向距离，单位 m
     segment_advance_t: 0.6  # 车辆投影超过当前线段此比例时推进路线进度
 
     # 倒车追点；倒车时不更新 waypoint_shift
@@ -46,9 +46,9 @@ visual_lidar_path_follower:
     waypoint_shift_target_clearance: 0.3  # 与SZC参数一致；偏移后的路线在空旷侧横截方向越过点云最外沿的目标净距，单位 m
     waypoint_shift_points_before: 35        # 障碍物最近路线点之前、车与障碍物之间统一偏移的点数
     waypoint_shift_points_after: 15          # 障碍物最近路线点之后、离车更远方向统一偏移的点数
-    waypoint_shift_confirm_scans: 3          # 同方向候选偏移连续命中这么多帧后才真正刷新路线
+    waypoint_shift_confirm_scans: 3          # 同方向候选偏移连续命中这么多帧后首次提交；之后持续刷新
     waypoint_shift_release_scans: 8          # 连续这么多帧未命中后释放已提交偏移，回到原始航点
-    waypoint_shift_min_change: 0.02          # 已提交偏移变化小于该值时不刷新路线，单位 m
+    waypoint_shift_min_change: 0.02          # 逻辑1/2及未进入逻辑3动态持续刷新时使用的最小变化，单位m
     enable_static_map_filter: true          # 是否同时用race_modify和race_keepout过滤真实墙体及软禁行区域点云
     require_map_for_lidar_assist: true      # 任一地图未收到时是否暂停需要非静态点云的辅助判断和二维码后撤检查
     static_map_occupied_threshold: 90       # race_modify真实墙体的点云过滤占据阈值
@@ -101,6 +101,7 @@ visual_lidar_path_follower:
     logic3_static_restriction_map_topic: /logic3_static_restriction_map  # 仅发车前绿色候选使用的Y向拓宽地图
     logic3_static_restriction_inflation_cells: 0  # 第三张地图已经显式拓宽，静态查询不再额外膨胀黑区
     logic3_static_channel_min_y: 1.60        # 静态绿色候选必须满足map.y严格大于该值，单位m
+    logic3_entry_exit_overlap_max_y: 2.45   # 该高度以下入口与出口路线重合；冻结绿色簇分别检查首段和尾段
     logic3_static_cluster_min_points: 1       # 仅静止阶段允许1~3个远距离稀疏雷达点形成候选
     logic3_static_cluster_match_radius: 0.40  # 跨帧关联同一障碍物；仅关联身份，不代表该帧通过稳定性检查
     logic3_static_stability_duration_seconds: 1.0  # 固定锚点的自适应半径内连续稳定多久才进入状态1
@@ -146,15 +147,15 @@ visual_lidar_path_follower:
     # 扫到二维码后立即追 channel；进场阶段保留视觉覆盖与一次性点云后撤
     qr_reverse_min_map_x: 2.15  # 与SZC参数一致；扫码瞬间 map.x 大于该值才允许本轮最多触发一次倒车；左侧直接跳过
     qr_visual_handoff_waypoint_distance: 0.3  # 到最近 channel 航点小于该距离时关闭视觉覆盖并启用 waypoint_shift，单位 m
-    qr_escape_check_distance: 0.70  # 左右比较矩形从车辆中心向前延伸的距离，单位 m
+    qr_escape_check_distance: 0.80  # 左右比较矩形从车辆中心向前延伸的距离，单位 m
     qr_escape_rear_extension: 0.20  # 与SZC参数一致；左右比较矩形向后延伸的距离，应覆盖车屁股，单位 m
-    qr_escape_half_width: 0.35  # 左右比较矩形的左右半宽，单位 m
+    qr_escape_half_width: 0.40  # 左右比较矩形的左右半宽，单位 m
     qr_escape_min_points: 3  # 比较矩形内非墙点达到该数量时触发二维码后撤
     qr_reverse_linear_speed: 0.60  # 二维码保护默认右后撤使用的倒车速度绝对值，单位 m/s
-    qr_reverse_angular_speed: 0.5  # 二维码保护默认右后撤使用的转向量绝对值
-    qr_rear_warning_start_distance: 0.15  # 警戒矩形近端距base_link中心的后向距离，位于车屁股之后，单位 m
+    qr_reverse_angular_speed: 1.0  # 二维码保护默认右后撤使用的转向量绝对值
+    qr_rear_warning_start_distance: 0.20  # 警戒矩形近端距base_link中心的后向距离，位于车屁股之后，单位 m
     qr_rear_check_distance: 0.25  # 警戒矩形远端距base_link中心的后向距离，单位 m
-    qr_rear_half_width: 0.25  # 后方警戒矩形的左右半宽，单位 m
+    qr_rear_half_width: 0.15  # 后方警戒矩形的左右半宽，单位 m
     qr_rear_min_points: 3  # 后方警戒区非墙点达到该数量时永久解除本轮倒车并恢复追航点
 
     # 扫码后到进入 channel 前的独立视觉避障组；不会影响 channel 内或恢复后的 visual_control
@@ -193,10 +194,10 @@ visual_lidar_path_follower:
     image_capture_clockwise_y: 4.05  # 顺时针使用的右侧车辆拍照点map坐标y，单位m
     image_capture_counterclockwise_x: 0.45  # 逆时针使用的左侧车辆拍照点map坐标x，单位m
     image_capture_counterclockwise_y: 4.05  # 逆时针使用的左侧车辆拍照点map坐标y，单位m
-    image_capture_radius: 0.4  # 必须真正进入此距离才算到达，且路线进度不能跳过该点，单位m
-    image_capture_slow_distance: 0.0  # 距拍照点小于此距离开始限速，单位m
-    image_capture_slow_speed: 1.15  # 与SZC参数一致；接近拍照点时的最大线速度，单位m/s
-    image_capture_angular_gain: 1.8  # 追拍照点时航向误差到下位机前轮目标转角的专用比例增益
-    image_capture_stop_time: 0.0  # 到点后先停车稳定这么久再拍照，单位s
+    image_capture_radius: 0.2  # 必须真正进入此距离才算到达，且路线进度不能跳过该点，单位m
+    image_capture_slow_distance: 0.5  # 距拍照点小于此距离开始限速，单位m
+    image_capture_slow_speed: 0.4  # 与SZC参数一致；接近拍照点时的最大线速度，单位m/s
+    image_capture_angular_gain: 2.5  # 追拍照点时航向误差到下位机前轮目标转角的专用比例增益
+    image_capture_stop_time: 0.2  # 到点后先停车稳定这么久再拍照，单位s
     image_capture_trigger_value: 8  # 发布到图生文触发话题的整数值
     image_analysis_trigger_topic: /sign4return  # 图像分析触发整数消息的发布话题
