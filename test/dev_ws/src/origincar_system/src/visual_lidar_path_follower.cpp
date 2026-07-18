@@ -43,9 +43,6 @@
 namespace
 {
 
-// 即将发送给阿克曼下位机的前轮目标转角绝对值上限。
-constexpr double kSteeringAngleLimit = 0.55;
-
 // 从 YAML 节点里读取布尔值；兼容 YAML bool 和字符串形式。
 bool yaml_bool(const YAML::Node & node, bool default_value = false)
 {
@@ -181,9 +178,9 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   declare_parameter<bool>("enable_turn_speed_slowdown", enable_turn_speed_slowdown_);
   get_parameter("enable_turn_speed_slowdown", enable_turn_speed_slowdown_);
   declare_parameter<double>(
-    "max_turn_speed_reduction_percent", max_turn_speed_reduction_percent_);
+    "min_turn_speed_percent", min_turn_speed_percent_);
   get_parameter(
-    "max_turn_speed_reduction_percent", max_turn_speed_reduction_percent_);
+    "min_turn_speed_percent", min_turn_speed_percent_);
   declare_parameter<double>("reverse_angular_gain", reverse_angular_gain_);
   get_parameter("reverse_angular_gain", reverse_angular_gain_);
   declare_parameter<double>("reverse_goal_lookahead_distance", reverse_goal_lookahead_distance_);
@@ -324,6 +321,9 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   get_parameter("logic3_runtime_roi_width", logic3_runtime_roi_width_);
   declare_parameter<double>("logic3_runtime_roi_height", logic3_runtime_roi_height_);
   get_parameter("logic3_runtime_roi_height", logic3_runtime_roi_height_);
+  declare_parameter<double>(
+    "logic3_runtime_channel_min_y", logic3_runtime_channel_min_y_);
+  get_parameter("logic3_runtime_channel_min_y", logic3_runtime_channel_min_y_);
   declare_parameter<int>(
     "logic3_static_cluster_min_points", logic3_static_cluster_min_points_);
   get_parameter("logic3_static_cluster_min_points", logic3_static_cluster_min_points_);
@@ -333,6 +333,9 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   get_parameter(
     "logic3_static_restriction_inflation_cells",
     logic3_static_restriction_inflation_cells_);
+  declare_parameter<double>(
+    "logic3_static_channel_min_y", logic3_static_channel_min_y_);
+  get_parameter("logic3_static_channel_min_y", logic3_static_channel_min_y_);
   declare_parameter<double>(
     "logic3_static_cluster_match_radius", logic3_static_cluster_match_radius_);
   get_parameter("logic3_static_cluster_match_radius", logic3_static_cluster_match_radius_);
@@ -540,8 +543,8 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   lookahead_distance_ = std::max(0.05, lookahead_distance_);
   route_projection_max_distance_ = std::max(0.10, route_projection_max_distance_);
   segment_advance_t_ = std::max(0.50, std::min(1.20, segment_advance_t_));
-  max_turn_speed_reduction_percent_ = std::max(
-    0.0, std::min(90.0, max_turn_speed_reduction_percent_));
+  min_turn_speed_percent_ = std::max(
+    0.0, std::min(100.0, min_turn_speed_percent_));
   cluster_max_point_gap_ = std::max(0.01, cluster_max_point_gap_);
   cluster_max_range_jump_ = std::max(0.01, cluster_max_range_jump_);
   cluster_min_points_ = std::max(3, cluster_min_points_);
@@ -610,9 +613,15 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   logic3_old_cluster_radius_ = std::max(0.05, logic3_old_cluster_radius_);
   logic3_runtime_roi_width_ = std::max(0.10, logic3_runtime_roi_width_);
   logic3_runtime_roi_height_ = std::max(0.10, logic3_runtime_roi_height_);
+  if (!std::isfinite(logic3_runtime_channel_min_y_)) {
+    logic3_runtime_channel_min_y_ = 1.60;
+  }
   logic3_static_cluster_min_points_ = std::max(1, logic3_static_cluster_min_points_);
   logic3_static_restriction_inflation_cells_ = std::max(
     0, logic3_static_restriction_inflation_cells_);
+  if (!std::isfinite(logic3_static_channel_min_y_)) {
+    logic3_static_channel_min_y_ = 1.60;
+  }
   logic3_static_cluster_match_radius_ = std::max(
     0.01, logic3_static_cluster_match_radius_);
   logic3_static_stability_duration_seconds_ = std::max(
@@ -966,7 +975,7 @@ void VisualLidarPathFollower::control_once()
   }
 
   auto cmd = compute_tracking_command(pose, target);
-  apply_turn_speed_limit(cmd);
+  apply_turn_speed_limit(pose, target, cmd);
   apply_image_capture_speed_limit(pose, cmd);
   if (qr_visual_avoidance_active_) {
     apply_qr_channel_visual_obstacle_avoidance(cmd);
@@ -1557,24 +1566,25 @@ geometry_msgs::msg::Twist VisualLidarPathFollower::compute_tracking_command(
   return cmd;
 }
 
-// 根据即将发送给下位机的前轮目标转角，使用归一化余弦曲线降低速度：
-//   直行时转弯进度为 0，转角打满时为 1；左右转使用转角绝对值，降速完全对称。
+// 使用车头朝向与“车辆到当前追踪点”连线之间的几何夹角进行余弦降速：
+//   夹角 0 度时保持正常速度，夹角 180 度时降到配置的最低速度比例。
+// 该夹角不乘 turn_angular_gain，因此调整转向增益不会连带改变线速度。
 void VisualLidarPathFollower::apply_turn_speed_limit(
+  const VisualLidarPathFollower::RobotPose & pose,
+  const VisualLidarPathFollower::TargetPoint & target,
   geometry_msgs::msg::Twist & cmd) const
 {
   if (!enable_turn_speed_slowdown_ || std::abs(cmd.linear.x) <= 1.0e-9) {
     return;
   }
 
-  const double steering_angle = std::min(kSteeringAngleLimit, std::abs(cmd.angular.z));
-  const double cosine_span = 1.0 - std::cos(kSteeringAngleLimit);
-  const double raw_turn_ratio = cosine_span > 1.0e-12 ?
-    (1.0 - std::cos(steering_angle)) / cosine_span : 0.0;
-  const double turn_ratio = std::max(0.0, std::min(1.0, raw_turn_ratio));
-
-  const double reduction_fraction = max_turn_speed_reduction_percent_ / 100.0;
-  const double speed_limit =
-    std::abs(linear_speed_) * (1.0 - reduction_fraction * turn_ratio);
+  const double target_yaw = std::atan2(target.point.y - pose.y, target.point.x - pose.x);
+  const double heading_angle = std::abs(normalize_angle(target_yaw - pose.yaw));
+  const double cosine_ratio = 0.5 * (1.0 + std::cos(heading_angle));
+  const double min_speed_ratio = min_turn_speed_percent_ / 100.0;
+  const double speed_ratio =
+    min_speed_ratio + (1.0 - min_speed_ratio) * cosine_ratio;
+  const double speed_limit = std::abs(linear_speed_) * speed_ratio;
   const double limited_speed = std::min(std::abs(cmd.linear.x), speed_limit);
   cmd.linear.x = std::copysign(limited_speed, cmd.linear.x);
 }
@@ -3196,8 +3206,20 @@ void VisualLidarPathFollower::update_waypoint_shifts(
     clusters = std::move(merged_clusters);
   }
 
-  // 逻辑2/3运行阶段只处理车体中心2x2m。逻辑3还会抑制冻结绿色圆内的旧簇；
-  // 红色身份半径仅合并记录，不屏蔽障碍物逐帧参与动态避障。
+  if (use_logic3_static_restriction_map) {
+    // 静态障碍通道从左右黑色禁行块底边开始；更低的白色区域属于大厅。
+    // 该门限只约束发车前绿色候选，不影响入口追点和运行中动态红簇。
+    clusters.erase(
+      std::remove_if(
+        clusters.begin(), clusters.end(), [&](const ScanPointCluster & cluster) {
+          return cluster.center.y <= logic3_static_channel_min_y_;
+        }),
+      clusters.end());
+  }
+
+  // 逻辑2/3运行阶段只处理各自配置的车体中心ROI。逻辑3只保留通道y下限以上
+  // 的动态红簇，并抑制冻结绿色圆内的旧簇；红色身份半径仅合并记录，
+  // 不屏蔽障碍物逐帧参与动态避障。
   if (waypoint_shift_logic_ >= 2 && logic2_planning_pose_anchored_ &&
     !replay_frozen_clusters)
   {
@@ -3215,6 +3237,9 @@ void VisualLidarPathFollower::update_waypoint_shifts(
           }
           if (waypoint_shift_logic_ != 3) {
             return false;
+          }
+          if (cluster.center.y <= logic3_runtime_channel_min_y_) {
+            return true;
           }
           return std::any_of(
             logic3_green_clusters_.begin(), logic3_green_clusters_.end(),

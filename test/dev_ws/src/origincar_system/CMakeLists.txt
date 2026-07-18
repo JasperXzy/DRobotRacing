@@ -12,6 +12,7 @@ find_package(nav_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(visualization_msgs REQUIRED)
@@ -28,7 +29,7 @@ add_executable(visual_lidar_path_follower_szc src/visual_lidar_path_follower_szc
 target_include_directories(visual_lidar_path_follower_szc PRIVATE include)
 ament_target_dependencies(
   visual_lidar_path_follower_szc
-  ai_msgs geometry_msgs nav_msgs rclcpp sensor_msgs std_msgs tf2 tf2_ros visualization_msgs)
+  ai_msgs geometry_msgs nav_msgs rclcpp sensor_msgs std_msgs std_srvs tf2 tf2_ros visualization_msgs)
 target_link_libraries(visual_lidar_path_follower_szc yaml-cpp)
 
 install(TARGETS

@@ -37,9 +37,18 @@ find_package(std_msgs REQUIRED)
 find_package(ai_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 add_executable(visual_control src/visual_control.cpp)
+add_executable(visual_control_szc src/visual_control_szc.cpp)
 
 ament_target_dependencies(
   ${PROJECT_NAME}
+  rclcpp
+  std_msgs
+  geometry_msgs
+  ai_msgs
+)
+
+ament_target_dependencies(
+  visual_control_szc
   rclcpp
   std_msgs
   geometry_msgs
@@ -50,7 +59,11 @@ target_include_directories(visual_control PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
-install(TARGETS visual_control
+target_include_directories(visual_control_szc PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+
+install(TARGETS visual_control visual_control_szc
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY

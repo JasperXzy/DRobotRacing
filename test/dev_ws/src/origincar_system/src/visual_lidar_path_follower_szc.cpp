@@ -86,17 +86,6 @@ std::string route_direction_name(const std::string & direction)
   return direction;
 }
 
-double normalize_angle(double angle)
-{
-  while (angle > M_PI) {
-    angle -= 2.0 * M_PI;
-  }
-  while (angle < -M_PI) {
-    angle += 2.0 * M_PI;
-  }
-  return angle;
-}
-
 }  // namespace
 
 // 构造函数完成参数声明、参数读取、航点加载、话题订阅/发布和控制定时器创建。
@@ -131,8 +120,16 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   get_parameter("restriction_map_topic", restriction_map_topic_);
   declare_parameter<bool>("debug_control_logs", debug_control_logs_);
   get_parameter("debug_control_logs", debug_control_logs_);
+  declare_parameter<bool>("wait_for_start_signal", wait_for_start_signal_);
+  get_parameter("wait_for_start_signal", wait_for_start_signal_);
+  declare_parameter<std::string>("start_service_name", start_service_name_);
+  get_parameter("start_service_name", start_service_name_);
+  declare_parameter<std::string>("visual_control_gate_topic", visual_control_gate_topic_);
+  get_parameter("visual_control_gate_topic", visual_control_gate_topic_);
   declare_parameter<bool>("wait_for_qr_before_start", wait_for_qr_before_start_);
   get_parameter("wait_for_qr_before_start", wait_for_qr_before_start_);
+  declare_parameter<std::string>("approach_control_mode", approach_control_mode_);
+  get_parameter("approach_control_mode", approach_control_mode_);
   declare_parameter<bool>("enable_debug_visualization", enable_debug_visualization_);
   get_parameter("enable_debug_visualization", enable_debug_visualization_);
 
@@ -156,9 +153,9 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   declare_parameter<bool>("enable_turn_speed_slowdown", enable_turn_speed_slowdown_);
   get_parameter("enable_turn_speed_slowdown", enable_turn_speed_slowdown_);
   declare_parameter<double>(
-    "max_turn_speed_reduction_percent", max_turn_speed_reduction_percent_);
+    "min_turn_speed_percent", min_turn_speed_percent_);
   get_parameter(
-    "max_turn_speed_reduction_percent", max_turn_speed_reduction_percent_);
+    "min_turn_speed_percent", min_turn_speed_percent_);
   declare_parameter<double>("reverse_angular_gain", reverse_angular_gain_);
   get_parameter("reverse_angular_gain", reverse_angular_gain_);
   declare_parameter<double>("reverse_goal_lookahead_distance", reverse_goal_lookahead_distance_);
@@ -210,6 +207,51 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   get_parameter("static_map_occupied_threshold", static_map_occupied_threshold_);
   declare_parameter<int>("static_map_inflation_cells", static_map_inflation_cells_);
   get_parameter("static_map_inflation_cells", static_map_inflation_cells_);
+
+  // 扫码前 waypoints_qr 和扫码后到 channel 前共用的直接转向式雷达避障。
+  declare_parameter<double>("pre_qr_cruise_linear_speed", pre_qr_cruise_linear_speed_);
+  get_parameter("pre_qr_cruise_linear_speed", pre_qr_cruise_linear_speed_);
+  declare_parameter<double>(
+    "pre_qr_lidar_avoid_linear_speed", pre_qr_lidar_avoid_linear_speed_);
+  get_parameter("pre_qr_lidar_avoid_linear_speed", pre_qr_lidar_avoid_linear_speed_);
+  declare_parameter<bool>("enable_pre_qr_qr_slowdown", enable_pre_qr_qr_slowdown_);
+  get_parameter("enable_pre_qr_qr_slowdown", enable_pre_qr_qr_slowdown_);
+  declare_parameter<std::string>("pre_qr_qr_class_name", pre_qr_qr_class_name_);
+  get_parameter("pre_qr_qr_class_name", pre_qr_qr_class_name_);
+  declare_parameter<double>(
+    "pre_qr_qr_confidence_threshold", pre_qr_qr_confidence_threshold_);
+  get_parameter("pre_qr_qr_confidence_threshold", pre_qr_qr_confidence_threshold_);
+  declare_parameter<int>(
+    "pre_qr_qr_min_height_threshold", pre_qr_qr_min_height_threshold_);
+  get_parameter("pre_qr_qr_min_height_threshold", pre_qr_qr_min_height_threshold_);
+  declare_parameter<int>("pre_qr_qr_height_threshold", pre_qr_qr_height_threshold_);
+  get_parameter("pre_qr_qr_height_threshold", pre_qr_qr_height_threshold_);
+  declare_parameter<double>("pre_qr_qr_speed_modifier", pre_qr_qr_speed_modifier_);
+  get_parameter("pre_qr_qr_speed_modifier", pre_qr_qr_speed_modifier_);
+  declare_parameter<double>(
+    "pre_qr_qr_detection_timeout", pre_qr_qr_detection_timeout_);
+  get_parameter("pre_qr_qr_detection_timeout", pre_qr_qr_detection_timeout_);
+  declare_parameter<double>(
+    "qr_channel_lidar_cruise_linear_speed", qr_channel_lidar_cruise_linear_speed_);
+  get_parameter(
+    "qr_channel_lidar_cruise_linear_speed", qr_channel_lidar_cruise_linear_speed_);
+  declare_parameter<double>(
+    "qr_channel_lidar_avoid_linear_speed", qr_channel_lidar_avoid_linear_speed_);
+  get_parameter(
+    "qr_channel_lidar_avoid_linear_speed", qr_channel_lidar_avoid_linear_speed_);
+  declare_parameter<double>("approach_lidar_check_distance", approach_lidar_check_distance_);
+  get_parameter("approach_lidar_check_distance", approach_lidar_check_distance_);
+  declare_parameter<double>("approach_lidar_half_width", approach_lidar_half_width_);
+  get_parameter("approach_lidar_half_width", approach_lidar_half_width_);
+  declare_parameter<int>("approach_lidar_min_points", approach_lidar_min_points_);
+  get_parameter("approach_lidar_min_points", approach_lidar_min_points_);
+  declare_parameter<double>(
+    "approach_lidar_avoid_angular_speed", approach_lidar_avoid_angular_speed_);
+  get_parameter("approach_lidar_avoid_angular_speed", approach_lidar_avoid_angular_speed_);
+  declare_parameter<double>(
+    "visual_control_suspend_refresh_seconds", visual_control_suspend_refresh_seconds_);
+  get_parameter(
+    "visual_control_suspend_refresh_seconds", visual_control_suspend_refresh_seconds_);
 
   // 扫码后开始追点前的点云后撤
   declare_parameter<double>("qr_escape_check_distance", qr_escape_check_distance_);
@@ -358,11 +400,21 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   get_parameter("image_analysis_trigger_topic", image_analysis_trigger_topic_);
 
   route_direction_ = to_lower(route_direction_);
+  approach_control_mode_ = to_lower(approach_control_mode_);
+  if (approach_control_mode_ != "visual" &&
+    approach_control_mode_ != "waypoint_lidar")
+  {
+    RCLCPP_WARN(
+      get_logger(), "未知 approach_control_mode=%s，回退为 visual。",
+      approach_control_mode_.c_str());
+    approach_control_mode_ = "visual";
+  }
+  start_authorized_ = !wait_for_start_signal_;
   lookahead_distance_ = std::max(0.05, lookahead_distance_);
   route_projection_max_distance_ = std::max(0.10, route_projection_max_distance_);
   segment_advance_t_ = std::max(0.50, std::min(1.20, segment_advance_t_));
-  max_turn_speed_reduction_percent_ = std::max(
-    0.0, std::min(90.0, max_turn_speed_reduction_percent_));
+  min_turn_speed_percent_ = std::max(
+    0.0, std::min(100.0, min_turn_speed_percent_));
   cluster_max_point_gap_ = std::max(0.01, cluster_max_point_gap_);
   cluster_max_range_jump_ = std::max(0.01, cluster_max_range_jump_);
   cluster_min_points_ = std::max(3, cluster_min_points_);
@@ -382,6 +434,28 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   waypoint_shift_min_change_ = std::max(0.0, waypoint_shift_min_change_);
   static_map_occupied_threshold_ = std::max(1, std::min(100, static_map_occupied_threshold_));
   static_map_inflation_cells_ = std::max(0, static_map_inflation_cells_);
+  pre_qr_cruise_linear_speed_ = std::max(0.0, pre_qr_cruise_linear_speed_);
+  pre_qr_lidar_avoid_linear_speed_ = std::max(0.0, pre_qr_lidar_avoid_linear_speed_);
+  pre_qr_qr_confidence_threshold_ = std::max(
+    0.0, std::min(1.0, pre_qr_qr_confidence_threshold_));
+  pre_qr_qr_min_height_threshold_ = std::max(0, pre_qr_qr_min_height_threshold_);
+  pre_qr_qr_height_threshold_ = std::max(0, pre_qr_qr_height_threshold_);
+  pre_qr_qr_speed_modifier_ = std::max(0.0, std::min(1.0, pre_qr_qr_speed_modifier_));
+  pre_qr_qr_detection_timeout_ = std::max(0.05, pre_qr_qr_detection_timeout_);
+  if (pre_qr_qr_class_name_.empty()) {
+    pre_qr_qr_class_name_ = "qr_code";
+  }
+  qr_channel_lidar_cruise_linear_speed_ = std::max(
+    0.0, qr_channel_lidar_cruise_linear_speed_);
+  qr_channel_lidar_avoid_linear_speed_ = std::max(
+    0.0, qr_channel_lidar_avoid_linear_speed_);
+  approach_lidar_check_distance_ = std::max(0.05, approach_lidar_check_distance_);
+  approach_lidar_half_width_ = std::max(0.05, approach_lidar_half_width_);
+  approach_lidar_min_points_ = std::max(1, approach_lidar_min_points_);
+  approach_lidar_avoid_angular_speed_ = std::min(
+    kSteeringAngleLimit, std::abs(approach_lidar_avoid_angular_speed_));
+  visual_control_suspend_refresh_seconds_ = std::max(
+    0.20, visual_control_suspend_refresh_seconds_);
   qr_escape_check_distance_ = std::max(0.05, qr_escape_check_distance_);
   qr_escape_rear_extension_ = std::max(0.0, qr_escape_rear_extension_);
   qr_escape_half_width_ = std::max(0.05, qr_escape_half_width_);
@@ -430,6 +504,25 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   if (route_waypoints_counterclockwise_file_.empty()) {
     route_waypoints_counterclockwise_file_ = waypoints_file_;
   }
+  if (uses_waypoint_lidar_approach()) {
+    if (wait_for_qr_before_start_) {
+      RCLCPP_INFO(
+        get_logger(),
+        "approach_control_mode=waypoint_lidar：忽略 wait_for_qr_before_start，"
+        "启动后立即巡 waypoints_qr。");
+    }
+    wait_for_qr_before_start_ = false;
+    suspend_visual_control_on_qr_ = true;
+    if (!enable_qr_direction_select_) {
+      RCLCPP_WARN(
+        get_logger(),
+        "waypoint_lidar 模式需要 QR 选路，已自动打开 QR 订阅。");
+      enable_qr_direction_select_ = true;
+    }
+  } else {
+    // visual 模式完整保留旧入口：SZC 等待二维码，由 visual_control 负责扫码前行驶。
+    wait_for_qr_before_start_ = true;
+  }
   if (wait_for_qr_before_start_ && !enable_qr_direction_select_) {
     RCLCPP_WARN(get_logger(), "wait_for_qr_before_start=true 需要启用 QR 选路，已自动打开 QR 订阅。");
     enable_qr_direction_select_ = true;
@@ -440,7 +533,7 @@ VisualLidarPathFollower::VisualLidarPathFollower()
     following_qr_path_ = false;
     selected_route_direction_ = "waiting_qr";
   } else {
-    // 兼容旧流程：启动先加载二维码前轨迹；扫到 QR 后再切到环线。
+    // waypoint_lidar 流程：启动先巡二维码前轨迹；扫到 QR 后再切到环线。
     waypoints_ = load_waypoints(waypoints_file_, route_direction_);
     reset_waypoint_shift_state();
     selected_route_direction_ = "qr_path";
@@ -454,6 +547,13 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   image_analysis_trigger_pub_ =
     create_publisher<std_msgs::msg::Int32>(image_analysis_trigger_topic_, rclcpp::QoS(10).transient_local());
   visual_control_suspend_pub_ = create_publisher<std_msgs::msg::Int32>(visual_control_suspend_topic_, 3);
+  visual_control_gate_pub_ = create_publisher<std_msgs::msg::Bool>(
+    visual_control_gate_topic_, rclcpp::QoS(3).reliable());
+  start_service_ = create_service<std_srvs::srv::SetBool>(
+    start_service_name_,
+    std::bind(
+      &VisualLidarPathFollower::handle_start_request, this,
+      std::placeholders::_1, std::placeholders::_2));
   route_finished_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/visual_lidar_path_follower_szc/route_finished",
     rclcpp::QoS(1).transient_local().reliable());
@@ -481,6 +581,8 @@ VisualLidarPathFollower::VisualLidarPathFollower()
     [this](nav_msgs::msg::OccupancyGrid::ConstSharedPtr msg) {
       latest_restriction_map_ = msg;
     });
+  // visual 模式用该结果做扫码后障碍物覆盖；waypoint_lidar 模式只在扫码前
+  // 读取 qr_code 框高度做线速度修正，不接管航点或雷达转向。
   visual_detection_sub_ = create_subscription<ai_msgs::msg::PerceptionTargets>(
     qr_channel_visual_detection_topic_, rclcpp::SensorDataQoS().keep_last(1),
     [this](ai_msgs::msg::PerceptionTargets::ConstSharedPtr msg) {
@@ -491,7 +593,8 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   // 只需要一个有效 QR；选定方向后会取消订阅，避免后续误切路线。
   if (enable_qr_direction_select_) {
     qr_sub_ = create_subscription<std_msgs::msg::String>(
-      qr_topic_, 10, std::bind(&VisualLidarPathFollower::qr_callback, this, std::placeholders::_1));
+      qr_topic_, 10,
+      std::bind(&VisualLidarPathFollower::qr_callback, this, std::placeholders::_1));
   }
 
   if (waypoints_.empty() && !waiting_for_qr_start_) {
@@ -505,18 +608,34 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   const std::string route_name = waiting_for_qr_start_ ? "等待 QR" :
     (following_qr_path_ ? "二维码前路径" : route_direction_name(selected_route_direction_));
   RCLCPP_INFO(
-    get_logger(), "VisualLidarPathFollower SZC 初始化完成：%zu 个航点，路线=%s，仅启用动态逻辑1。",
-    waypoints_.size(), route_name.c_str());
+    get_logger(),
+    "VisualLidarPathFollower SZC 初始化完成：%zu 个航点，路线=%s，进场模式=%s。",
+    waypoints_.size(), route_name.c_str(), approach_control_mode_.c_str());
   if (debug_control_logs_) {
     RCLCPP_INFO(
       get_logger(),
       "debug: 倒车点=%zu，扫码前=%s，顺时针=%s，逆时针=%s，控制前瞻=%.2f，"
-      "避障=进场视觉覆盖+channel waypoint_shift，线速度=%.2f。",
+      "进场避障=%s，channel避障=waypoint_shift，线速度=%.2f。",
       static_cast<std::size_t>(reverse_count), waypoints_file_.c_str(),
       route_waypoints_clockwise_file_.c_str(), route_waypoints_counterclockwise_file_.c_str(),
-      lookahead_distance_, linear_speed_);
+      lookahead_distance_, approach_control_mode_.c_str(), linear_speed_);
   }
   publish_debug_route();
+  if (uses_waypoint_lidar_approach()) {
+    // 只挂起 visual_control；YOLO/二维码识别保持运行，直到收到有效二维码。
+    suspend_visual_control();
+  } else if (start_authorized_ && waiting_for_qr_start_) {
+    // 兼容关闭人工发车门控的配置：visual 模式保持原来的自动视觉进场行为。
+    publish_visual_control_gate(true);
+  }
+  if (!start_authorized_) {
+    publish_visual_control_gate(false);
+    set_control_state(ControlState::WAITING_FOR_START);
+    publish_stop();
+    RCLCPP_WARN(
+      get_logger(), "控制器已就绪但底盘保持停车；调用 %s 后才允许发车。",
+      start_service_name_.c_str());
+  }
 
   // 定时控制循环：每次读取 TF、更新路线进度并计算离散前瞻 waypoint 速度。
   timer_ = create_wall_timer(
@@ -540,6 +659,8 @@ bool VisualLidarPathFollower::should_publish_stop_on_exit() const
 const char * VisualLidarPathFollower::control_state_name(VisualLidarPathFollower::ControlState state) const
 {
   switch (state) {
+    case ControlState::WAITING_FOR_START:
+      return "等待发车";
     case ControlState::WAITING_FOR_POSE:
       return "等待定位";
     case ControlState::WAITING_FOR_QR:
@@ -565,6 +686,125 @@ void VisualLidarPathFollower::set_control_state(VisualLidarPathFollower::Control
   control_state_ = next_state;
 }
 
+bool VisualLidarPathFollower::uses_waypoint_lidar_approach() const
+{
+  return approach_control_mode_ == "waypoint_lidar";
+}
+
+bool VisualLidarPathFollower::approach_lidar_phase_active() const
+{
+  return uses_waypoint_lidar_approach() &&
+         (following_qr_path_ || qr_visual_avoidance_active_);
+}
+
+bool VisualLidarPathFollower::start_prerequisites_ready(std::string & reason)
+{
+  if (route_finish_notified_ || control_state_ == ControlState::FINISHED) {
+    reason = "路线已经完成，不能再次发车";
+    return false;
+  }
+  if (!latest_scan_) {
+    reason = "尚未收到雷达数据";
+    return false;
+  }
+  if (require_map_for_lidar_assist_ && (!latest_map_ || !latest_restriction_map_)) {
+    reason = "尚未同时收到定位地图和禁行地图";
+    return false;
+  }
+  if (waypoints_.empty() && !waiting_for_qr_start_) {
+    reason = "当前路线没有可用航点";
+    return false;
+  }
+  if (!uses_waypoint_lidar_approach() && waiting_for_qr_start_ &&
+    (!visual_control_gate_pub_ || visual_control_gate_pub_->get_subscription_count() == 0))
+  {
+    reason = "visual模式尚未发现visual_control_szc门控订阅者";
+    return false;
+  }
+
+  RobotPose pose;
+  if (!lookup_robot_pose(pose.x, pose.y, pose.yaw)) {
+    reason = "AMCL 的 map->base_link TF 尚未就绪";
+    return false;
+  }
+  return true;
+}
+
+void VisualLidarPathFollower::handle_start_request(
+  const std::shared_ptr<std_srvs::srv::SetBool::Request> request,
+  std::shared_ptr<std_srvs::srv::SetBool::Response> response)
+{
+  if (!request->data) {
+    start_authorized_ = false;
+    publish_visual_control_gate(false);
+    set_control_state(ControlState::WAITING_FOR_START);
+    publish_stop();
+    response->success = true;
+    response->message = "SZC 和 visual_control_szc 已停车，等待下一次发车信号";
+    RCLCPP_WARN(get_logger(), "%s", response->message.c_str());
+    return;
+  }
+
+  if (start_authorized_) {
+    response->success = true;
+    response->message = "发车权限已经开启";
+    return;
+  }
+
+  std::string reason;
+  if (!start_prerequisites_ready(reason)) {
+    response->success = false;
+    response->message = "拒绝发车：" + reason;
+    publish_stop();
+    RCLCPP_WARN(get_logger(), "%s。", response->message.c_str());
+    return;
+  }
+
+  start_authorized_ = true;
+  const bool visual_pre_qr_control =
+    !uses_waypoint_lidar_approach() && waiting_for_qr_start_;
+  publish_visual_control_gate(visual_pre_qr_control);
+  response->success = true;
+  response->message = visual_pre_qr_control ?
+    "已发车：visual_control_szc 负责扫码前视觉进场" :
+    "已发车：SZC 负责航点控制";
+  RCLCPP_WARN(get_logger(), "%s。", response->message.c_str());
+}
+
+void VisualLidarPathFollower::publish_visual_control_gate(bool enabled)
+{
+  if (!visual_control_gate_pub_) {
+    return;
+  }
+  std_msgs::msg::Bool message;
+  message.data = enabled;
+  visual_control_gate_pub_->publish(message);
+}
+
+// waypoint_lidar 模式运行期间定期重发 visual_control=挂起，避免 visual_control
+// 晚于 SZC 启动时漏掉构造阶段的第一次通知。YOLO 会忽略数值5。
+void VisualLidarPathFollower::maintain_visual_control_suspension()
+{
+  if (!uses_waypoint_lidar_approach() || !suspend_visual_control_on_qr_ ||
+    !visual_control_suspend_pub_ || route_finish_notified_ ||
+    control_state_ == ControlState::FINISHED)
+  {
+    return;
+  }
+
+  const auto current_time = std::chrono::steady_clock::now();
+  const double elapsed = std::chrono::duration<double>(
+    current_time - last_visual_control_suspend_at_).count();
+  if (elapsed < visual_control_suspend_refresh_seconds_) {
+    return;
+  }
+
+  std_msgs::msg::Int32 message;
+  message.data = visual_control_suspend_value_;
+  visual_control_suspend_pub_->publish(message);
+  last_visual_control_suspend_at_ = current_time;
+}
+
 // ********************************************************************************
 // ******************************** 主控制流程 ********************************
 // ********************************************************************************
@@ -573,6 +813,14 @@ void VisualLidarPathFollower::set_control_state(VisualLidarPathFollower::Control
 // 这里保留完整顺序，避免为了几行赋值再跳到小包装函数里。
 void VisualLidarPathFollower::control_once()
 {
+  maintain_visual_control_suspension();
+
+  if (!start_authorized_) {
+    set_control_state(ControlState::WAITING_FOR_START);
+    publish_stop();
+    return;
+  }
+
   if (waiting_for_qr_start_) {
     set_control_state(ControlState::WAITING_FOR_QR);
     return;
@@ -629,23 +877,35 @@ void VisualLidarPathFollower::control_once()
   }
 
   auto target = compute_lookahead_target(pose, lookahead_distance_);
-  if (!target.reverse && !qr_visual_avoidance_active_) {
+  const bool channel_waypoint_shift_active =
+    qr_route_selected_ && !following_qr_path_ && !qr_visual_avoidance_active_;
+  if (!target.reverse && channel_waypoint_shift_active) {
     update_waypoint_shifts(pose, target.waypoint_index);
     target = compute_lookahead_target(pose, lookahead_distance_);
   }
 
   auto cmd = compute_tracking_command(pose, target);
-  if (qr_visual_avoidance_active_ && !target.reverse) {
+  const bool lidar_approach_active = approach_lidar_phase_active() && !target.reverse;
+  if (lidar_approach_active) {
+    const double cruise_speed = following_qr_path_ ?
+      pre_qr_cruise_linear_speed_ : qr_channel_lidar_cruise_linear_speed_;
+    cmd.linear.x = std::min(std::abs(cmd.linear.x), cruise_speed);
+  } else if (qr_visual_avoidance_active_ && !target.reverse) {
     // 扫码后到进入 channel 前使用独立巡航速度；只做上限限制，保留后续转弯
     // 和拍照点降速。二维码一次性后撤已在前面返回，不受此参数影响。
     cmd.linear.x = std::min(
       std::abs(cmd.linear.x), qr_channel_visual_cruise_linear_speed_);
   }
-  apply_turn_speed_limit(cmd);
+  apply_turn_speed_limit(pose, target, cmd);
   apply_image_capture_speed_limit(pose, cmd);
-  if (qr_visual_avoidance_active_) {
+  if (lidar_approach_active) {
+    apply_approach_lidar_obstacle_avoidance(pose, target, cmd);
+  } else if (qr_visual_avoidance_active_) {
     apply_qr_channel_visual_obstacle_avoidance(cmd);
   }
+  // 放在所有巡航、转弯和进场雷达避障限速之后，沿用 visual_control 的乘法
+  // 修正语义；这里只改线速度，保留最终选定的航点/雷达转向指令。
+  apply_pre_qr_qr_speed_slowdown(cmd);
 
   publish_debug_visualization(pose);
 
@@ -1267,24 +1527,28 @@ geometry_msgs::msg::Twist VisualLidarPathFollower::compute_tracking_command(
   return cmd;
 }
 
-// 根据即将发送给下位机的前轮目标转角，使用归一化余弦曲线降低速度：
-//   直行时转弯进度为 0，转角打满时为 1；左右转使用转角绝对值，降速完全对称。
+// 使用车头朝向与“车辆到当前追踪点”连线之间的几何夹角进行余弦降速：
+//   夹角 0 度时保持正常速度，夹角 180 度时降到配置的最低速度比例。
+// 该夹角不乘 turn_angular_gain，因此调整转向增益不会连带改变线速度。
 void VisualLidarPathFollower::apply_turn_speed_limit(
+  const VisualLidarPathFollower::RobotPose & pose,
+  const VisualLidarPathFollower::TargetPoint & target,
   geometry_msgs::msg::Twist & cmd) const
 {
   if (!enable_turn_speed_slowdown_ || std::abs(cmd.linear.x) <= 1.0e-9) {
     return;
   }
 
-  const double steering_angle = std::min(kSteeringAngleLimit, std::abs(cmd.angular.z));
-  const double cosine_span = 1.0 - std::cos(kSteeringAngleLimit);
-  const double raw_turn_ratio = cosine_span > 1.0e-12 ?
-    (1.0 - std::cos(steering_angle)) / cosine_span : 0.0;
-  const double turn_ratio = std::max(0.0, std::min(1.0, raw_turn_ratio));
-
-  const double reduction_fraction = max_turn_speed_reduction_percent_ / 100.0;
-  const double speed_limit =
-    std::abs(linear_speed_) * (1.0 - reduction_fraction * turn_ratio);
+  const double dx = target.point.x - pose.x;
+  const double dy = target.point.y - pose.y;
+  const double target_x_base = std::cos(pose.yaw) * dx + std::sin(pose.yaw) * dy;
+  const double target_y_base = -std::sin(pose.yaw) * dx + std::cos(pose.yaw) * dy;
+  const double heading_angle = std::abs(std::atan2(target_y_base, target_x_base));
+  const double cosine_ratio = 0.5 * (1.0 + std::cos(heading_angle));
+  const double min_speed_ratio = min_turn_speed_percent_ / 100.0;
+  const double speed_ratio =
+    min_speed_ratio + (1.0 - min_speed_ratio) * cosine_ratio;
+  const double speed_limit = std::abs(linear_speed_) * speed_ratio;
   const double limited_speed = std::min(std::abs(cmd.linear.x), speed_limit);
   cmd.linear.x = std::copysign(limited_speed, cmd.linear.x);
 }
@@ -1675,7 +1939,7 @@ void VisualLidarPathFollower::evaluate_qr_reverse_gate(
     qr_reverse_eligible_ ? "允许最多一次后撤" : "位于门限左侧，跳过后撤");
 }
 
-// 进入 channel 航点邻域后结束视觉覆盖；基础控制从扫码起就始终是航点跟踪。
+// 进入 channel 航点邻域后结束进场直接避障；从此只保留逻辑1 waypoint_shift。
 void VisualLidarPathFollower::update_qr_visual_avoidance_phase(
   const VisualLidarPathFollower::RobotPose & robot_pose)
 {
@@ -1711,14 +1975,18 @@ void VisualLidarPathFollower::update_qr_visual_avoidance_phase(
 
   qr_visual_avoidance_active_ = false;
   qr_escape_state_ = QrEscapeState::IDLE;
+  reset_approach_lidar_avoidance_state();
   current_index_ = std::min(nearest_waypoint_index, waypoints_.size() - 1);
   first_waypoint_reached_ = true;
-  set_perception_mode(perception_pause_value_, "暂停");
+  if (!uses_waypoint_lidar_approach()) {
+    set_perception_mode(perception_pause_value_, "暂停");
+  }
   RCLCPP_INFO(
     get_logger(),
     "已进入 waypoint_channel：最近航点=%zu/%zu，距离=%.3fm；"
-    "关闭视觉障碍物覆盖，继续 waypoint_shift 巡点。",
-    current_index_ + 1, waypoints_.size(), nearest_waypoint_distance);
+    "关闭%s障碍物覆盖，继续 waypoint_shift 巡点。",
+    current_index_ + 1, waypoints_.size(), nearest_waypoint_distance,
+    uses_waypoint_lidar_approach() ? "雷达" : "视觉");
 }
 
 // 返回 true 时本周期由一次性二维码倒车覆盖航点指令；解除后下一周期直接恢复追航点。
@@ -1805,6 +2073,57 @@ int VisualLidarPathFollower::scale_qr_channel_visual_detection_y(int y) const
     qr_channel_visual_detection_source_height_));
 }
 
+// waypoint_lidar 扫码前沿用 visual_control 的二维码高度减速：YOLO 检测框
+// 只影响最终线速度，不替换 waypoint 跟踪或雷达避障已经算出的转向量。
+bool VisualLidarPathFollower::apply_pre_qr_qr_speed_slowdown(
+  geometry_msgs::msg::Twist & cmd)
+{
+  if (!enable_pre_qr_qr_slowdown_ || !uses_waypoint_lidar_approach() ||
+    !following_qr_path_ || qr_route_selected_ || cmd.linear.x <= 0.0 ||
+    !has_visual_detection_ || !latest_visual_detection_)
+  {
+    return false;
+  }
+
+  const double detection_age = std::chrono::duration<double>(
+    std::chrono::steady_clock::now() - latest_visual_detection_received_at_).count();
+  if (detection_age > pre_qr_qr_detection_timeout_) {
+    return false;
+  }
+
+  const ai_msgs::msg::Target * matched_qr = nullptr;
+  int matched_height = 0;
+  for (const auto & target : latest_visual_detection_->targets) {
+    if (target.type != pre_qr_qr_class_name_ || target.rois.empty()) {
+      continue;
+    }
+    const auto & roi = target.rois.front();
+    if (roi.confidence < pre_qr_qr_confidence_threshold_) {
+      continue;
+    }
+    const int scaled_height = scale_qr_channel_visual_detection_y(
+      static_cast<int>(roi.rect.height));
+    if (scaled_height >= pre_qr_qr_min_height_threshold_ &&
+      scaled_height >= pre_qr_qr_height_threshold_ && scaled_height > matched_height)
+    {
+      matched_qr = &target;
+      matched_height = scaled_height;
+    }
+  }
+  if (!matched_qr) {
+    return false;
+  }
+
+  const double original_linear_speed = cmd.linear.x;
+  cmd.linear.x *= pre_qr_qr_speed_modifier_;
+  RCLCPP_INFO_THROTTLE(
+    get_logger(), *get_clock(), 1000,
+    "扫码前二维码减速：height=%d，confidence=%.2f，线速度 %.2f -> %.2f。",
+    matched_height, matched_qr->rois.front().confidence,
+    original_linear_speed, cmd.linear.x);
+  return true;
+}
+
 // 有有效障碍物时只覆盖当前航点速度；障碍物失效后不保留任何回线/丢线状态。
 bool VisualLidarPathFollower::apply_qr_channel_visual_obstacle_avoidance(
   geometry_msgs::msg::Twist & cmd)
@@ -1864,6 +2183,114 @@ bool VisualLidarPathFollower::apply_qr_channel_visual_obstacle_avoidance(
     "视觉障碍物覆盖航点指令：center_x=%d，bottom_y=%d，confidence=%.2f，输出=%.2f/%.2f。",
     obstacle_center_x, obstacle_bottom_y, obstacle->rois.front().confidence,
     cmd.linear.x, cmd.angular.z);
+  return true;
+}
+
+void VisualLidarPathFollower::reset_approach_lidar_avoidance_state()
+{
+  approach_lidar_avoidance_active_ = false;
+  approach_lidar_avoid_direction_ = 0;
+  approach_lidar_avoid_angular_command_ = 0.0;
+  processed_approach_lidar_scan_sequence_ =
+    scan_sequence_ > 0 ? scan_sequence_ - 1 : 0;
+}
+
+// 扫码前与扫码后进入 channel 前共用：
+//   1. 只在车辆前方矩形内找最近的非静态点云簇；
+//   2. 以 base_link 车头中心线为基准，障碍在左则右避，在右则左避；
+//   3. 障碍越靠近中心线转向越大，到检查矩形侧边时线性降为 0；
+//   4. 只覆盖本周期速度，不修改 waypoint；进入 channel 后本函数不再调用。
+bool VisualLidarPathFollower::apply_approach_lidar_obstacle_avoidance(
+  const VisualLidarPathFollower::RobotPose & robot_pose,
+  const VisualLidarPathFollower::TargetPoint & target,
+  geometry_msgs::msg::Twist & cmd)
+{
+  if (!approach_lidar_phase_active() || target.reverse) {
+    return false;
+  }
+
+  const bool scan_ready = static_cast<bool>(latest_scan_);
+  const bool maps_ready = !enable_static_map_filter_ || !require_map_for_lidar_assist_ ||
+    (latest_map_ && latest_restriction_map_);
+  if (!scan_ready || !maps_ready) {
+    approach_lidar_avoidance_active_ = false;
+    approach_lidar_avoid_direction_ = 0;
+    approach_lidar_avoid_angular_command_ = 0.0;
+    cmd = geometry_msgs::msg::Twist();
+    RCLCPP_WARN_THROTTLE(
+      get_logger(), *get_clock(), 1000,
+      "waypoint_lidar 进场尚未收到雷达或地图数据，停车等待。scan=%s, maps=%s。",
+      scan_ready ? "ready" : "missing", maps_ready ? "ready" : "missing");
+    return true;
+  }
+
+  const double cos_yaw = std::cos(robot_pose.yaw);
+  const double sin_yaw = std::sin(robot_pose.yaw);
+  auto map_to_base = [&](const Point2D & map_point) {
+      const double dx = map_point.x - robot_pose.x;
+      const double dy = map_point.y - robot_pose.y;
+      return Point2D{
+        cos_yaw * dx + sin_yaw * dy,
+        -sin_yaw * dx + cos_yaw * dy};
+    };
+
+  if (processed_approach_lidar_scan_sequence_ != scan_sequence_) {
+    processed_approach_lidar_scan_sequence_ = scan_sequence_;
+    const auto clusters = collect_non_static_scan_clusters_map(
+      robot_pose, approach_lidar_min_points_);
+
+    const ScanPointCluster * nearest_cluster = nullptr;
+    Point2D nearest_cluster_base;
+    double nearest_distance = std::numeric_limits<double>::infinity();
+    for (const auto & cluster : clusters) {
+      const Point2D center_base = map_to_base(cluster.center);
+      if (center_base.x < 0.0 || center_base.x > approach_lidar_check_distance_ ||
+        std::abs(center_base.y) > approach_lidar_half_width_)
+      {
+        continue;
+      }
+      const double distance = std::hypot(center_base.x, center_base.y);
+      if (distance < nearest_distance) {
+        nearest_distance = distance;
+        nearest_cluster = &cluster;
+        nearest_cluster_base = center_base;
+      }
+    }
+
+    if (nearest_cluster) {
+      // 不锁定方向：每帧新雷达数据都按障碍簇相对车头中心线的位置重新判断。
+      approach_lidar_avoid_direction_ = nearest_cluster_base.y >= 0.0 ? -1 : 1;
+      const double steering_ratio = std::clamp(
+        1.0 - std::abs(nearest_cluster_base.y) / approach_lidar_half_width_, 0.0, 1.0);
+      // approach_lidar_avoid_angular_speed_ 是中心线处的最大转向量；
+      // 不设最小转向，侧边处允许线性降到 0。
+      approach_lidar_avoid_angular_command_ =
+        static_cast<double>(approach_lidar_avoid_direction_) *
+        approach_lidar_avoid_angular_speed_ * steering_ratio;
+      approach_lidar_avoidance_active_ = true;
+      RCLCPP_WARN_THROTTLE(
+        get_logger(), *get_clock(), 500,
+        "进场雷达避障：阶段=%s，障碍簇base=(%.3f, %.3f)，点数=%zu，"
+        "转向比例=%.2f，方向=%s，转向=%.3f。",
+        following_qr_path_ ? "waypoints_qr" : "qr_to_channel",
+        nearest_cluster_base.x, nearest_cluster_base.y, nearest_cluster->points.size(),
+        steering_ratio, approach_lidar_avoid_direction_ > 0 ? "左" : "右",
+        approach_lidar_avoid_angular_command_);
+    } else {
+      // 当前帧没有障碍就立即解除，不等待连续空帧。
+      approach_lidar_avoidance_active_ = false;
+      approach_lidar_avoid_direction_ = 0;
+      approach_lidar_avoid_angular_command_ = 0.0;
+    }
+  }
+
+  if (!approach_lidar_avoidance_active_ || approach_lidar_avoid_direction_ == 0) {
+    return false;
+  }
+
+  cmd.linear.x = following_qr_path_ ?
+    pre_qr_lidar_avoid_linear_speed_ : qr_channel_lidar_avoid_linear_speed_;
+  cmd.angular.z = approach_lidar_avoid_angular_command_;
   return true;
 }
 
@@ -2430,9 +2857,14 @@ void VisualLidarPathFollower::qr_callback(const std_msgs::msg::String::ConstShar
         RCLCPP_WARN(
           get_logger(), "扫码回调暂未取得 map 位姿，将在第一帧有效定位时完成 x 门限判定。");
       }
-      // visual_control 从此不再参与巡线/回线；YOLO 独立保持仅障碍物输出。
+      // visual_control 从此不再参与巡线/回线。waypoint_lidar 模式已由雷达
+      // 负责进场避障，二维码数据生效后立即暂停 YOLO；旧 visual 模式保持原行为。
       suspend_visual_control();
-      set_perception_mode(perception_obstacle_only_value_, "仅障碍物识别");
+      if (uses_waypoint_lidar_approach()) {
+        set_perception_mode(perception_pause_value_, "暂停");
+      } else {
+        set_perception_mode(perception_obstacle_only_value_, "仅障碍物识别");
+      }
       if (qr_sub_) {
         qr_sub_.reset();
       }
@@ -2512,6 +2944,7 @@ bool VisualLidarPathFollower::switch_route(const std::string & direction)
   qr_path_finished_ = false;
   image_analysis_triggered_ = false;
   route_finish_notified_ = false;
+  reset_approach_lidar_avoidance_state();
   if (was_following_qr_path || was_waiting_for_qr) {
     current_index_ = 0;
     first_waypoint_reached_ = false;
@@ -2526,11 +2959,21 @@ bool VisualLidarPathFollower::switch_route(const std::string & direction)
     first_waypoint_reached_ = current_index_ > 0;
   }
   const auto route_name = route_direction_name(selected_route_direction_);
-  RCLCPP_INFO(
-    get_logger(),
-    "QR 选择%s路线，立即追 waypoint_channel；进入 channel 前视觉巡航/避障速度=%.2f/%.2f。",
-    route_name.c_str(), qr_channel_visual_cruise_linear_speed_,
-    qr_channel_visual_avoid_linear_speed_);
+  if (uses_waypoint_lidar_approach()) {
+    RCLCPP_INFO(
+      get_logger(),
+      "QR 选择%s路线，立即追 waypoint_channel；YOLO暂停，进入 channel 前"
+      "雷达巡航/避障速度=%.2f/%.2f。",
+      route_name.c_str(), qr_channel_lidar_cruise_linear_speed_,
+      qr_channel_lidar_avoid_linear_speed_);
+  } else {
+    RCLCPP_INFO(
+      get_logger(),
+      "QR 选择%s路线，立即追 waypoint_channel；进入 channel 前"
+      "视觉巡航/避障速度=%.2f/%.2f。",
+      route_name.c_str(), qr_channel_visual_cruise_linear_speed_,
+      qr_channel_visual_avoid_linear_speed_);
+  }
   if (debug_control_logs_) {
     RCLCPP_INFO(
       get_logger(), "debug: 环线文件=%s，起点=%zu/%zu（%s）。",
@@ -2543,6 +2986,7 @@ bool VisualLidarPathFollower::switch_route(const std::string & direction)
 
 void VisualLidarPathFollower::suspend_visual_control()
 {
+  publish_visual_control_gate(false);
   if (!suspend_visual_control_on_qr_ || !visual_control_suspend_pub_) {
     return;
   }
@@ -2552,7 +2996,8 @@ void VisualLidarPathFollower::suspend_visual_control()
   for (int i = 0; i < 3; ++i) {
     visual_control_suspend_pub_->publish(msg);
   }
-  RCLCPP_INFO(get_logger(), "已通知 visual_control 挂起，SZC逻辑1节点接管。");
+  last_visual_control_suspend_at_ = std::chrono::steady_clock::now();
+  RCLCPP_INFO(get_logger(), "已通知 visual_control 挂起，SZC节点接管。");
   if (debug_control_logs_) {
     RCLCPP_INFO(
       get_logger(), "debug: suspend_topic=%s, value=%d。",

@@ -17,6 +17,7 @@
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/int32.hpp"
 #include "std_msgs/msg/string.hpp"
+#include "std_srvs/srv/set_bool.hpp"
 #include "tf2_ros/buffer.h"
 #include "tf2_ros/transform_listener.h"
 #include "visualization_msgs/msg/marker_array.hpp"
@@ -44,6 +45,7 @@ public:
 private:
   enum class ControlState
   {
+    WAITING_FOR_START,
     WAITING_FOR_POSE,
     WAITING_FOR_QR,
     PATH_FOLLOWING,
@@ -124,10 +126,14 @@ private:
   std::string qr_channel_visual_detection_topic_{"/racing_obstacle_detection"};
   std::string qr_channel_visual_obstacle_class_name_{"construction_cone"};
   std::string visual_control_suspend_topic_{"/sign4return"};
+  std::string visual_control_gate_topic_{"/visual_control_szc/enable"};
+  std::string start_service_name_{"/visual_lidar_path_follower_szc/enable"};
   std::string route_direction_{"auto"};
+  std::string approach_control_mode_{"visual"};
   std::string selected_route_direction_;
   bool enable_debug_visualization_{true};
   bool debug_control_logs_{false};
+  bool wait_for_start_signal_{true};
   bool wait_for_qr_before_start_{false};
   int clockwise_qr_value_{1};
   int counterclockwise_qr_value_{2};
@@ -144,7 +150,7 @@ private:
   double segment_advance_t_{0.85};
   double turn_angular_gain_{1.4};
   bool enable_turn_speed_slowdown_{true};
-  double max_turn_speed_reduction_percent_{50.0};
+  double min_turn_speed_percent_{60.0};
   double reverse_angular_gain_{1.1};
   double reverse_goal_lookahead_distance_{0.25};
   double reverse_pass_radius_{0.25};
@@ -169,6 +175,23 @@ private:
   bool require_map_for_lidar_assist_{true};
   int static_map_occupied_threshold_{90};
   int static_map_inflation_cells_{4};
+
+  double pre_qr_cruise_linear_speed_{0.8};
+  double pre_qr_lidar_avoid_linear_speed_{0.5};
+  bool enable_pre_qr_qr_slowdown_{true};
+  std::string pre_qr_qr_class_name_{"qr_code"};
+  double pre_qr_qr_confidence_threshold_{0.6};
+  int pre_qr_qr_min_height_threshold_{20};
+  int pre_qr_qr_height_threshold_{40};
+  double pre_qr_qr_speed_modifier_{0.2};
+  double pre_qr_qr_detection_timeout_{0.30};
+  double qr_channel_lidar_cruise_linear_speed_{0.8};
+  double qr_channel_lidar_avoid_linear_speed_{0.5};
+  double approach_lidar_check_distance_{1.0};
+  double approach_lidar_half_width_{0.35};
+  int approach_lidar_min_points_{3};
+  double approach_lidar_avoid_angular_speed_{0.5};
+  double visual_control_suspend_refresh_seconds_{1.0};
 
   double qr_escape_check_distance_{0.60};
   double qr_escape_rear_extension_{0.20};
@@ -234,8 +257,14 @@ private:
   std::size_t image_capture_waypoint_index_{0};
   std::chrono::steady_clock::time_point image_capture_stop_started_at_;
   bool publish_stop_on_exit_{true};
+  bool start_authorized_{false};
   std::uint64_t scan_sequence_{0};
   std::uint64_t processed_waypoint_shift_scan_sequence_{0};
+  std::uint64_t processed_approach_lidar_scan_sequence_{0};
+  bool approach_lidar_avoidance_active_{false};
+  int approach_lidar_avoid_direction_{0};
+  double approach_lidar_avoid_angular_command_{0.0};
+  std::chrono::steady_clock::time_point last_visual_control_suspend_at_;
   QrEscapeState qr_escape_state_{QrEscapeState::IDLE};
   QrEscapeObservation latest_qr_escape_observation_;
   bool qr_visual_avoidance_active_{false};
@@ -255,6 +284,7 @@ private:
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_pub_;
   rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr image_analysis_trigger_pub_;
   rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr visual_control_suspend_pub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr visual_control_gate_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr route_finished_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr debug_marker_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr debug_route_marker_pub_;
@@ -264,10 +294,19 @@ private:
   rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr restriction_map_sub_;
   rclcpp::Subscription<ai_msgs::msg::PerceptionTargets>::SharedPtr visual_detection_sub_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr qr_sub_;
+  rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr start_service_;
   rclcpp::TimerBase::SharedPtr timer_;
 
   const char * control_state_name(ControlState state) const;
   void set_control_state(ControlState next_state);
+  bool uses_waypoint_lidar_approach() const;
+  bool approach_lidar_phase_active() const;
+  bool start_prerequisites_ready(std::string & reason);
+  void handle_start_request(
+    const std::shared_ptr<std_srvs::srv::SetBool::Request> request,
+    std::shared_ptr<std_srvs::srv::SetBool::Response> response);
+  void publish_visual_control_gate(bool enabled);
+  void maintain_visual_control_suspension();
   void control_once();
   bool stop_if_route_finished();
 
@@ -289,7 +328,9 @@ private:
   bool handle_image_capture_stop(const RobotPose & pose);
   void apply_image_capture_speed_limit(
     const RobotPose & pose, geometry_msgs::msg::Twist & cmd) const;
-  void apply_turn_speed_limit(geometry_msgs::msg::Twist & cmd) const;
+  void apply_turn_speed_limit(
+    const RobotPose & pose, const TargetPoint & target,
+    geometry_msgs::msg::Twist & cmd) const;
   geometry_msgs::msg::Twist compute_tracking_command(
     const RobotPose & pose, const TargetPoint & target) const;
 
@@ -318,6 +359,11 @@ private:
   bool apply_qr_channel_visual_obstacle_avoidance(geometry_msgs::msg::Twist & cmd);
   int scale_qr_channel_visual_detection_x(int x) const;
   int scale_qr_channel_visual_detection_y(int y) const;
+  bool apply_pre_qr_qr_speed_slowdown(geometry_msgs::msg::Twist & cmd);
+  void reset_approach_lidar_avoidance_state();
+  bool apply_approach_lidar_obstacle_avoidance(
+    const RobotPose & robot_pose, const TargetPoint & target,
+    geometry_msgs::msg::Twist & cmd);
   void reset_waypoint_shift_state();
   void update_waypoint_shifts(
     const RobotPose & robot_pose, std::size_t target_waypoint_index);

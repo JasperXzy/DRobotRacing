@@ -183,7 +183,7 @@ private:
 
   double turn_angular_gain_{1.4};
   bool enable_turn_speed_slowdown_{true};
-  double max_turn_speed_reduction_percent_{50.0};
+  double min_turn_speed_percent_{60.0};
   double reverse_angular_gain_{1.1};
   double reverse_goal_lookahead_distance_{0.25};
   double reverse_pass_radius_{0.25};
@@ -248,8 +248,10 @@ private:
   double logic3_old_cluster_radius_{0.50};
   double logic3_runtime_roi_width_{2.0};
   double logic3_runtime_roi_height_{2.0};
+  double logic3_runtime_channel_min_y_{1.60};
   int logic3_static_cluster_min_points_{1};
   int logic3_static_restriction_inflation_cells_{0};
+  double logic3_static_channel_min_y_{1.60};
   double logic3_static_cluster_match_radius_{0.40};
   double logic3_static_stability_duration_seconds_{1.0};
   double logic3_static_stability_radius_{0.10};
@@ -420,7 +422,9 @@ private:
   bool handle_image_capture_stop(const RobotPose & pose);
   void apply_image_capture_speed_limit(
     const RobotPose & pose, geometry_msgs::msg::Twist & cmd) const;
-  void apply_turn_speed_limit(geometry_msgs::msg::Twist & cmd) const;
+  void apply_turn_speed_limit(
+    const RobotPose & pose, const TargetPoint & target,
+    geometry_msgs::msg::Twist & cmd) const;
 
   geometry_msgs::msg::Twist compute_tracking_command(
     const RobotPose & pose, const TargetPoint & target) const;
