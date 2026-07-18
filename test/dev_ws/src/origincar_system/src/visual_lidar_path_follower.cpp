@@ -2645,6 +2645,7 @@ bool VisualLidarPathFollower::logic3_static_shift_direction(
 
   double best_distance_squared = std::numeric_limits<double>::infinity();
   Point2D route_tangent;
+  Point2D route_projection;
   for (std::size_t index = 0; index + 1 < original_waypoints_.size(); ++index) {
     const auto & start = original_waypoints_[index];
     const auto & finish = original_waypoints_[index + 1];
@@ -2667,6 +2668,7 @@ bool VisualLidarPathFollower::logic3_static_shift_direction(
       const double length = std::sqrt(length_squared);
       best_distance_squared = distance_squared;
       route_tangent = Point2D{segment_x / length, segment_y / length};
+      route_projection = Point2D{projection_x, projection_y};
     }
   }
   if (!std::isfinite(best_distance_squared)) {
@@ -2675,16 +2677,12 @@ bool VisualLidarPathFollower::logic3_static_shift_direction(
 
   const Point2D left_normal{-route_tangent.y, route_tangent.x};
   const Point2D right_normal{-left_normal.x, -left_normal.y};
-  double left_distance = 0.0;
-  double right_distance = 0.0;
-  if (!map_distance_to_blocked_along_ray(
-      cluster.center, left_normal, left_distance) ||
-    !map_distance_to_blocked_along_ray(
-      cluster.center, right_normal, right_distance))
-  {
-    return false;
-  }
-  shift_direction = left_distance > right_distance ? left_normal : right_normal;
+  const double obstacle_lateral =
+    (cluster.center.x - route_projection.x) * left_normal.x +
+    (cluster.center.y - route_projection.y) * left_normal.y;
+  // 障碍在路线左侧时向右绕，在右侧时向左绕。理论上的中心线零值
+  // 固定向路线右侧，保证静态快照结果确定且不依赖restriction_map。
+  shift_direction = obstacle_lateral >= 0.0 ? right_normal : left_normal;
   return true;
 }
 
@@ -3215,7 +3213,8 @@ bool VisualLidarPathFollower::lookup_logic2_planning_pose(
 }
 
 // waypoint_shift 模式：每帧新雷达提前检查当前目标之后的固定数量航点。
-// 以障碍物最近路线点为中心，前后分别取配置数量的点，整段向地图更空旷侧横移。
+// 以障碍物最近路线点为中心，前后分别取配置数量的点并横移。
+// 逻辑3向障碍物相对路线位置的反侧绕行；逻辑1/2保留地图空旷侧规则。
 // 横移量先作为本帧候选，连续确认后才提交；障碍消失或错误观测消失后会释放回原路线。
 void VisualLidarPathFollower::update_waypoint_shifts(
   const VisualLidarPathFollower::RobotPose & robot_pose,
@@ -3350,6 +3349,7 @@ void VisualLidarPathFollower::update_waypoint_shifts(
 
   struct ShiftCandidateSegment
   {
+    std::size_t obstacle_waypoint{0};
     std::size_t first{0};
     std::size_t last{0};
     double left_distance{0.0};
@@ -3530,10 +3530,11 @@ void VisualLidarPathFollower::update_waypoint_shifts(
       const Point2D right_normal{-left_normal.x, -left_normal.y};
       double left_distance = 0.0;
       double right_distance = 0.0;
-      if (!map_distance_to_blocked_along_ray(
+      if (waypoint_shift_logic_ != 3 &&
+        (!map_distance_to_blocked_along_ray(
           obstacle_point, left_normal, left_distance) ||
         !map_distance_to_blocked_along_ray(
-          obstacle_point, right_normal, right_distance))
+          obstacle_point, right_normal, right_distance)))
       {
         continue;
       }
@@ -3562,6 +3563,12 @@ void VisualLidarPathFollower::update_waypoint_shifts(
         const double left_alignment =
           recorded_direction.x * left_normal.x + recorded_direction.y * left_normal.y;
         preferred_direction = left_alignment >= 0.0 ? 1 : -1;
+      } else if (waypoint_shift_logic_ == 3) {
+        const double obstacle_lateral =
+          (cluster.center.x - route_match.projection.x) * left_normal.x +
+          (cluster.center.y - route_match.projection.y) * left_normal.y;
+        // +1表示路线左移，-1表示路线右移；始终选择障碍所在侧的反方向。
+        preferred_direction = obstacle_lateral >= 0.0 ? -1 : 1;
       }
 
       std::size_t obstacle_waypoint = route_match.t < 0.5 ?
@@ -3579,7 +3586,7 @@ void VisualLidarPathFollower::update_waypoint_shifts(
         original_waypoints_.size() - 1, obstacle_waypoint + points_after);
       candidate_segments.push_back(
         ShiftCandidateSegment{
-        influence_first, influence_last, left_distance, right_distance,
+        obstacle_waypoint, influence_first, influence_last, left_distance, right_distance,
         left_required_offset, right_required_offset, preferred_direction});
       if (waypoint_shift_logic_ == 3 && logic2_planning_pose_anchored_ &&
         !replay_frozen_clusters)
@@ -3590,12 +3597,16 @@ void VisualLidarPathFollower::update_waypoint_shifts(
     }
   }
 
-  // 每个点云簇先拥有自己的偏移段。只有区间重叠的段才组成冲突组：
-  // 冲突组统一左右方向，但各簇仍保留自己的影响区间和偏移量；
-  // 最终仅在重叠 waypoint 上取同方向的较大偏移。
+  // 逻辑3按路线进度依次应用每个障碍物；后一个障碍物的before窗口
+  // 无条件覆盖前一个障碍物的after重叠区。逻辑1/2保留原冲突组规则。
   std::sort(
     candidate_segments.begin(), candidate_segments.end(),
-    [](const ShiftCandidateSegment & lhs, const ShiftCandidateSegment & rhs) {
+    [&](const ShiftCandidateSegment & lhs, const ShiftCandidateSegment & rhs) {
+      if (waypoint_shift_logic_ == 3 &&
+        lhs.obstacle_waypoint != rhs.obstacle_waypoint)
+      {
+        return lhs.obstacle_waypoint < rhs.obstacle_waypoint;
+      }
       if (lhs.first != rhs.first) {
         return lhs.first < rhs.first;
       }
@@ -3604,7 +3615,41 @@ void VisualLidarPathFollower::update_waypoint_shifts(
 
   std::vector<double> observed_offsets(waypoints_.size(), 0.0);
   std::vector<bool> observed_offsets_valid(waypoints_.size(), false);
-  std::size_t group_begin = 0;
+  if (waypoint_shift_logic_ == 3) {
+    for (const auto & segment : candidate_segments) {
+      if (segment.preferred_direction == 0) {
+        continue;
+      }
+      const double required_offset = segment.preferred_direction > 0 ?
+        segment.left_required_offset : segment.right_required_offset;
+      if (required_offset <= 1e-9) {
+        continue;
+      }
+      const double candidate =
+        static_cast<double>(segment.preferred_direction) * required_offset;
+      std::size_t overwritten_count = 0;
+      for (std::size_t index = segment.first; index <= segment.last; ++index) {
+        if (observed_offsets_valid[index]) {
+          ++overwritten_count;
+        }
+        // 候选已按路线进度排序，后写入的下一个障碍物直接取得重叠区控制权。
+        observed_offsets[index] = candidate;
+        observed_offsets_valid[index] = true;
+      }
+      if (debug_control_logs_) {
+        RCLCPP_INFO(
+          get_logger(),
+          "debug: 逻辑3顺序覆盖：障碍点=%zu，覆盖点=%zu-%zu，向%s偏移%.3fm，"
+          "覆盖前障碍航点=%zu个。",
+          segment.obstacle_waypoint + 1, segment.first + 1, segment.last + 1,
+          segment.preferred_direction > 0 ? "左" : "右", required_offset,
+          overwritten_count);
+      }
+    }
+  }
+
+  // 逻辑3已经按障碍顺序生成候选；下列冲突组仅处理逻辑1/2。
+  std::size_t group_begin = waypoint_shift_logic_ == 3 ? candidate_segments.size() : 0;
   while (group_begin < candidate_segments.size()) {
     std::size_t group_end = group_begin + 1;
     std::size_t group_first = candidate_segments[group_begin].first;
@@ -3662,17 +3707,20 @@ void VisualLidarPathFollower::update_waypoint_shifts(
         group_right_distance, candidate_segments[segment_index].right_distance);
     }
 
+    const bool has_preferred_direction =
+      preferred_left_count + preferred_right_count > 0;
     int shift_direction = 0;
     const char * direction_source = "空旷侧";
-    // 逻辑3动态阶段每帧都按新点云重新判断空旷侧。后面的有符号 pending
-    // 负责首次方向确认和反向重确认；同方向提交后则持续刷新偏移量。
-    if (preferred_left_count + preferred_right_count > 0) {
+    // 逻辑3按障碍物相对路线的左右位置选择反侧；有符号pending负责首次
+    // 方向确认和反向重确认，同方向提交后持续刷新偏移量。
+    if (has_preferred_direction) {
       if (preferred_left_count == preferred_right_count) {
         shift_direction = candidate_segments[group_begin].preferred_direction;
       } else {
         shift_direction = preferred_left_count > preferred_right_count ? 1 : -1;
       }
-      direction_source = "静态快照世界方向";
+      direction_source = replay_frozen_clusters ?
+        "静态快照路线反侧" : "障碍相对路线反侧";
     } else if (!logic3_runtime_dynamic &&
       committed_left_count != committed_right_count)
     {
@@ -3718,7 +3766,15 @@ void VisualLidarPathFollower::update_waypoint_shifts(
       }
     }
 
-    if (debug_control_logs_ && candidate_count > 0) {
+    if (debug_control_logs_ && candidate_count > 0 && has_preferred_direction) {
+      RCLCPP_INFO(
+        get_logger(),
+        "debug: waypoint_shift 偏移组：簇段%zu个，覆盖点=%zu-%zu，"
+        "向%s（%s），各段偏移=%.3f-%.3fm，候选%zu个点。",
+        group_end - group_begin, group_first + 1, group_last + 1,
+        shift_direction > 0 ? "左" : "右", direction_source,
+        min_required_offset, max_required_offset, candidate_count);
+    } else if (debug_control_logs_ && candidate_count > 0) {
       RCLCPP_INFO(
         get_logger(),
         "debug: waypoint_shift 偏移组：簇段%zu个，覆盖点=%zu-%zu，"

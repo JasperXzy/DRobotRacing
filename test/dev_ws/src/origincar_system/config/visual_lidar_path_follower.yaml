@@ -31,7 +31,7 @@ visual_lidar_path_follower:
     # 雷达和地图输入
     scan_topic: /scan  # 雷达扫描数据话题
     map_topic: /map  # race_modify 定位地图；同时用于过滤真实固定墙体点云
-    restriction_map_topic: /restriction_map  # 图2 race_keepout；始终用于判断偏移方向，逻辑1/2也用它过滤点云
+    restriction_map_topic: /restriction_map  # 图2 race_keepout；逻辑1/2用于空旷侧判断，逻辑3只按障碍相对路线侧选反方向
 
     # waypoint_shift 点云簇与 Foxglove 圆锥圆显示
     cluster_max_point_gap: 0.06   # 同一点云簇相邻点允许的最大空间间距，单位 m
@@ -40,13 +40,13 @@ visual_lidar_path_follower:
     cone_circle_min_radius: 0.03  # 接受的圆锥截面拟合最小半径，单位 m；对应约7cm直径
     cone_circle_max_radius: 0.07  # 接受的圆锥截面拟合最大半径，单位 m；对应约13cm直径
     cone_circle_max_rmse: 0.015   # 接受圆拟合的最大径向均方根误差，单位 m
-    waypoint_shift_clearance_radius: 0.60   # 从点云簇中心沿路线横截方向搜索禁行区域的最大距离，单位 m
-    waypoint_shift_occupied_threshold: 50   # 横截方向判断的地图占据阈值；软禁行区和真实墙体都应达到该值
+    waypoint_shift_clearance_radius: 0.60   # 逻辑1/2从点云簇中心沿路线横截方向搜索禁行区域的最大距离，单位 m
+    waypoint_shift_occupied_threshold: 50   # 逻辑1/2横截方向判断的地图占据阈值；软禁行区和真实墙体都应达到该值
     waypoint_shift_check_count: 100          # waypoint_shift模式每帧从当前追踪点开始检查的航点数量
     waypoint_cloud_check_radius: 0.5       # 点云距未来路线小于该距离才触发平移，单位 m；提前距离由check_count决定
-    waypoint_shift_target_clearance: 0.35  # 与SZC参数一致；偏移后的路线在空旷侧横截方向越过点云最外沿的目标净距，单位 m
+    waypoint_shift_target_clearance: 0.35  # 偏移后的路线在选定横截方向越过点云最外沿的目标净距，单位 m
     waypoint_shift_points_before: 35        # 障碍物最近路线点之前、车与障碍物之间统一偏移的点数
-    waypoint_shift_points_after: 35          # 障碍物最近路线点之后、离车更远方向统一偏移的点数
+    waypoint_shift_points_after: 35          # 障碍物最近路线点之后的偏移点数；逻辑3重叠时下一个障碍的before覆盖前一个after
     waypoint_shift_confirm_scans: 3          # 同方向候选偏移连续命中这么多帧后首次提交；之后持续刷新
     waypoint_shift_release_scans: 8          # 连续这么多帧未命中后释放已提交偏移，回到原始航点
     waypoint_shift_min_change: 0.02          # 逻辑1/2及未进入逻辑3动态持续刷新时使用的最小变化，单位m
@@ -143,7 +143,7 @@ visual_lidar_path_follower:
     logic3_pose_outlier_yaw: 0.15
 
     # -------------------------- 逻辑3：地图分工 -----------------------------
-    # 图2：计算左右空旷度/偏移方向，并作为冻结路线图和最终路线图背景
+    # 图2：作为冻结路线图和最终路线图背景；逻辑3偏移方向只由障碍相对路线的左右侧决定
     # 图3：仅过滤发车前的静态绿色候选；话题由logic3_static_restriction_map_topic指定
     # 图4：仅过滤发车后的动态红色候选；话题由logic3_runtime_restriction_map_topic指定
     logic3_output_root: /root/D_Robot/test/dev_ws/src/origincar_system/path
