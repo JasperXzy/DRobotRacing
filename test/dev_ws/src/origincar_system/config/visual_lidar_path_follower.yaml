@@ -13,11 +13,11 @@ visual_lidar_path_follower:
     enable_debug_visualization: true  # 是否发布 Foxglove 中的 waypoints、圆锥圆心和拟合圆
     # 正向追点
     control_frequency: 50.0  # 控制循环频率，单位 Hz
-    linear_speed: 0.95  # 正常巡点线速度，单位 m/s
-    turn_angular_gain: 1.5  # 正向航向误差到下位机前轮目标转角的比例增益
-    enable_turn_speed_slowdown: true  # 是否根据下位机目标舵机PWM行程直接降低巡点线速度
-    max_turn_speed_reduction_percent: 30.0  # 舵机左右打满时的最大降速百分比，允许范围0～90
-    lookahead_distance: 0.5  # 正常巡点目标的前瞻距离，单位 m
+    linear_speed: 1.15  # 正常巡点线速度，单位 m/s
+    turn_angular_gain: 1.8  # 与SZC参数一致；正向航向误差到下位机前轮目标转角的比例增益
+    enable_turn_speed_slowdown: true  # 是否根据车头朝向与当前追踪点连线的夹角进行余弦降速
+    min_turn_speed_percent: 60.0  # 几何夹角达到180度时的最低速度比例；0度保持100%，允许范围0～100
+    lookahead_distance: 0.50  # 与SZC参数一致；正常巡点目标的前瞻距离，单位 m
     pass_radius: 0.6  # 航点未单独配置时使用的默认通过半径，单位 m
     route_projection_max_distance: 1.2  # 允许车辆匹配当前路线段的最大横向距离，单位 m
     segment_advance_t: 0.6  # 车辆投影超过当前线段此比例时推进路线进度
@@ -43,23 +43,112 @@ visual_lidar_path_follower:
     waypoint_shift_occupied_threshold: 50   # 横截方向判断的地图占据阈值；软禁行区和真实墙体都应达到该值
     waypoint_shift_check_count: 100          # waypoint_shift模式每帧从当前追踪点开始检查的航点数量
     waypoint_cloud_check_radius: 0.5       # 点云距未来路线小于该距离才触发平移，单位 m；提前距离由check_count决定
-    waypoint_shift_target_clearance: 0.3   # 偏移后的路线在空旷侧横截方向越过点云最外沿的目标净距，单位 m
+    waypoint_shift_target_clearance: 0.3  # 与SZC参数一致；偏移后的路线在空旷侧横截方向越过点云最外沿的目标净距，单位 m
     waypoint_shift_points_before: 35        # 障碍物最近路线点之前、车与障碍物之间统一偏移的点数
-    waypoint_shift_points_after: 25          # 障碍物最近路线点之后、离车更远方向统一偏移的点数
+    waypoint_shift_points_after: 15          # 障碍物最近路线点之后、离车更远方向统一偏移的点数
     waypoint_shift_confirm_scans: 3          # 同方向候选偏移连续命中这么多帧后才真正刷新路线
     waypoint_shift_release_scans: 8          # 连续这么多帧未命中后释放已提交偏移，回到原始航点
     waypoint_shift_min_change: 0.02          # 已提交偏移变化小于该值时不刷新路线，单位 m
     enable_static_map_filter: true          # 是否同时用race_modify和race_keepout过滤真实墙体及软禁行区域点云
     require_map_for_lidar_assist: true      # 任一地图未收到时是否暂停需要非静态点云的辅助判断和二维码后撤检查
     static_map_occupied_threshold: 90       # race_modify真实墙体的点云过滤占据阈值
-    static_map_inflation_cells: 2           # 两张地图的静态占据区域过滤时统一向周围扩展的栅格数
+    static_map_inflation_cells: 0           # 与SZC参数一致；普通静态地图过滤不额外膨胀占据区域
+
+    # ========================================================================
+    # waypoint_shift方案切换
+    #   1：完整保留原来的“运动中实时定位+当前窗口动态偏移”逻辑
+    #   2：可信发车后锚定稳定规划位姿，仅做2x2m通道内动态红簇偏移
+    #   3：发车前静态绿色簇规划+冻结，运行中2x2m动态红簇增量偏移
+    # ========================================================================
+    waypoint_shift_logic: 3
+
+    # --------------------- 逻辑2：可信发车与位姿锚定 -----------------------
+    logic2_odom_topic: /chassis/odom          # 使用底盘里程计判断可信发车并触发规划位姿锚定
+    logic2_motion_speed_threshold: 0.03       # 编码器平移速度门限，单位m/s；明显高于已测静止零漂
+    logic2_motion_displacement_threshold: 0.01  # 速度未报出时的累计位移备份门限，单位m
+    logic2_motion_confirm_messages: 2         # 连续两条运动消息才确认发车并锚定map->odom规划位姿
+
+    # ------------------------ 逻辑2：动态红簇避障 --------------------------
+    logic2_runtime_roi_width: 1.5             # 以车为中心的新簇检测矩形宽度，单位m
+    logic2_runtime_roi_height: 1.5            # 以车为中心的新簇检测矩形高度，单位m
+    logic2_red_history_merge_radius: 0.50     # 红簇身份半径；圆内视为同一障碍物，但每帧仍参与动态避障，单位m
+
+    # ---------------------- 逻辑2：规划专用稳定坐标 -------------------------
+    # live_lidar_location：兼容旧名称；实际直接使用当前定位器的实时map->base_link，AMCL/lidar_location均可
+    # frozen_map_odom：冻结发车时map->odom，只用EKF odom->base传播
+    # filtered_map_odom：EKF传播，并让当前全局定位只做慢速限幅校正
+    logic2_planning_pose_source: live_lidar_location  # 改回最初方案：发车后仍完全沿用实时全局定位
+    logic2_odom_frame_id: odom
+    # 以下校正参数仅在filtered_map_odom模式生效
+    logic2_pose_correction_deadband_xy: 0.005   # 小于该平移差不修正，防止路线随定位细抖，单位m
+    logic2_pose_correction_deadband_yaw: 0.003  # 小于该航向差不修正，单位rad
+    logic2_pose_correction_rate_xy: 0.02        # map->odom每秒最多校正的平移量，单位m/s
+    logic2_pose_correction_rate_yaw: 0.02       # map->odom每秒最多校正的航向量，单位rad/s
+    logic2_pose_outlier_xy: 0.20                # 超过该差值视为lidar_location跳变，本帧拒绝，单位m
+    logic2_pose_outlier_yaw: 0.15               # 超过该航向差视为跳变，本帧拒绝，单位rad
+
+    # --------------------------- 逻辑2：两张图 ------------------------------
+    # 每次任务只生成01_original_route.png和02_final_dynamic_route.png
+    logic2_output_root: /root/D_Robot/test/dev_ws/src/origincar_system/path
+    logic2_restriction_map_yaml: /root/D_Robot/test/dev_ws/src/origincar_system/map/race_keepout.yaml
+
+    # ========================================================================
+    # 逻辑3：静态绿色快照 + 动态红簇（参数与逻辑2完全独立）
+    # ========================================================================
+
+    # -------------------------- 逻辑3：静态规划 ----------------------------
+    logic3_static_route_direction: clockwise  # 扫码前仅用作通道几何参考，不代表最终顺逆时针路线
+    logic3_static_restriction_map_topic: /logic3_static_restriction_map  # 仅发车前绿色候选使用的Y向拓宽地图
+    logic3_static_restriction_inflation_cells: 0  # 第三张地图已经显式拓宽，静态查询不再额外膨胀黑区
+    logic3_static_channel_min_y: 1.60        # 静态绿色候选必须满足map.y严格大于该值，单位m
+    logic3_static_cluster_min_points: 1       # 仅静止阶段允许1~3个远距离稀疏雷达点形成候选
+    logic3_static_cluster_match_radius: 0.40  # 跨帧关联同一障碍物；仅关联身份，不代表该帧通过稳定性检查
+    logic3_static_stability_duration_seconds: 1.0  # 固定锚点的自适应半径内连续稳定多久才进入状态1
+    logic3_static_stability_radius: 0.10      # 近距离稳定观察、采样及READY持续监视半径，单位m
+    logic3_static_far_stability_radius: 0.20  # 远距离稀疏回波使用的最大稳定半径，单位m
+    logic3_static_stability_near_distance: 2.0  # 障碍物不超过该雷达距离时使用0.10m，单位m
+    logic3_static_stability_far_distance: 3.0   # 超过该雷达距离时使用0.20m，中间线性插值
+    logic3_static_average_samples: 10        # 状态1后必须连续出现这么多雷达帧，才生成平均绿色坐标
+    logic3_static_track_release_seconds: 0.50  # 单帧丢失立即作废状态1；持续消失这么久再删除身份
+    logic3_old_cluster_radius: 0.50           # 仅发车冻结后启用的绿色身份/运行抑制半径，单位m
+
+    # --------------------- 逻辑3：可信发车与位姿锚定 -----------------------
+    logic3_odom_topic: /chassis/odom
+    logic3_motion_speed_threshold: 0.03
+    logic3_motion_displacement_threshold: 0.01
+    logic3_motion_confirm_messages: 2
+    logic3_enable_tts: true
+    logic3_tts_topic: /tts_text
+    logic3_static_status_log_rate_hz: 2.0      # 发车前终端输出最终绿色点数量和map坐标的频率
+    logic3_static_record_ready_text: 静态障碍与偏移记录完毕  # 可信发车时仅播报一次，程序自动附加最终数量
+    logic3_route_ready_text: 路线已规划完毕                 # 扫码选路并生成冻结路径后播报
+
+    # ------------------------ 逻辑3：动态红簇避障 --------------------------
+    logic3_runtime_roi_width: 3.0
+    logic3_runtime_roi_height: 3.0
+    logic3_runtime_channel_min_y: 1.60       # 动态红簇必须满足map.y严格大于该值，单位m
+    logic3_red_history_merge_radius: 0.50     # 仅做红簇身份合并，不屏蔽逐帧动态避障
+
+    # ---------------------- 逻辑3：规划专用稳定坐标 ------------------------
+    logic3_planning_pose_source: live_lidar_location  # 发车后仍完全沿用AMCL/lidar_location实时map定位
+    logic3_odom_frame_id: odom
+    logic3_pose_correction_deadband_xy: 0.005
+    logic3_pose_correction_deadband_yaw: 0.003
+    logic3_pose_correction_rate_xy: 0.02
+    logic3_pose_correction_rate_yaw: 0.02
+    logic3_pose_outlier_xy: 0.20
+    logic3_pose_outlier_yaw: 0.15
+
+    # --------------------------- 逻辑3：三张图 ------------------------------
+    logic3_output_root: /root/D_Robot/test/dev_ws/src/origincar_system/path
+    logic3_restriction_map_yaml: /root/D_Robot/test/dev_ws/src/origincar_system/map/race_keepout.yaml
 
     # 扫到二维码后立即追 channel；进场阶段保留视觉覆盖与一次性点云后撤
-    qr_reverse_min_map_x: 2.8  # 扫码瞬间 map.x 大于该值才允许本轮最多触发一次倒车；左侧直接跳过
+    qr_reverse_min_map_x: 2.15  # 与SZC参数一致；扫码瞬间 map.x 大于该值才允许本轮最多触发一次倒车；左侧直接跳过
     qr_visual_handoff_waypoint_distance: 0.3  # 到最近 channel 航点小于该距离时关闭视觉覆盖并启用 waypoint_shift，单位 m
-    qr_escape_check_distance: 0.60  # 左右比较矩形从车辆中心向前延伸的距离，单位 m
-    qr_escape_rear_extension: 0.15  # 左右比较矩形向后延伸的距离，应覆盖车屁股，单位 m
-    qr_escape_half_width: 0.25  # 左右比较矩形的左右半宽，单位 m
+    qr_escape_check_distance: 0.70  # 左右比较矩形从车辆中心向前延伸的距离，单位 m
+    qr_escape_rear_extension: 0.20  # 与SZC参数一致；左右比较矩形向后延伸的距离，应覆盖车屁股，单位 m
+    qr_escape_half_width: 0.35  # 左右比较矩形的左右半宽，单位 m
     qr_escape_min_points: 3  # 比较矩形内非墙点达到该数量时触发二维码后撤
     qr_reverse_linear_speed: 0.60  # 二维码保护默认右后撤使用的倒车速度绝对值，单位 m/s
     qr_reverse_angular_speed: 0.5  # 二维码保护默认右后撤使用的转向量绝对值
@@ -74,7 +163,7 @@ visual_lidar_path_follower:
     qr_channel_visual_obstacle_confidence_threshold: 0.5
     qr_channel_visual_obstacle_bottom_threshold: 295  # 检测框底边缩放到 640x480 后达到该值才避障
     qr_channel_visual_obstacle_delta_x_ratio: 0.0  # 障碍物横向偏移对底边触发阈值的附加比例
-    qr_channel_visual_avoid_linear_speed: 0.45
+    qr_channel_visual_avoid_linear_speed: 0.5
     qr_channel_visual_avoid_angular_ratio: -0.006
     qr_channel_visual_detection_timeout: 0.30  # 超过该秒数的旧检测不再覆盖航点指令
     qr_channel_visual_detection_source_width: 1920
@@ -104,10 +193,10 @@ visual_lidar_path_follower:
     image_capture_clockwise_y: 4.05  # 顺时针使用的右侧车辆拍照点map坐标y，单位m
     image_capture_counterclockwise_x: 0.45  # 逆时针使用的左侧车辆拍照点map坐标x，单位m
     image_capture_counterclockwise_y: 4.05  # 逆时针使用的左侧车辆拍照点map坐标y，单位m
-    image_capture_radius: 0.2  # 必须真正进入此距离才算到达，且路线进度不能跳过该点，单位m
-    image_capture_slow_distance: 0.50  # 距拍照点小于此距离开始限速，单位m
-    image_capture_slow_speed: 0.50  # 接近拍照点时的最大线速度，单位m/s
-    image_capture_angular_gain: 2.0  # 追拍照点时航向误差到下位机前轮目标转角的专用比例增益
-    image_capture_stop_time: 0.1  # 到点后先停车稳定这么久再拍照，单位s
+    image_capture_radius: 0.4  # 必须真正进入此距离才算到达，且路线进度不能跳过该点，单位m
+    image_capture_slow_distance: 0.0  # 距拍照点小于此距离开始限速，单位m
+    image_capture_slow_speed: 1.15  # 与SZC参数一致；接近拍照点时的最大线速度，单位m/s
+    image_capture_angular_gain: 1.8  # 追拍照点时航向误差到下位机前轮目标转角的专用比例增益
+    image_capture_stop_time: 0.0  # 到点后先停车稳定这么久再拍照，单位s
     image_capture_trigger_value: 8  # 发布到图生文触发话题的整数值
     image_analysis_trigger_topic: /sign4return  # 图像分析触发整数消息的发布话题

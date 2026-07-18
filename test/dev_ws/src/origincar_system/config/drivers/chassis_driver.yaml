@@ -1,7 +1,7 @@
 # Parameter configuration for Chassis Driver
 /chassis_driver_node:
   ros__parameters:
-    usart_port_name: "/dev/ttyACM1"
+    usart_port_name: "/dev/ttyACM0"
     serial_baud_rate: 115200
     cmd_vel: "/cmd_vel"
     akm_cmd_vel: "none"

@@ -30,7 +30,7 @@ COUNTERCLOCKWISE_SEGMENTS: list[tuple[tuple[float, float], tuple[float, float]]]
     ((3.30, 4.05), (0.45, 4.05)),
     ((0.15, 3.85), (0.15, 3.20)),
     ((0.45, 2.90), (1.55, 2.90)),
-    ((1.75, 2.50), (1.75, 1.80)),
+    ((1.95, 2.50), (1.75, 1.80)),
 ]
 
 CLOCKWISE_SEGMENTS: list[tuple[tuple[float, float], tuple[float, float]]] = [
@@ -40,7 +40,7 @@ CLOCKWISE_SEGMENTS: list[tuple[tuple[float, float], tuple[float, float]]] = [
     ((0.45, 4.05), (3.30, 4.05)),
     ((3.60, 3.85), (3.60, 3.20)),
     ((3.30, 2.90), (2.35, 2.90)),
-    ((1.95, 2.50), (1.77, 1.80)),
+    ((1.95, 2.50), (1.75, 1.80)),
 ]
 
 TARGET_SPACING = 0.02

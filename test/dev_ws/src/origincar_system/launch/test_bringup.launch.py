@@ -22,6 +22,9 @@ def generate_launch_description():
     nav2_params_file = LaunchConfiguration('nav2_params_file')
     map_yaml_file = LaunchConfiguration('map_yaml_file')
     restriction_map_yaml_file = LaunchConfiguration('restriction_map_yaml_file')
+    logic3_static_restriction_map_yaml_file = LaunchConfiguration(
+        'logic3_static_restriction_map_yaml_file'
+    )
     qr_detector_params_file = LaunchConfiguration('qr_detector_params_file')
     perception_detector_params_file = LaunchConfiguration('perception_detector_params_file')
     line_detector_params_file = LaunchConfiguration('line_detector_params_file')
@@ -79,6 +82,13 @@ def generate_launch_description():
                 test_share, 'map', 'race_keepout.yaml',
             ]),
             description='Keepout map used for waypoint_shift direction and static scan filtering.',
+        ),
+        DeclareLaunchArgument(
+            'logic3_static_restriction_map_yaml_file',
+            default_value=PathJoinSubstitution([
+                test_share, 'map', 'race_keepout_logic3_static.yaml',
+            ]),
+            description='Y-expanded keepout map used only for logic3 pre-launch green detection.',
         ),
         DeclareLaunchArgument(
             'qr_detector_params_file',
@@ -210,6 +220,19 @@ def generate_launch_description():
         }],
     )
 
+    logic3_static_restriction_map_server_node = Node(
+        package='nav2_map_server',
+        executable='map_server',
+        name='logic3_static_restriction_map_server',
+        output='screen',
+        parameters=[{
+            'use_sim_time': False,
+            'yaml_filename': logic3_static_restriction_map_yaml_file,
+            'topic_name': 'logic3_static_restriction_map',
+            'frame_id': 'map',
+        }],
+    )
+
     amcl_node = Node(
         package='nav2_amcl',
         executable='amcl',
@@ -229,7 +252,12 @@ def generate_launch_description():
         parameters=[{
             'use_sim_time': False,
             'autostart': True,
-            'node_names': ['map_server', 'restriction_map_server', 'amcl'],
+            'node_names': [
+                'map_server',
+                'restriction_map_server',
+                'logic3_static_restriction_map_server',
+                'amcl',
+            ],
         }],
     )
 
@@ -310,6 +338,7 @@ def generate_launch_description():
         TimerAction(period=5.0, actions=[
             map_server_node,
             restriction_map_server_node,
+            logic3_static_restriction_map_server_node,
             amcl_node,
             amcl_lifecycle_manager,
         ]),

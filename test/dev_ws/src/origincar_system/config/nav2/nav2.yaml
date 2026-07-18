@@ -38,9 +38,9 @@ amcl:
     resample_interval: 1
     pf_err: 0.05
     pf_z: 0.99
-    # 起点固定且场地外墙高度对称：关闭全局随机恢复，避免跳到正方形另一侧。
-    recovery_alpha_fast: 0.0
-    recovery_alpha_slow: 0.0
+    # 启用保守自适应恢复，降低临时障碍触发大量随机粒子的风险。
+    recovery_alpha_fast: 0.02
+    recovery_alpha_slow: 0.001
 
     # 激光匹配
     laser_max_range: 5.0

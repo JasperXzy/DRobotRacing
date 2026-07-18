@@ -4,9 +4,12 @@
 #include <chrono>
 #include <cctype>
 #include <cmath>
+#include <ctime>
 #include <exception>
 #include <functional>
+#include <iomanip>
 #include <limits>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -39,13 +42,6 @@
 
 namespace
 {
-
-// 与阿克曼下位机 balance.c 保持一致的前轮转角到舵机目标 PWM 标定。
-constexpr double kSteeringAngleLimit = 0.55;
-constexpr double kServoPwmCenter = 1500.0;
-constexpr double kServoPwmLeftLimit = 1050.0;
-constexpr double kServoPwmRightLimit = 2200.0;
-constexpr double kServoPwmPerRadian = 636.56;
 
 // 从 YAML 节点里读取布尔值；兼容 YAML bool 和字符串形式。
 bool yaml_bool(const YAML::Node & node, bool default_value = false)
@@ -90,6 +86,33 @@ std::string route_direction_name(const std::string & direction)
   return direction;
 }
 
+double normalize_angle(double angle)
+{
+  while (angle > M_PI) {
+    angle -= 2.0 * M_PI;
+  }
+  while (angle < -M_PI) {
+    angle += 2.0 * M_PI;
+  }
+  return angle;
+}
+
+std::string json_escape(const std::string & text)
+{
+  std::ostringstream escaped;
+  for (const char ch : text) {
+    switch (ch) {
+      case '\\': escaped << "\\\\"; break;
+      case '"': escaped << "\\\""; break;
+      case '\n': escaped << "\\n"; break;
+      case '\r': escaped << "\\r"; break;
+      case '\t': escaped << "\\t"; break;
+      default: escaped << ch; break;
+    }
+  }
+  return escaped.str();
+}
+
 }  // namespace
 
 // 构造函数完成参数声明、参数读取、航点加载、话题订阅/发布和控制定时器创建。
@@ -122,6 +145,12 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   get_parameter("map_topic", map_topic_);
   declare_parameter<std::string>("restriction_map_topic", restriction_map_topic_);
   get_parameter("restriction_map_topic", restriction_map_topic_);
+  declare_parameter<std::string>(
+    "logic3_static_restriction_map_topic",
+    logic3_static_restriction_map_topic_);
+  get_parameter(
+    "logic3_static_restriction_map_topic",
+    logic3_static_restriction_map_topic_);
   declare_parameter<bool>("debug_control_logs", debug_control_logs_);
   get_parameter("debug_control_logs", debug_control_logs_);
   declare_parameter<bool>("wait_for_qr_before_start", wait_for_qr_before_start_);
@@ -149,9 +178,9 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   declare_parameter<bool>("enable_turn_speed_slowdown", enable_turn_speed_slowdown_);
   get_parameter("enable_turn_speed_slowdown", enable_turn_speed_slowdown_);
   declare_parameter<double>(
-    "max_turn_speed_reduction_percent", max_turn_speed_reduction_percent_);
+    "min_turn_speed_percent", min_turn_speed_percent_);
   get_parameter(
-    "max_turn_speed_reduction_percent", max_turn_speed_reduction_percent_);
+    "min_turn_speed_percent", min_turn_speed_percent_);
   declare_parameter<double>("reverse_angular_gain", reverse_angular_gain_);
   get_parameter("reverse_angular_gain", reverse_angular_gain_);
   declare_parameter<double>("reverse_goal_lookahead_distance", reverse_goal_lookahead_distance_);
@@ -203,6 +232,170 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   get_parameter("static_map_occupied_threshold", static_map_occupied_threshold_);
   declare_parameter<int>("static_map_inflation_cells", static_map_inflation_cells_);
   get_parameter("static_map_inflation_cells", static_map_inflation_cells_);
+
+  // 逻辑2全部使用 logic2_ 前缀，waypoint_shift_logic=1 时以下参数不参与控制。
+  declare_parameter<int>("waypoint_shift_logic", waypoint_shift_logic_);
+  get_parameter("waypoint_shift_logic", waypoint_shift_logic_);
+  declare_parameter<std::string>("logic2_odom_topic", logic2_odom_topic_);
+  get_parameter("logic2_odom_topic", logic2_odom_topic_);
+  declare_parameter<std::string>("logic2_odom_frame_id", logic2_odom_frame_id_);
+  get_parameter("logic2_odom_frame_id", logic2_odom_frame_id_);
+  declare_parameter<std::string>(
+    "logic2_planning_pose_source", logic2_planning_pose_source_);
+  get_parameter("logic2_planning_pose_source", logic2_planning_pose_source_);
+  declare_parameter<std::string>("logic2_output_root", logic2_output_root_);
+  get_parameter("logic2_output_root", logic2_output_root_);
+  declare_parameter<std::string>(
+    "logic2_restriction_map_yaml", logic2_restriction_map_yaml_);
+  get_parameter("logic2_restriction_map_yaml", logic2_restriction_map_yaml_);
+  declare_parameter<double>(
+    "logic2_motion_speed_threshold", logic2_motion_speed_threshold_);
+  get_parameter("logic2_motion_speed_threshold", logic2_motion_speed_threshold_);
+  declare_parameter<double>(
+    "logic2_motion_displacement_threshold", logic2_motion_displacement_threshold_);
+  get_parameter(
+    "logic2_motion_displacement_threshold", logic2_motion_displacement_threshold_);
+  declare_parameter<int>(
+    "logic2_motion_confirm_messages", logic2_motion_confirm_messages_);
+  get_parameter("logic2_motion_confirm_messages", logic2_motion_confirm_messages_);
+  declare_parameter<double>("logic2_runtime_roi_width", logic2_runtime_roi_width_);
+  get_parameter("logic2_runtime_roi_width", logic2_runtime_roi_width_);
+  declare_parameter<double>("logic2_runtime_roi_height", logic2_runtime_roi_height_);
+  get_parameter("logic2_runtime_roi_height", logic2_runtime_roi_height_);
+  declare_parameter<double>(
+    "logic2_red_history_merge_radius", logic2_red_history_merge_radius_);
+  get_parameter("logic2_red_history_merge_radius", logic2_red_history_merge_radius_);
+  declare_parameter<double>(
+    "logic2_pose_correction_deadband_xy", logic2_pose_correction_deadband_xy_);
+  get_parameter("logic2_pose_correction_deadband_xy", logic2_pose_correction_deadband_xy_);
+  declare_parameter<double>(
+    "logic2_pose_correction_deadband_yaw", logic2_pose_correction_deadband_yaw_);
+  get_parameter("logic2_pose_correction_deadband_yaw", logic2_pose_correction_deadband_yaw_);
+  declare_parameter<double>(
+    "logic2_pose_correction_rate_xy", logic2_pose_correction_rate_xy_);
+  get_parameter("logic2_pose_correction_rate_xy", logic2_pose_correction_rate_xy_);
+  declare_parameter<double>(
+    "logic2_pose_correction_rate_yaw", logic2_pose_correction_rate_yaw_);
+  get_parameter("logic2_pose_correction_rate_yaw", logic2_pose_correction_rate_yaw_);
+  declare_parameter<double>("logic2_pose_outlier_xy", logic2_pose_outlier_xy_);
+  get_parameter("logic2_pose_outlier_xy", logic2_pose_outlier_xy_);
+  declare_parameter<double>("logic2_pose_outlier_yaw", logic2_pose_outlier_yaw_);
+  get_parameter("logic2_pose_outlier_yaw", logic2_pose_outlier_yaw_);
+
+  // 逻辑3参数完整独立；选择逻辑3后会复制到共用运行管线，不改写逻辑2配置。
+  declare_parameter<std::string>(
+    "logic3_static_route_direction", logic3_static_route_direction_);
+  get_parameter("logic3_static_route_direction", logic3_static_route_direction_);
+  declare_parameter<std::string>("logic3_odom_topic", logic3_odom_topic_);
+  get_parameter("logic3_odom_topic", logic3_odom_topic_);
+  declare_parameter<std::string>("logic3_odom_frame_id", logic3_odom_frame_id_);
+  get_parameter("logic3_odom_frame_id", logic3_odom_frame_id_);
+  declare_parameter<std::string>(
+    "logic3_planning_pose_source", logic3_planning_pose_source_);
+  get_parameter("logic3_planning_pose_source", logic3_planning_pose_source_);
+  declare_parameter<std::string>("logic3_output_root", logic3_output_root_);
+  get_parameter("logic3_output_root", logic3_output_root_);
+  declare_parameter<std::string>(
+    "logic3_restriction_map_yaml", logic3_restriction_map_yaml_);
+  get_parameter("logic3_restriction_map_yaml", logic3_restriction_map_yaml_);
+  declare_parameter<std::string>("logic3_tts_topic", logic3_tts_topic_);
+  get_parameter("logic3_tts_topic", logic3_tts_topic_);
+  declare_parameter<std::string>(
+    "logic3_static_record_ready_text", logic3_static_record_ready_text_);
+  get_parameter("logic3_static_record_ready_text", logic3_static_record_ready_text_);
+  declare_parameter<std::string>("logic3_route_ready_text", logic3_route_ready_text_);
+  get_parameter("logic3_route_ready_text", logic3_route_ready_text_);
+  declare_parameter<double>(
+    "logic3_motion_speed_threshold", logic3_motion_speed_threshold_);
+  get_parameter("logic3_motion_speed_threshold", logic3_motion_speed_threshold_);
+  declare_parameter<double>(
+    "logic3_motion_displacement_threshold", logic3_motion_displacement_threshold_);
+  get_parameter(
+    "logic3_motion_displacement_threshold", logic3_motion_displacement_threshold_);
+  declare_parameter<int>(
+    "logic3_motion_confirm_messages", logic3_motion_confirm_messages_);
+  get_parameter("logic3_motion_confirm_messages", logic3_motion_confirm_messages_);
+  declare_parameter<double>("logic3_old_cluster_radius", logic3_old_cluster_radius_);
+  get_parameter("logic3_old_cluster_radius", logic3_old_cluster_radius_);
+  declare_parameter<double>("logic3_runtime_roi_width", logic3_runtime_roi_width_);
+  get_parameter("logic3_runtime_roi_width", logic3_runtime_roi_width_);
+  declare_parameter<double>("logic3_runtime_roi_height", logic3_runtime_roi_height_);
+  get_parameter("logic3_runtime_roi_height", logic3_runtime_roi_height_);
+  declare_parameter<double>(
+    "logic3_runtime_channel_min_y", logic3_runtime_channel_min_y_);
+  get_parameter("logic3_runtime_channel_min_y", logic3_runtime_channel_min_y_);
+  declare_parameter<int>(
+    "logic3_static_cluster_min_points", logic3_static_cluster_min_points_);
+  get_parameter("logic3_static_cluster_min_points", logic3_static_cluster_min_points_);
+  declare_parameter<int>(
+    "logic3_static_restriction_inflation_cells",
+    logic3_static_restriction_inflation_cells_);
+  get_parameter(
+    "logic3_static_restriction_inflation_cells",
+    logic3_static_restriction_inflation_cells_);
+  declare_parameter<double>(
+    "logic3_static_channel_min_y", logic3_static_channel_min_y_);
+  get_parameter("logic3_static_channel_min_y", logic3_static_channel_min_y_);
+  declare_parameter<double>(
+    "logic3_static_cluster_match_radius", logic3_static_cluster_match_radius_);
+  get_parameter("logic3_static_cluster_match_radius", logic3_static_cluster_match_radius_);
+  declare_parameter<double>(
+    "logic3_static_stability_duration_seconds",
+    logic3_static_stability_duration_seconds_);
+  get_parameter(
+    "logic3_static_stability_duration_seconds",
+    logic3_static_stability_duration_seconds_);
+  declare_parameter<double>(
+    "logic3_static_stability_radius", logic3_static_stability_radius_);
+  get_parameter("logic3_static_stability_radius", logic3_static_stability_radius_);
+  declare_parameter<double>(
+    "logic3_static_far_stability_radius", logic3_static_far_stability_radius_);
+  get_parameter(
+    "logic3_static_far_stability_radius", logic3_static_far_stability_radius_);
+  declare_parameter<double>(
+    "logic3_static_stability_near_distance",
+    logic3_static_stability_near_distance_);
+  get_parameter(
+    "logic3_static_stability_near_distance",
+    logic3_static_stability_near_distance_);
+  declare_parameter<double>(
+    "logic3_static_stability_far_distance",
+    logic3_static_stability_far_distance_);
+  get_parameter(
+    "logic3_static_stability_far_distance",
+    logic3_static_stability_far_distance_);
+  declare_parameter<int>(
+    "logic3_static_average_samples", logic3_static_average_samples_);
+  get_parameter("logic3_static_average_samples", logic3_static_average_samples_);
+  declare_parameter<double>(
+    "logic3_static_track_release_seconds", logic3_static_track_release_seconds_);
+  get_parameter(
+    "logic3_static_track_release_seconds", logic3_static_track_release_seconds_);
+  declare_parameter<double>(
+    "logic3_red_history_merge_radius", logic3_red_history_merge_radius_);
+  get_parameter("logic3_red_history_merge_radius", logic3_red_history_merge_radius_);
+  declare_parameter<double>(
+    "logic3_pose_correction_deadband_xy", logic3_pose_correction_deadband_xy_);
+  get_parameter("logic3_pose_correction_deadband_xy", logic3_pose_correction_deadband_xy_);
+  declare_parameter<double>(
+    "logic3_pose_correction_deadband_yaw", logic3_pose_correction_deadband_yaw_);
+  get_parameter("logic3_pose_correction_deadband_yaw", logic3_pose_correction_deadband_yaw_);
+  declare_parameter<double>(
+    "logic3_pose_correction_rate_xy", logic3_pose_correction_rate_xy_);
+  get_parameter("logic3_pose_correction_rate_xy", logic3_pose_correction_rate_xy_);
+  declare_parameter<double>(
+    "logic3_pose_correction_rate_yaw", logic3_pose_correction_rate_yaw_);
+  get_parameter("logic3_pose_correction_rate_yaw", logic3_pose_correction_rate_yaw_);
+  declare_parameter<double>("logic3_pose_outlier_xy", logic3_pose_outlier_xy_);
+  get_parameter("logic3_pose_outlier_xy", logic3_pose_outlier_xy_);
+  declare_parameter<double>("logic3_pose_outlier_yaw", logic3_pose_outlier_yaw_);
+  get_parameter("logic3_pose_outlier_yaw", logic3_pose_outlier_yaw_);
+  declare_parameter<bool>("logic3_enable_tts", logic3_enable_tts_);
+  get_parameter("logic3_enable_tts", logic3_enable_tts_);
+  declare_parameter<double>(
+    "logic3_static_status_log_rate_hz", logic3_static_status_log_rate_hz_);
+  get_parameter(
+    "logic3_static_status_log_rate_hz", logic3_static_status_log_rate_hz_);
 
   // 扫码后开始追点前的点云后撤
   declare_parameter<double>("qr_escape_check_distance", qr_escape_check_distance_);
@@ -350,8 +543,8 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   lookahead_distance_ = std::max(0.05, lookahead_distance_);
   route_projection_max_distance_ = std::max(0.10, route_projection_max_distance_);
   segment_advance_t_ = std::max(0.50, std::min(1.20, segment_advance_t_));
-  max_turn_speed_reduction_percent_ = std::max(
-    0.0, std::min(90.0, max_turn_speed_reduction_percent_));
+  min_turn_speed_percent_ = std::max(
+    0.0, std::min(100.0, min_turn_speed_percent_));
   cluster_max_point_gap_ = std::max(0.01, cluster_max_point_gap_);
   cluster_max_range_jump_ = std::max(0.01, cluster_max_range_jump_);
   cluster_min_points_ = std::max(3, cluster_min_points_);
@@ -371,6 +564,116 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   waypoint_shift_min_change_ = std::max(0.0, waypoint_shift_min_change_);
   static_map_occupied_threshold_ = std::max(1, std::min(100, static_map_occupied_threshold_));
   static_map_inflation_cells_ = std::max(0, static_map_inflation_cells_);
+  waypoint_shift_logic_ = waypoint_shift_logic_ == 2 || waypoint_shift_logic_ == 3 ?
+    waypoint_shift_logic_ : 1;
+  logic2_planning_pose_source_ = to_lower(logic2_planning_pose_source_);
+  if (logic2_planning_pose_source_ != "live_lidar_location" &&
+    logic2_planning_pose_source_ != "frozen_map_odom" &&
+    logic2_planning_pose_source_ != "filtered_map_odom")
+  {
+    RCLCPP_WARN(
+      get_logger(), "未知 logic2_planning_pose_source，改用 filtered_map_odom。");
+    logic2_planning_pose_source_ = "filtered_map_odom";
+  }
+  logic2_motion_speed_threshold_ = std::max(0.001, logic2_motion_speed_threshold_);
+  logic2_motion_displacement_threshold_ = std::max(
+    0.001, logic2_motion_displacement_threshold_);
+  logic2_motion_confirm_messages_ = std::max(1, logic2_motion_confirm_messages_);
+  logic2_runtime_roi_width_ = std::max(0.10, logic2_runtime_roi_width_);
+  logic2_runtime_roi_height_ = std::max(0.10, logic2_runtime_roi_height_);
+  logic2_red_history_merge_radius_ = std::max(0.01, logic2_red_history_merge_radius_);
+  logic2_pose_correction_deadband_xy_ = std::max(
+    0.0, logic2_pose_correction_deadband_xy_);
+  logic2_pose_correction_deadband_yaw_ = std::max(
+    0.0, logic2_pose_correction_deadband_yaw_);
+  logic2_pose_correction_rate_xy_ = std::max(0.0, logic2_pose_correction_rate_xy_);
+  logic2_pose_correction_rate_yaw_ = std::max(0.0, logic2_pose_correction_rate_yaw_);
+  logic2_pose_outlier_xy_ = std::max(0.01, logic2_pose_outlier_xy_);
+  logic2_pose_outlier_yaw_ = std::max(0.01, logic2_pose_outlier_yaw_);
+
+  logic3_static_route_direction_ = to_lower(logic3_static_route_direction_);
+  if (logic3_static_route_direction_ != "clockwise" &&
+    logic3_static_route_direction_ != "counterclockwise")
+  {
+    logic3_static_route_direction_ = "clockwise";
+  }
+  logic3_planning_pose_source_ = to_lower(logic3_planning_pose_source_);
+  if (logic3_planning_pose_source_ != "live_lidar_location" &&
+    logic3_planning_pose_source_ != "frozen_map_odom" &&
+    logic3_planning_pose_source_ != "filtered_map_odom")
+  {
+    RCLCPP_WARN(
+      get_logger(), "未知 logic3_planning_pose_source，改用 filtered_map_odom。");
+    logic3_planning_pose_source_ = "filtered_map_odom";
+  }
+  logic3_motion_speed_threshold_ = std::max(0.001, logic3_motion_speed_threshold_);
+  logic3_motion_displacement_threshold_ = std::max(
+    0.001, logic3_motion_displacement_threshold_);
+  logic3_motion_confirm_messages_ = std::max(1, logic3_motion_confirm_messages_);
+  logic3_old_cluster_radius_ = std::max(0.05, logic3_old_cluster_radius_);
+  logic3_runtime_roi_width_ = std::max(0.10, logic3_runtime_roi_width_);
+  logic3_runtime_roi_height_ = std::max(0.10, logic3_runtime_roi_height_);
+  if (!std::isfinite(logic3_runtime_channel_min_y_)) {
+    logic3_runtime_channel_min_y_ = 1.60;
+  }
+  logic3_static_cluster_min_points_ = std::max(1, logic3_static_cluster_min_points_);
+  logic3_static_restriction_inflation_cells_ = std::max(
+    0, logic3_static_restriction_inflation_cells_);
+  if (!std::isfinite(logic3_static_channel_min_y_)) {
+    logic3_static_channel_min_y_ = 1.60;
+  }
+  logic3_static_cluster_match_radius_ = std::max(
+    0.01, logic3_static_cluster_match_radius_);
+  logic3_static_stability_duration_seconds_ = std::max(
+    0.0, logic3_static_stability_duration_seconds_);
+  logic3_static_stability_radius_ = std::max(
+    0.01, logic3_static_stability_radius_);
+  logic3_static_far_stability_radius_ = std::max(
+    logic3_static_stability_radius_, logic3_static_far_stability_radius_);
+  logic3_static_stability_near_distance_ = std::max(
+    0.0, logic3_static_stability_near_distance_);
+  logic3_static_stability_far_distance_ = std::max(
+    logic3_static_stability_near_distance_ + 0.01,
+    logic3_static_stability_far_distance_);
+  logic3_static_cluster_match_radius_ = std::max(
+    logic3_static_far_stability_radius_, logic3_static_cluster_match_radius_);
+  logic3_static_average_samples_ = std::max(
+    1, logic3_static_average_samples_);
+  logic3_static_track_release_seconds_ = std::max(
+    0.01, logic3_static_track_release_seconds_);
+  logic3_red_history_merge_radius_ = std::max(
+    0.01, logic3_red_history_merge_radius_);
+  logic3_pose_correction_deadband_xy_ = std::max(
+    0.0, logic3_pose_correction_deadband_xy_);
+  logic3_pose_correction_deadband_yaw_ = std::max(
+    0.0, logic3_pose_correction_deadband_yaw_);
+  logic3_pose_correction_rate_xy_ = std::max(0.0, logic3_pose_correction_rate_xy_);
+  logic3_pose_correction_rate_yaw_ = std::max(0.0, logic3_pose_correction_rate_yaw_);
+  logic3_pose_outlier_xy_ = std::max(0.01, logic3_pose_outlier_xy_);
+  logic3_pose_outlier_yaw_ = std::max(0.01, logic3_pose_outlier_yaw_);
+  logic3_static_status_log_rate_hz_ = std::max(
+    0.1, logic3_static_status_log_rate_hz_);
+
+  if (waypoint_shift_logic_ == 3) {
+    // 共用动态管线读取logic2_活动值；这里只复制选中的logic3配置。
+    logic2_odom_topic_ = logic3_odom_topic_;
+    logic2_odom_frame_id_ = logic3_odom_frame_id_;
+    logic2_planning_pose_source_ = logic3_planning_pose_source_;
+    logic2_output_root_ = logic3_output_root_;
+    logic2_restriction_map_yaml_ = logic3_restriction_map_yaml_;
+    logic2_motion_speed_threshold_ = logic3_motion_speed_threshold_;
+    logic2_motion_displacement_threshold_ = logic3_motion_displacement_threshold_;
+    logic2_motion_confirm_messages_ = logic3_motion_confirm_messages_;
+    logic2_runtime_roi_width_ = logic3_runtime_roi_width_;
+    logic2_runtime_roi_height_ = logic3_runtime_roi_height_;
+    logic2_red_history_merge_radius_ = logic3_red_history_merge_radius_;
+    logic2_pose_correction_deadband_xy_ = logic3_pose_correction_deadband_xy_;
+    logic2_pose_correction_deadband_yaw_ = logic3_pose_correction_deadband_yaw_;
+    logic2_pose_correction_rate_xy_ = logic3_pose_correction_rate_xy_;
+    logic2_pose_correction_rate_yaw_ = logic3_pose_correction_rate_yaw_;
+    logic2_pose_outlier_xy_ = logic3_pose_outlier_xy_;
+    logic2_pose_outlier_yaw_ = logic3_pose_outlier_yaw_;
+  }
   qr_escape_check_distance_ = std::max(0.05, qr_escape_check_distance_);
   qr_escape_rear_extension_ = std::max(0.0, qr_escape_rear_extension_);
   qr_escape_half_width_ = std::max(0.05, qr_escape_half_width_);
@@ -426,6 +729,17 @@ VisualLidarPathFollower::VisualLidarPathFollower()
     waiting_for_qr_start_ = true;
     following_qr_path_ = false;
     selected_route_direction_ = "waiting_qr";
+    if (waypoint_shift_logic_ == 3) {
+      const std::string static_route_file = logic3_static_route_direction_ == "clockwise" ?
+        route_waypoints_clockwise_file_ : route_waypoints_counterclockwise_file_;
+      waypoints_ = load_waypoints(static_route_file, logic3_static_route_direction_);
+      reset_waypoint_shift_state();
+      if (waypoints_.empty()) {
+        RCLCPP_ERROR(
+          get_logger(), "逻辑3无法加载静止规划channel路线：%s。",
+          static_route_file.c_str());
+      }
+    }
   } else {
     // 兼容旧流程：启动先加载二维码前轨迹；扫到 QR 后再切到环线。
     waypoints_ = load_waypoints(waypoints_file_, route_direction_);
@@ -441,6 +755,14 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   image_analysis_trigger_pub_ =
     create_publisher<std_msgs::msg::Int32>(image_analysis_trigger_topic_, rclcpp::QoS(10).transient_local());
   visual_control_suspend_pub_ = create_publisher<std_msgs::msg::Int32>(visual_control_suspend_topic_, 3);
+  if (waypoint_shift_logic_ >= 2) {
+    logic2_snapshot_pub_ = create_publisher<std_msgs::msg::String>(
+      "/visual_lidar_path_follower/route_snapshot",
+      rclcpp::QoS(3).transient_local().reliable());
+  }
+  if (waypoint_shift_logic_ == 3 && logic3_enable_tts_) {
+    logic3_tts_pub_ = create_publisher<std_msgs::msg::String>(logic3_tts_topic_, 10);
+  }
   if (enable_debug_visualization_) {
     const auto transient_qos = rclcpp::QoS(1).transient_local().reliable();
     debug_marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>(
@@ -465,6 +787,15 @@ VisualLidarPathFollower::VisualLidarPathFollower()
     [this](nav_msgs::msg::OccupancyGrid::ConstSharedPtr msg) {
       latest_restriction_map_ = msg;
     });
+  if (waypoint_shift_logic_ == 3) {
+    logic3_static_restriction_map_sub_ =
+      create_subscription<nav_msgs::msg::OccupancyGrid>(
+        logic3_static_restriction_map_topic_,
+        rclcpp::QoS(1).transient_local().reliable(),
+        [this](nav_msgs::msg::OccupancyGrid::ConstSharedPtr msg) {
+          latest_logic3_static_restriction_map_ = msg;
+        });
+  }
   visual_detection_sub_ = create_subscription<ai_msgs::msg::PerceptionTargets>(
     qr_channel_visual_detection_topic_, rclcpp::SensorDataQoS().keep_last(1),
     [this](ai_msgs::msg::PerceptionTargets::ConstSharedPtr msg) {
@@ -472,6 +803,13 @@ VisualLidarPathFollower::VisualLidarPathFollower()
       latest_visual_detection_received_at_ = std::chrono::steady_clock::now();
       has_visual_detection_ = true;
     });
+  if (waypoint_shift_logic_ >= 2) {
+    logic2_odom_sub_ = create_subscription<nav_msgs::msg::Odometry>(
+      logic2_odom_topic_, rclcpp::SensorDataQoS().keep_last(10),
+      std::bind(
+        &VisualLidarPathFollower::logic2_odom_callback, this,
+        std::placeholders::_1));
+  }
 
   // 只需要一个有效 QR；选定方向后会取消订阅，避免后续误切路线。
   if (enable_qr_direction_select_) {
@@ -490,8 +828,8 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   const std::string route_name = waiting_for_qr_start_ ? "等待 QR" :
     (following_qr_path_ ? "二维码前路径" : route_direction_name(selected_route_direction_));
   RCLCPP_INFO(
-    get_logger(), "VisualLidarPathFollower 初始化完成：%zu 个航点，路线=%s。",
-    waypoints_.size(), route_name.c_str());
+    get_logger(), "VisualLidarPathFollower 初始化完成：%zu 个航点，路线=%s，waypoint_shift逻辑=%d。",
+    waypoints_.size(), route_name.c_str(), waypoint_shift_logic_);
   if (debug_control_logs_) {
     RCLCPP_INFO(
       get_logger(),
@@ -559,6 +897,19 @@ void VisualLidarPathFollower::set_control_state(VisualLidarPathFollower::Control
 void VisualLidarPathFollower::control_once()
 {
   if (waiting_for_qr_start_) {
+    if (waypoint_shift_logic_ == 3 && !logic2_planning_pose_anchored_ &&
+      !waypoints_.empty())
+    {
+      RobotPose planning_pose;
+      if (lookup_robot_pose(planning_pose.x, planning_pose.y, planning_pose.yaw)) {
+        if (!logic2_motion_candidate_) {
+          logic3_force_full_route_ = true;
+          update_waypoint_shifts(planning_pose, 0);
+          logic3_force_full_route_ = false;
+        }
+        publish_debug_visualization(planning_pose);
+      }
+    }
     set_control_state(ControlState::WAITING_FOR_QR);
     return;
   }
@@ -615,12 +966,16 @@ void VisualLidarPathFollower::control_once()
 
   auto target = compute_lookahead_target(pose, lookahead_distance_);
   if (!target.reverse && !qr_visual_avoidance_active_) {
+    if (waypoint_shift_logic_ == 3 && !logic2_planning_pose_anchored_) {
+      logic3_force_full_route_ = true;
+    }
     update_waypoint_shifts(pose, target.waypoint_index);
+    logic3_force_full_route_ = false;
     target = compute_lookahead_target(pose, lookahead_distance_);
   }
 
   auto cmd = compute_tracking_command(pose, target);
-  apply_turn_speed_limit(cmd);
+  apply_turn_speed_limit(pose, target, cmd);
   apply_image_capture_speed_limit(pose, cmd);
   if (qr_visual_avoidance_active_) {
     apply_qr_channel_visual_obstacle_avoidance(cmd);
@@ -771,6 +1126,12 @@ bool VisualLidarPathFollower::stop_if_route_finished()
   }
 
   set_control_state(ControlState::FINISHED);
+  if (waypoint_shift_logic_ >= 2 && logic2_planning_pose_anchored_ &&
+    !logic2_final_snapshot_published_)
+  {
+    publish_logic2_snapshot("final");
+    logic2_final_snapshot_published_ = true;
+  }
   if (resume_visual_control_on_finish_) {
     RCLCPP_INFO(get_logger(), "环线追点完成，恢复 visual_control 接管停车。");
     resume_visual_control(true);
@@ -1205,46 +1566,25 @@ geometry_msgs::msg::Twist VisualLidarPathFollower::compute_tracking_command(
   return cmd;
 }
 
-// 根据即将发送给下位机的前轮目标转角，复现 balance.c 的舵机 PWM 换算。
-// 左右 PWM 行程分别归一化，因此 1050 和 2200 打满时都会使用相同的最大降速百分比。
+// 使用车头朝向与“车辆到当前追踪点”连线之间的几何夹角进行余弦降速：
+//   夹角 0 度时保持正常速度，夹角 180 度时降到配置的最低速度比例。
+// 该夹角不乘 turn_angular_gain，因此调整转向增益不会连带改变线速度。
 void VisualLidarPathFollower::apply_turn_speed_limit(
+  const VisualLidarPathFollower::RobotPose & pose,
+  const VisualLidarPathFollower::TargetPoint & target,
   geometry_msgs::msg::Twist & cmd) const
 {
   if (!enable_turn_speed_slowdown_ || std::abs(cmd.linear.x) <= 1.0e-9) {
     return;
   }
 
-  const double steering_angle = std::max(
-    -kSteeringAngleLimit, std::min(kSteeringAngleLimit, cmd.angular.z));
-  const double angle_squared = steering_angle * steering_angle;
-  const double angle_cubed = angle_squared * steering_angle;
-
-  double servo_angle = 0.0;
-  if (steering_angle < 0.0) {
-    servo_angle =
-      -0.628 * angle_cubed + 1.269 * angle_squared - 1.772 * steering_angle;
-  } else {
-    servo_angle =
-      -0.628 * angle_cubed - 1.269 * angle_squared - 1.772 * steering_angle;
-  }
-
-  const double servo_pwm = std::max(
-    kServoPwmLeftLimit,
-    std::min(kServoPwmRightLimit, kServoPwmCenter + servo_angle * kServoPwmPerRadian));
-
-  double turn_ratio = 0.0;
-  if (servo_pwm <= kServoPwmCenter) {
-    turn_ratio =
-      (kServoPwmCenter - servo_pwm) / (kServoPwmCenter - kServoPwmLeftLimit);
-  } else {
-    turn_ratio =
-      (servo_pwm - kServoPwmCenter) / (kServoPwmRightLimit - kServoPwmCenter);
-  }
-  turn_ratio = std::max(0.0, std::min(1.0, turn_ratio));
-
-  const double reduction_fraction = max_turn_speed_reduction_percent_ / 100.0;
-  const double speed_limit =
-    std::abs(linear_speed_) * (1.0 - reduction_fraction * turn_ratio);
+  const double target_yaw = std::atan2(target.point.y - pose.y, target.point.x - pose.x);
+  const double heading_angle = std::abs(normalize_angle(target_yaw - pose.yaw));
+  const double cosine_ratio = 0.5 * (1.0 + std::cos(heading_angle));
+  const double min_speed_ratio = min_turn_speed_percent_ / 100.0;
+  const double speed_ratio =
+    min_speed_ratio + (1.0 - min_speed_ratio) * cosine_ratio;
+  const double speed_limit = std::abs(linear_speed_) * speed_ratio;
   const double limited_speed = std::min(std::abs(cmd.linear.x), speed_limit);
   cmd.linear.x = std::copysign(limited_speed, cmd.linear.x);
 }
@@ -1380,6 +1720,17 @@ bool VisualLidarPathFollower::is_static_map_point(
   const VisualLidarPathFollower::RobotPose & robot_pose,
   const VisualLidarPathFollower::Point2D & base_point) const
 {
+  return is_static_map_point(
+    robot_pose, base_point, latest_restriction_map_,
+    static_map_inflation_cells_);
+}
+
+bool VisualLidarPathFollower::is_static_map_point(
+  const VisualLidarPathFollower::RobotPose & robot_pose,
+  const VisualLidarPathFollower::Point2D & base_point,
+  const nav_msgs::msg::OccupancyGrid::ConstSharedPtr & restriction_map,
+  int restriction_inflation_cells) const
+{
   if (!enable_static_map_filter_) {
     return false;
   }
@@ -1387,7 +1738,7 @@ bool VisualLidarPathFollower::is_static_map_point(
   const Point2D map_point = base_to_map(robot_pose, base_point);
   auto occupied_in_map = [&](
       const nav_msgs::msg::OccupancyGrid::ConstSharedPtr & map_ptr,
-      int occupied_threshold) {
+      int occupied_threshold, int inflation_cells) {
       if (!map_ptr) {
         return false;
       }
@@ -1415,11 +1766,11 @@ bool VisualLidarPathFollower::is_static_map_point(
         return false;
       }
 
-      for (int offset_y = -static_map_inflation_cells_;
-        offset_y <= static_map_inflation_cells_; ++offset_y)
+      for (int offset_y = -inflation_cells;
+        offset_y <= inflation_cells; ++offset_y)
       {
-        for (int offset_x = -static_map_inflation_cells_;
-          offset_x <= static_map_inflation_cells_; ++offset_x)
+        for (int offset_x = -inflation_cells;
+          offset_x <= inflation_cells; ++offset_x)
         {
           const int check_x = grid_x + offset_x;
           const int check_y = grid_y + offset_y;
@@ -1436,19 +1787,30 @@ bool VisualLidarPathFollower::is_static_map_point(
       return false;
     };
 
-  return occupied_in_map(latest_map_, static_map_occupied_threshold_) ||
-         occupied_in_map(latest_restriction_map_, waypoint_shift_occupied_threshold_);
+  const bool occupied_in_physical_map = occupied_in_map(
+    latest_map_, static_map_occupied_threshold_, static_map_inflation_cells_);
+  const bool occupied_in_restriction_map = occupied_in_map(
+    restriction_map, waypoint_shift_occupied_threshold_,
+    restriction_inflation_cells);
+  return occupied_in_physical_map || occupied_in_restriction_map;
 }
 
 std::vector<VisualLidarPathFollower::ScanPointCluster>
 VisualLidarPathFollower::collect_non_static_scan_clusters_map(
-  const VisualLidarPathFollower::RobotPose & robot_pose) const
+  const VisualLidarPathFollower::RobotPose & robot_pose,
+  int minimum_cluster_points,
+  bool use_logic3_static_restriction_map) const
 {
   if (!latest_scan_) {
     return {};
   }
+  const auto & active_restriction_map = use_logic3_static_restriction_map ?
+    latest_logic3_static_restriction_map_ : latest_restriction_map_;
+  const int active_restriction_inflation_cells =
+    use_logic3_static_restriction_map ?
+    logic3_static_restriction_inflation_cells_ : static_map_inflation_cells_;
   if (enable_static_map_filter_ && require_map_for_lidar_assist_ &&
-    (!latest_map_ || !latest_restriction_map_))
+    (!latest_map_ || !active_restriction_map))
   {
     return {};
   }
@@ -1470,10 +1832,12 @@ VisualLidarPathFollower::collect_non_static_scan_clusters_map(
   ScanPointCluster current_cluster;
   Point2D previous_base_point;
   double previous_range = 0.0;
+  const std::size_t required_points = static_cast<std::size_t>(
+    std::max(1, minimum_cluster_points));
 
   auto finish_cluster = [&]() {
       if (cluster_active &&
-        current_cluster.points.size() >= static_cast<std::size_t>(cluster_min_points_))
+        current_cluster.points.size() >= required_points)
       {
         for (const auto & point : current_cluster.points) {
           current_cluster.center.x += point.x;
@@ -1500,7 +1864,10 @@ VisualLidarPathFollower::collect_non_static_scan_clusters_map(
     const Point2D base_point{
       scan_to_base.x + cos_scan * scan_x - sin_scan * scan_y,
       scan_to_base.y + sin_scan * scan_x + cos_scan * scan_y};
-    if (enable_static_map_filter_ && is_static_map_point(robot_pose, base_point)) {
+    if (enable_static_map_filter_ && is_static_map_point(
+        robot_pose, base_point, active_restriction_map,
+        active_restriction_inflation_cells))
+    {
       finish_cluster();
       angle += scan.angle_increment;
       continue;
@@ -1997,6 +2364,774 @@ void VisualLidarPathFollower::reset_waypoint_shift_state()
   processed_waypoint_shift_scan_sequence_ = scan_sequence_;
 }
 
+bool VisualLidarPathFollower::logic2_cluster_hits_route_window(
+  const VisualLidarPathFollower::ScanPointCluster & cluster,
+  std::size_t first_index, std::size_t last_index) const
+{
+  if (original_waypoints_.empty() || first_index >= last_index) {
+    return false;
+  }
+  const std::size_t bounded_last = std::min(last_index, original_waypoints_.size());
+  const double radius_squared =
+    waypoint_cloud_check_radius_ * waypoint_cloud_check_radius_;
+  return std::any_of(
+    cluster.points.begin(), cluster.points.end(), [&](const Point2D & point) {
+      for (std::size_t index = first_index; index < bounded_last; ++index) {
+        const double dx = point.x - original_waypoints_[index].x;
+        const double dy = point.y - original_waypoints_[index].y;
+        if (dx * dx + dy * dy <= radius_squared) {
+          return true;
+        }
+      }
+      return false;
+    });
+}
+
+void VisualLidarPathFollower::update_logic3_static_cluster_tracks(
+  const std::vector<VisualLidarPathFollower::ScanPointCluster> & clusters,
+  const VisualLidarPathFollower::RobotPose & robot_pose)
+{
+  const double now_seconds = now().seconds();
+  std::vector<bool> track_matched(logic3_static_cluster_tracks_.size(), false);
+  for (const auto & cluster : clusters) {
+    std::size_t best_track = logic3_static_cluster_tracks_.size();
+    double best_distance = logic3_static_cluster_match_radius_;
+    for (std::size_t index = 0; index < logic3_static_cluster_tracks_.size(); ++index) {
+      if (track_matched[index]) {
+        continue;
+      }
+      const auto & center = logic3_static_cluster_tracks_[index].cluster.center;
+      const double distance = std::hypot(
+        cluster.center.x - center.x, cluster.center.y - center.y);
+      if (distance <= best_distance) {
+        best_distance = distance;
+        best_track = index;
+      }
+    }
+    if (best_track == logic3_static_cluster_tracks_.size()) {
+      Logic3StaticClusterTrack track;
+      track.cluster = cluster;
+      track.stability_anchor = cluster.center;
+      track.observation_active = true;
+      track.stable_since_seconds = now_seconds;
+      track.last_seen_seconds = now_seconds;
+      logic3_static_cluster_tracks_.push_back(std::move(track));
+      track_matched.push_back(true);
+      continue;
+    }
+
+    auto & track = logic3_static_cluster_tracks_[best_track];
+    const double stability_distance = std::hypot(
+      cluster.center.x - track.stability_anchor.x,
+      cluster.center.y - track.stability_anchor.y);
+    const double obstacle_range = std::hypot(
+      cluster.center.x - robot_pose.x, cluster.center.y - robot_pose.y);
+    const double effective_stability_radius =
+      logic3_static_stability_radius_for_range(obstacle_range);
+    track.cluster = cluster;
+    track.last_seen_seconds = now_seconds;
+    track_matched[best_track] = true;
+
+    // 只要中间曾丢失，或相对固定观察锚点超过距离自适应半径，就重新
+    // 观察1秒。使用固定锚点而非相邻两帧，避免缓慢累计漂移绕过检查。
+    if (!track.observation_active ||
+      stability_distance > effective_stability_radius)
+    {
+      reset_logic3_static_track_state(track);
+      track.observation_active = true;
+      track.stability_anchor = cluster.center;
+      track.stable_since_seconds = now_seconds;
+      continue;
+    }
+
+    if (!track.state1_active &&
+      now_seconds - track.stable_since_seconds >=
+      logic3_static_stability_duration_seconds_)
+    {
+      track.state1_active = true;
+      track.consecutive_sample_count = 0;
+      track.sample_center_sum_x = 0.0;
+      track.sample_center_sum_y = 0.0;
+      track.sampled_points.clear();
+    }
+
+    // 进入状态1后才开始取样。每次调用对应一个新雷达帧；未匹配帧会在下方
+    // 立即清空，因此只有连续出现的10帧能够形成READY平均快照。
+    if (track.state1_active && !track.ready) {
+      ++track.consecutive_sample_count;
+      track.sample_center_sum_x += cluster.center.x;
+      track.sample_center_sum_y += cluster.center.y;
+      track.sampled_points.insert(
+        track.sampled_points.end(), cluster.points.begin(), cluster.points.end());
+
+      if (track.consecutive_sample_count >= logic3_static_average_samples_) {
+        ScanPointCluster averaged_cluster;
+        const double sample_count =
+          static_cast<double>(track.consecutive_sample_count);
+        averaged_cluster.center.x = track.sample_center_sum_x / sample_count;
+        averaged_cluster.center.y = track.sample_center_sum_y / sample_count;
+        averaged_cluster.points = track.sampled_points;
+
+        // 保留10帧累积得到的障碍物外形，同时将其几何中心严格对齐到
+        // “10个逐帧簇中心的平均坐标”。
+        if (averaged_cluster.points.empty()) {
+          averaged_cluster.points.push_back(averaged_cluster.center);
+        } else {
+          Point2D points_center;
+          for (const auto & point : averaged_cluster.points) {
+            points_center.x += point.x;
+            points_center.y += point.y;
+          }
+          const double point_count =
+            static_cast<double>(averaged_cluster.points.size());
+          points_center.x /= point_count;
+          points_center.y /= point_count;
+          const double translate_x = averaged_cluster.center.x - points_center.x;
+          const double translate_y = averaged_cluster.center.y - points_center.y;
+          for (auto & point : averaged_cluster.points) {
+            point.x += translate_x;
+            point.y += translate_y;
+          }
+        }
+
+        Point2D shift_direction;
+        if (logic3_static_shift_direction(averaged_cluster, shift_direction)) {
+          track.ready_obstacle = Logic3StaticObstacle{
+            averaged_cluster, shift_direction};
+          track.ready = true;
+          // 完成平均后，继续用最终平均坐标作为状态1的固定监视锚点。
+          track.stability_anchor = averaged_cluster.center;
+        } else {
+          // 地图/路线暂时无法计算方向时不产生半成品；保持状态1并重新
+          // 收集下一组连续样本，直到得到坐标和偏移方向都完整的快照。
+          track.consecutive_sample_count = 0;
+          track.sample_center_sum_x = 0.0;
+          track.sample_center_sum_y = 0.0;
+          track.sampled_points.clear();
+        }
+      }
+    }
+  }
+
+  for (std::size_t index = 0; index < logic3_static_cluster_tracks_.size(); ++index) {
+    if (!track_matched[index]) {
+      // 该障碍物在这一雷达帧为0个有效点：连续性立即中断，READY结果
+      // 也立即作废。身份本身再保留0.5秒，便于回波恢复后重新观察。
+      reset_logic3_static_track_state(logic3_static_cluster_tracks_[index]);
+    }
+  }
+  logic3_static_cluster_tracks_.erase(
+    std::remove_if(
+      logic3_static_cluster_tracks_.begin(), logic3_static_cluster_tracks_.end(),
+      [&](const Logic3StaticClusterTrack & track) {
+        return now_seconds - track.last_seen_seconds >
+               logic3_static_track_release_seconds_;
+      }),
+    logic3_static_cluster_tracks_.end());
+}
+
+double VisualLidarPathFollower::logic3_static_stability_radius_for_range(
+  double obstacle_range) const
+{
+  if (obstacle_range <= logic3_static_stability_near_distance_) {
+    return logic3_static_stability_radius_;
+  }
+  if (obstacle_range >= logic3_static_stability_far_distance_) {
+    return logic3_static_far_stability_radius_;
+  }
+  const double interpolation =
+    (obstacle_range - logic3_static_stability_near_distance_) /
+    (logic3_static_stability_far_distance_ -
+    logic3_static_stability_near_distance_);
+  return logic3_static_stability_radius_ + interpolation *
+         (logic3_static_far_stability_radius_ - logic3_static_stability_radius_);
+}
+
+void VisualLidarPathFollower::reset_logic3_static_track_state(
+  VisualLidarPathFollower::Logic3StaticClusterTrack & track) const
+{
+  track.observation_active = false;
+  track.state1_active = false;
+  track.ready = false;
+  track.stable_since_seconds = 0.0;
+  track.consecutive_sample_count = 0;
+  track.sample_center_sum_x = 0.0;
+  track.sample_center_sum_y = 0.0;
+  track.sampled_points.clear();
+  track.ready_obstacle = Logic3StaticObstacle();
+}
+
+bool VisualLidarPathFollower::logic3_static_shift_direction(
+  const VisualLidarPathFollower::ScanPointCluster & cluster,
+  VisualLidarPathFollower::Point2D & shift_direction) const
+{
+  if (original_waypoints_.size() < 2) {
+    return false;
+  }
+
+  double best_distance_squared = std::numeric_limits<double>::infinity();
+  Point2D route_tangent;
+  for (std::size_t index = 0; index + 1 < original_waypoints_.size(); ++index) {
+    const auto & start = original_waypoints_[index];
+    const auto & finish = original_waypoints_[index + 1];
+    const double segment_x = finish.x - start.x;
+    const double segment_y = finish.y - start.y;
+    const double length_squared = segment_x * segment_x + segment_y * segment_y;
+    if (length_squared < 1e-8) {
+      continue;
+    }
+    const double raw_t =
+      ((cluster.center.x - start.x) * segment_x +
+      (cluster.center.y - start.y) * segment_y) / length_squared;
+    const double projection_t = std::max(0.0, std::min(1.0, raw_t));
+    const double projection_x = start.x + projection_t * segment_x;
+    const double projection_y = start.y + projection_t * segment_y;
+    const double dx = cluster.center.x - projection_x;
+    const double dy = cluster.center.y - projection_y;
+    const double distance_squared = dx * dx + dy * dy;
+    if (distance_squared < best_distance_squared) {
+      const double length = std::sqrt(length_squared);
+      best_distance_squared = distance_squared;
+      route_tangent = Point2D{segment_x / length, segment_y / length};
+    }
+  }
+  if (!std::isfinite(best_distance_squared)) {
+    return false;
+  }
+
+  const Point2D left_normal{-route_tangent.y, route_tangent.x};
+  const Point2D right_normal{-left_normal.x, -left_normal.y};
+  double left_distance = 0.0;
+  double right_distance = 0.0;
+  if (!map_distance_to_blocked_along_ray(
+      cluster.center, left_normal, left_distance) ||
+    !map_distance_to_blocked_along_ray(
+      cluster.center, right_normal, right_distance))
+  {
+    return false;
+  }
+  shift_direction = left_distance > right_distance ? left_normal : right_normal;
+  return true;
+}
+
+std::vector<VisualLidarPathFollower::Logic3StaticObstacle>
+VisualLidarPathFollower::logic3_ready_static_obstacles() const
+{
+  std::vector<Logic3StaticObstacle> obstacles;
+  for (const auto & track : logic3_static_cluster_tracks_) {
+    if (track.state1_active && track.ready) {
+      obstacles.push_back(track.ready_obstacle);
+    }
+  }
+  return obstacles;
+}
+
+void VisualLidarPathFollower::maybe_log_logic3_static_obstacles(
+  std::size_t current_frame_cluster_count,
+  const std::vector<Logic3StaticObstacle> & obstacles)
+{
+  if (waypoint_shift_logic_ != 3 || logic2_planning_pose_anchored_ ||
+    logic2_motion_candidate_)
+  {
+    return;
+  }
+
+  const double now_seconds = now().seconds();
+  const double log_interval_seconds = 1.0 / logic3_static_status_log_rate_hz_;
+  if (logic3_static_status_log_started_ &&
+    now_seconds - logic3_last_static_status_log_seconds_ < log_interval_seconds)
+  {
+    return;
+  }
+  logic3_static_status_log_started_ = true;
+  logic3_last_static_status_log_seconds_ = now_seconds;
+
+  const auto observing_count = static_cast<std::size_t>(std::count_if(
+      logic3_static_cluster_tracks_.begin(), logic3_static_cluster_tracks_.end(),
+      [](const Logic3StaticClusterTrack & track) {
+        return track.observation_active && !track.state1_active;
+      }));
+  const auto sampling_count = static_cast<std::size_t>(std::count_if(
+      logic3_static_cluster_tracks_.begin(), logic3_static_cluster_tracks_.end(),
+      [](const Logic3StaticClusterTrack & track) {
+        return track.state1_active && !track.ready;
+      }));
+  std::ostringstream status;
+  status << "逻辑3静态绿色点：本帧通道候选=" << current_frame_cluster_count
+         << "，保留跟踪=" << logic3_static_cluster_tracks_.size()
+         << "，稳定观察=" << observing_count
+         << "，状态1连续采样=" << sampling_count
+         << "，状态1就绪=" << obstacles.size() << "，平均坐标=[";
+  status << std::fixed << std::setprecision(3);
+  for (std::size_t index = 0; index < obstacles.size(); ++index) {
+    if (index > 0) {
+      status << ", ";
+    }
+    status << '(' << obstacles[index].cluster.center.x << ','
+           << obstacles[index].cluster.center.y << ')';
+  }
+  status << "]";
+  RCLCPP_INFO(get_logger(), "%s", status.str().c_str());
+}
+
+void VisualLidarPathFollower::record_logic2_red_cluster(
+  const VisualLidarPathFollower::ScanPointCluster & cluster)
+{
+  const auto recorded = std::find_if(
+    logic2_red_cluster_history_.begin(), logic2_red_cluster_history_.end(),
+    [&](const Point2D & point) {
+      return std::hypot(
+        point.x - cluster.center.x, point.y - cluster.center.y) <=
+      logic2_red_history_merge_radius_;
+    });
+  if (recorded != logic2_red_cluster_history_.end()) {
+    return;
+  }
+  logic2_red_cluster_history_.push_back(cluster.center);
+  RCLCPP_WARN(
+    get_logger(),
+    "逻辑%d记录通道内动态红簇：map(%.3f, %.3f)，身份半径=%.2fm。",
+    waypoint_shift_logic_, cluster.center.x, cluster.center.y,
+    logic2_red_history_merge_radius_);
+}
+
+void VisualLidarPathFollower::update_logic2_runtime_red_tracks(
+  const std::vector<VisualLidarPathFollower::ScanPointCluster> & clusters)
+{
+  const int record_confirm_hits = waypoint_shift_confirm_scans_;
+  std::vector<bool> track_matched(logic2_runtime_red_tracks_.size(), false);
+  for (const auto & cluster : clusters) {
+    std::size_t best_track = logic2_runtime_red_tracks_.size();
+    double best_distance = logic2_red_history_merge_radius_;
+    for (std::size_t index = 0; index < logic2_runtime_red_tracks_.size(); ++index) {
+      if (track_matched[index]) {
+        continue;
+      }
+      const auto & center = logic2_runtime_red_tracks_[index].cluster.center;
+      const double distance = std::hypot(
+        cluster.center.x - center.x, cluster.center.y - center.y);
+      if (distance <= best_distance) {
+        best_distance = distance;
+        best_track = index;
+      }
+    }
+    if (best_track == logic2_runtime_red_tracks_.size()) {
+      Logic2TrackedCluster track;
+      track.cluster = cluster;
+      track.hit_count = 1;
+      logic2_runtime_red_tracks_.push_back(std::move(track));
+      track_matched.push_back(true);
+      if (record_confirm_hits == 1) {
+        record_logic2_red_cluster(cluster);
+      }
+      continue;
+    }
+    auto & track = logic2_runtime_red_tracks_[best_track];
+    track.cluster = cluster;
+    ++track.hit_count;
+    track.missing_count = 0;
+    track_matched[best_track] = true;
+    if (track.hit_count == record_confirm_hits) {
+      record_logic2_red_cluster(cluster);
+    }
+  }
+  for (std::size_t index = 0; index < logic2_runtime_red_tracks_.size(); ++index) {
+    if (!track_matched[index]) {
+      ++logic2_runtime_red_tracks_[index].missing_count;
+      logic2_runtime_red_tracks_[index].hit_count = 0;
+    }
+  }
+  logic2_runtime_red_tracks_.erase(
+    std::remove_if(
+      logic2_runtime_red_tracks_.begin(), logic2_runtime_red_tracks_.end(),
+      [&](const Logic2TrackedCluster & track) {
+        return track.missing_count >= waypoint_shift_release_scans_;
+      }),
+    logic2_runtime_red_tracks_.end());
+}
+
+void VisualLidarPathFollower::logic2_odom_callback(
+  const nav_msgs::msg::Odometry::ConstSharedPtr msg)
+{
+  if (waypoint_shift_logic_ < 2 || logic2_planning_pose_anchored_) {
+    return;
+  }
+
+  const double odom_x = msg->pose.pose.position.x;
+  const double odom_y = msg->pose.pose.position.y;
+  if (!logic2_odom_reference_valid_) {
+    logic2_odom_reference_valid_ = true;
+    logic2_odom_reference_x_ = odom_x;
+    logic2_odom_reference_y_ = odom_y;
+    return;
+  }
+
+  const double speed = std::hypot(
+    msg->twist.twist.linear.x, msg->twist.twist.linear.y);
+  const double displacement = std::hypot(
+    odom_x - logic2_odom_reference_x_, odom_y - logic2_odom_reference_y_);
+  const bool moving = speed >= logic2_motion_speed_threshold_ ||
+    displacement >= logic2_motion_displacement_threshold_;
+  if (!moving) {
+    const bool motion_candidate_was_active = logic2_motion_candidate_;
+    if (logic2_motion_candidate_) {
+      RCLCPP_INFO(
+        get_logger(), "逻辑%d发车候选取消：速度%.3fm/s，累计位移%.3fm。",
+        waypoint_shift_logic_, speed, displacement);
+    }
+    logic2_motion_candidate_ = false;
+    logic2_motion_candidate_count_ = 0;
+    if (waypoint_shift_logic_ == 3) {
+      logic3_motion_pending_snapshot_ = Logic3PlanningSnapshot();
+      if (motion_candidate_was_active) {
+        // 候选期间静态雷达更新被暂停，已经无法证明逐帧连续；取消后必须
+        // 从观察阶段重新开始，不能沿用候选前的状态1/READY结果。
+        for (auto & track : logic3_static_cluster_tracks_) {
+          reset_logic3_static_track_state(track);
+        }
+      }
+    }
+    return;
+  }
+
+  if (!logic2_motion_candidate_) {
+    logic2_motion_candidate_ = true;
+    logic2_motion_candidate_count_ = 1;
+    if (waypoint_shift_logic_ == 3) {
+      // 第一条可信发车候选到来时立刻停止采用后续震动帧，只冻结此刻仍处于
+      // 状态1且已经完成连续10帧平均的READY结果，绝不回退到最后原始帧。
+      logic3_motion_pending_snapshot_.valid = true;
+      logic3_motion_pending_snapshot_.stamp_seconds = now().seconds();
+      logic3_motion_pending_snapshot_.obstacles = logic3_ready_static_obstacles();
+    }
+    RCLCPP_INFO(
+      get_logger(),
+      "逻辑%d检测到第1条发车候选：速度%.3fm/s，累计位移%.3fm。",
+      waypoint_shift_logic_, speed, displacement);
+  } else {
+    ++logic2_motion_candidate_count_;
+  }
+
+  if (logic2_motion_candidate_count_ >= logic2_motion_confirm_messages_) {
+    if (waypoint_shift_logic_ == 3) {
+      freeze_logic3_route();
+    } else {
+      anchor_logic2_planning_pose();
+    }
+  }
+}
+
+std::string VisualLidarPathFollower::make_logic2_session_id() const
+{
+  const std::time_t timestamp = std::time(nullptr);
+  std::tm local_time;
+  localtime_r(&timestamp, &local_time);
+  std::ostringstream stream;
+  stream << std::put_time(&local_time, "%Y%m%d_%H%M%S");
+  return stream.str();
+}
+
+void VisualLidarPathFollower::anchor_logic2_planning_pose()
+{
+  logic2_planning_pose_anchored_ = true;
+  logic2_motion_candidate_ = false;
+  logic2_session_id_ = make_logic2_session_id();
+  logic2_last_pose_correction_at_ = std::chrono::steady_clock::now();
+
+  if (logic2_planning_pose_source_ != "live_lidar_location") {
+    RobotPose live_map_odom;
+    if (lookup_pose(
+        frame_id_, logic2_odom_frame_id_,
+        rclcpp::Time(0, 0, get_clock()->get_clock_type()), live_map_odom))
+    {
+      logic2_map_odom_plan_ = live_map_odom;
+      logic2_map_odom_plan_valid_ = true;
+    }
+  }
+
+  if (!waiting_for_qr_start_ && !following_qr_path_ && !waypoints_.empty()) {
+    initialize_logic2_route_visualization();
+  }
+  if (logic2_planning_pose_source_ == "live_lidar_location") {
+    RCLCPP_WARN(
+      get_logger(),
+      "逻辑2可信发车已确认：后续继续使用实时全局定位并做通道内动态红簇避障，"
+      "红簇身份半径=%.2fm，输出批次=%s。",
+      logic2_red_history_merge_radius_, logic2_session_id_.c_str());
+  } else {
+    RCLCPP_WARN(
+      get_logger(),
+      "逻辑2可信发车已确认：规划位姿锚定完成，后续做通道内动态红簇避障，"
+      "红簇身份半径=%.2fm，输出批次=%s。",
+      logic2_red_history_merge_radius_, logic2_session_id_.c_str());
+  }
+}
+
+void VisualLidarPathFollower::freeze_logic3_route()
+{
+  const Logic3PlanningSnapshot & snapshot = logic3_motion_pending_snapshot_;
+  logic3_green_clusters_.clear();
+  logic3_green_shift_directions_.clear();
+  if (snapshot.valid) {
+    for (const auto & obstacle : snapshot.obstacles) {
+      logic3_green_clusters_.push_back(obstacle.cluster);
+      logic3_green_shift_directions_.push_back(obstacle.shift_direction);
+    }
+    if (snapshot.obstacles.empty()) {
+      RCLCPP_WARN(
+        get_logger(),
+        "逻辑3可信发车时没有仍处于状态1且完成连续平均的绿色簇；"
+        "按规则不使用原始帧兜底，将冻结空快照。");
+    }
+  } else {
+    RCLCPP_WARN(
+      get_logger(),
+      "逻辑3发车候选前未捕获READY静止快照；按规则不使用原始帧兜底，将记录为空。");
+  }
+
+  logic2_planning_pose_anchored_ = true;
+  logic2_motion_candidate_ = false;
+  logic2_runtime_red_tracks_.clear();
+  logic2_red_cluster_history_.clear();
+  logic2_final_snapshot_published_ = false;
+  logic2_session_id_ = make_logic2_session_id();
+  logic2_last_pose_correction_at_ = std::chrono::steady_clock::now();
+
+  if (logic2_planning_pose_source_ != "live_lidar_location") {
+    RobotPose live_map_odom;
+    if (lookup_pose(
+        frame_id_, logic2_odom_frame_id_,
+        rclcpp::Time(0, 0, get_clock()->get_clock_type()), live_map_odom))
+    {
+      logic2_map_odom_plan_ = live_map_odom;
+      logic2_map_odom_plan_valid_ = true;
+    }
+  }
+
+  if (logic3_enable_tts_ && logic3_tts_pub_) {
+    std_msgs::msg::String speech;
+    speech.data = logic3_static_record_ready_text_ + "，共" +
+      std::to_string(logic3_green_clusters_.size()) + "个";
+    logic3_tts_pub_->publish(speech);
+  }
+  RCLCPP_WARN(
+    get_logger(),
+    "逻辑3静态障碍与偏移记录完毕：冻结%zu个绿色坐标及世界偏移方向，"
+    "尚未生成方向路线和图片，输出批次=%s。",
+    logic3_green_clusters_.size(),
+    logic2_session_id_.c_str());
+
+  // 兼容极少数先扫码后确认运动的时序：已有正式方向路线时立即完成规划。
+  if (!waiting_for_qr_start_ && !following_qr_path_ && !waypoints_.empty()) {
+    apply_logic3_frozen_clusters_to_current_route();
+  }
+}
+
+void VisualLidarPathFollower::apply_logic3_frozen_clusters_to_current_route()
+{
+  if (waypoint_shift_logic_ != 3 || !logic2_planning_pose_anchored_) {
+    return;
+  }
+  logic3_frozen_base_offsets_.assign(waypoints_.size(), 0.0);
+  logic3_replay_frozen_clusters_ = true;
+  logic3_force_full_route_ = true;
+  logic3_force_confirm_ = true;
+  update_waypoint_shifts(RobotPose(), 0);
+  logic3_force_confirm_ = false;
+  logic3_force_full_route_ = false;
+  logic3_replay_frozen_clusters_ = false;
+
+  logic3_frozen_base_offsets_ = waypoint_shift_offsets_;
+  logic2_baseline_original_route_ = original_waypoints_;
+  logic2_baseline_route_ = waypoints_;
+  logic2_visualization_route_ = waypoints_;
+  logic2_visualization_offsets_ = waypoint_shift_offsets_;
+  logic2_runtime_red_tracks_.clear();
+  logic2_red_cluster_history_.clear();
+  logic2_final_snapshot_published_ = false;
+  publish_logic2_snapshot("selected");
+  if (logic3_enable_tts_ && logic3_tts_pub_) {
+    std_msgs::msg::String speech;
+    speech.data = logic3_route_ready_text_;
+    logic3_tts_pub_->publish(speech);
+  }
+  RCLCPP_WARN(
+    get_logger(),
+    "逻辑3路线已规划完毕：已将%zu个冻结绿色障碍按记录的世界偏移方向应用到%s路线。",
+    logic3_green_clusters_.size(), selected_route_direction_.c_str());
+}
+
+void VisualLidarPathFollower::initialize_logic2_route_visualization()
+{
+  if (waypoint_shift_logic_ != 2 || !logic2_planning_pose_anchored_ ||
+    waypoints_.empty())
+  {
+    return;
+  }
+  logic2_runtime_red_tracks_.clear();
+  logic2_red_cluster_history_.clear();
+  logic2_final_snapshot_published_ = false;
+  logic2_baseline_original_route_ = original_waypoints_;
+  logic2_baseline_route_ = waypoints_;
+  logic2_visualization_route_ = waypoints_;
+  logic2_visualization_offsets_ = waypoint_shift_offsets_;
+  publish_logic2_snapshot("selected");
+}
+
+void VisualLidarPathFollower::update_logic2_visualization_route()
+{
+  if (logic2_visualization_route_.size() != waypoints_.size() ||
+    logic2_visualization_offsets_.size() != waypoint_shift_offsets_.size())
+  {
+    logic2_visualization_route_ = waypoints_;
+    logic2_visualization_offsets_ = waypoint_shift_offsets_;
+    return;
+  }
+  for (std::size_t index = 0; index < waypoints_.size(); ++index) {
+    const double base = waypoint_shift_logic_ == 3 &&
+      logic3_frozen_base_offsets_.size() == waypoints_.size() ?
+      logic3_frozen_base_offsets_[index] : 0.0;
+    const double current_dynamic = std::abs(waypoint_shift_offsets_[index] - base);
+    const double saved_dynamic = std::abs(logic2_visualization_offsets_[index] - base);
+    if (current_dynamic > saved_dynamic + 1e-9) {
+      logic2_visualization_route_[index] = waypoints_[index];
+      logic2_visualization_offsets_[index] = waypoint_shift_offsets_[index];
+    }
+  }
+}
+
+void VisualLidarPathFollower::publish_logic2_snapshot(const std::string & event)
+{
+  if (!logic2_snapshot_pub_ || logic2_session_id_.empty()) {
+    return;
+  }
+  const std::vector<Waypoint> & plotted_route = event == "final" ?
+    logic2_visualization_route_ : logic2_baseline_route_;
+  auto append_route = [](std::ostringstream & stream, const std::vector<Waypoint> & route) {
+      stream << '[';
+      for (std::size_t index = 0; index < route.size(); ++index) {
+        if (index > 0) {
+          stream << ',';
+        }
+        stream << '[' << route[index].x << ',' << route[index].y << ']';
+      }
+      stream << ']';
+    };
+  auto append_clusters = [](
+    std::ostringstream & stream, const std::vector<ScanPointCluster> & clusters) {
+      stream << '[';
+      for (std::size_t index = 0; index < clusters.size(); ++index) {
+        if (index > 0) {
+          stream << ',';
+        }
+        stream << '[' << clusters[index].center.x << ',' << clusters[index].center.y << ']';
+      }
+      stream << ']';
+    };
+  auto append_points = [](std::ostringstream & stream, const std::vector<Point2D> & points) {
+      stream << '[';
+      for (std::size_t index = 0; index < points.size(); ++index) {
+        if (index > 0) {
+          stream << ',';
+        }
+        stream << '[' << points[index].x << ',' << points[index].y << ']';
+      }
+      stream << ']';
+    };
+
+  std::ostringstream json;
+  json << std::setprecision(10);
+  json << "{\"logic\":" << waypoint_shift_logic_
+       << ",\"event\":\"" << json_escape(event)
+       << "\",\"session\":\"" << json_escape(logic2_session_id_)
+       << "\",\"output_root\":\"" << json_escape(logic2_output_root_)
+       << "\",\"map_yaml\":\"" << json_escape(logic2_restriction_map_yaml_)
+       << "\",\"red_identity_radius\":" << logic2_red_history_merge_radius_
+       << ",\"green_radius\":" << logic3_old_cluster_radius_
+       << ",\"original\":";
+  append_route(json, logic2_baseline_original_route_);
+  json << ",\"baseline\":";
+  append_route(json, logic2_baseline_route_);
+  json << ",\"route\":";
+  append_route(json, plotted_route);
+  json << ",\"green\":";
+  append_clusters(
+    json, waypoint_shift_logic_ == 3 ? logic3_green_clusters_ :
+    std::vector<ScanPointCluster>());
+  json << ",\"red\":";
+  append_points(json, event == "final" ? logic2_red_cluster_history_ : std::vector<Point2D>());
+  json << '}';
+
+  std_msgs::msg::String message;
+  message.data = json.str();
+  logic2_snapshot_pub_->publish(message);
+}
+
+bool VisualLidarPathFollower::lookup_logic2_planning_pose(
+  VisualLidarPathFollower::RobotPose & pose)
+{
+  const auto latest_stamp = rclcpp::Time(0, 0, get_clock()->get_clock_type());
+  if (!logic2_planning_pose_anchored_ ||
+    logic2_planning_pose_source_ == "live_lidar_location")
+  {
+    return lookup_pose(frame_id_, base_frame_id_, latest_stamp, pose);
+  }
+
+  RobotPose odom_to_base;
+  if (!lookup_pose(logic2_odom_frame_id_, base_frame_id_, latest_stamp, odom_to_base)) {
+    return false;
+  }
+  RobotPose live_map_odom;
+  const bool has_live_map_odom = lookup_pose(
+    frame_id_, logic2_odom_frame_id_, latest_stamp, live_map_odom);
+  if (!logic2_map_odom_plan_valid_) {
+    if (!has_live_map_odom) {
+      return false;
+    }
+    logic2_map_odom_plan_ = live_map_odom;
+    logic2_map_odom_plan_valid_ = true;
+    logic2_last_pose_correction_at_ = std::chrono::steady_clock::now();
+  }
+
+  if (logic2_planning_pose_source_ == "filtered_map_odom" && has_live_map_odom) {
+    const auto current_time = std::chrono::steady_clock::now();
+    const double dt = std::max(
+      0.0, std::chrono::duration<double>(
+        current_time - logic2_last_pose_correction_at_).count());
+    logic2_last_pose_correction_at_ = current_time;
+    const double dx = live_map_odom.x - logic2_map_odom_plan_.x;
+    const double dy = live_map_odom.y - logic2_map_odom_plan_.y;
+    const double translation_error = std::hypot(dx, dy);
+    const double yaw_error = normalize_angle(
+      live_map_odom.yaw - logic2_map_odom_plan_.yaw);
+    if (translation_error <= logic2_pose_outlier_xy_ &&
+      std::abs(yaw_error) <= logic2_pose_outlier_yaw_)
+    {
+      if (translation_error > logic2_pose_correction_deadband_xy_ && dt > 0.0) {
+        const double step = std::min(
+          translation_error, logic2_pose_correction_rate_xy_ * dt);
+        logic2_map_odom_plan_.x += step * dx / translation_error;
+        logic2_map_odom_plan_.y += step * dy / translation_error;
+      }
+      if (std::abs(yaw_error) > logic2_pose_correction_deadband_yaw_ && dt > 0.0) {
+        const double step = std::min(
+          std::abs(yaw_error), logic2_pose_correction_rate_yaw_ * dt);
+        logic2_map_odom_plan_.yaw = normalize_angle(
+          logic2_map_odom_plan_.yaw + std::copysign(step, yaw_error));
+      }
+    }
+  }
+
+  const double cos_yaw = std::cos(logic2_map_odom_plan_.yaw);
+  const double sin_yaw = std::sin(logic2_map_odom_plan_.yaw);
+  pose.x = logic2_map_odom_plan_.x +
+    cos_yaw * odom_to_base.x - sin_yaw * odom_to_base.y;
+  pose.y = logic2_map_odom_plan_.y +
+    sin_yaw * odom_to_base.x + cos_yaw * odom_to_base.y;
+  pose.yaw = normalize_angle(logic2_map_odom_plan_.yaw + odom_to_base.yaw);
+  return true;
+}
+
 // waypoint_shift 模式：每帧新雷达提前检查当前目标之后的固定数量航点。
 // 以障碍物最近路线点为中心，前后分别取配置数量的点，整段向地图更空旷侧横移。
 // 横移量先作为本帧候选，连续确认后才提交；障碍消失或错误观测消失后会释放回原路线。
@@ -2004,8 +3139,13 @@ void VisualLidarPathFollower::update_waypoint_shifts(
   const VisualLidarPathFollower::RobotPose & robot_pose,
   std::size_t target_waypoint_index)
 {
-  if (!latest_scan_ ||
-    processed_waypoint_shift_scan_sequence_ == scan_sequence_ ||
+  const bool replay_frozen_clusters =
+    waypoint_shift_logic_ == 3 && logic3_replay_frozen_clusters_;
+  if (waypoint_shift_logic_ == 2 && !logic2_planning_pose_anchored_) {
+    return;
+  }
+  if ((!latest_scan_ && !replay_frozen_clusters) ||
+    (processed_waypoint_shift_scan_sequence_ == scan_sequence_ && !replay_frozen_clusters) ||
     original_waypoints_.size() != waypoints_.size() ||
     waypoint_shift_offsets_.size() != waypoints_.size() ||
     waypoint_shift_pending_offsets_.size() != waypoints_.size() ||
@@ -2014,7 +3154,9 @@ void VisualLidarPathFollower::update_waypoint_shifts(
   {
     return;
   }
-  processed_waypoint_shift_scan_sequence_ = scan_sequence_;
+  if (!replay_frozen_clusters) {
+    processed_waypoint_shift_scan_sequence_ = scan_sequence_;
+  }
 
   if (enable_static_map_filter_ && require_map_for_lidar_assist_ &&
     (!latest_map_ || !latest_restriction_map_))
@@ -2022,12 +3164,101 @@ void VisualLidarPathFollower::update_waypoint_shifts(
     return;
   }
 
-  const auto clusters = collect_non_static_scan_clusters_map(robot_pose);
+  const int minimum_cluster_points = waypoint_shift_logic_ == 3 &&
+    !logic2_planning_pose_anchored_ ? logic3_static_cluster_min_points_ :
+    cluster_min_points_;
+  const bool use_logic3_static_restriction_map =
+    waypoint_shift_logic_ == 3 && !logic2_planning_pose_anchored_ &&
+    !replay_frozen_clusters;
+  std::vector<ScanPointCluster> clusters = replay_frozen_clusters ?
+    logic3_green_clusters_ : collect_non_static_scan_clusters_map(
+    robot_pose, minimum_cluster_points, use_logic3_static_restriction_map);
 
-  const std::size_t first_index = std::min(target_waypoint_index, waypoints_.size() - 1);
-  const std::size_t last_index = std::min(
+  // 远距离时同一障碍物的1~3个回波可能被无效量程切成多个单点段。
+  // 仅在逻辑3静止阶段用较小的静态匹配半径合并当前帧候选；不使用0.5m冻结圆。
+  if (waypoint_shift_logic_ == 3 && !logic2_planning_pose_anchored_ &&
+    !replay_frozen_clusters)
+  {
+    std::vector<ScanPointCluster> merged_clusters;
+    for (const auto & cluster : clusters) {
+      auto merged = std::find_if(
+        merged_clusters.begin(), merged_clusters.end(),
+        [&](const ScanPointCluster & candidate) {
+          return std::hypot(
+            candidate.center.x - cluster.center.x,
+            candidate.center.y - cluster.center.y) <= logic3_static_cluster_match_radius_;
+        });
+      if (merged == merged_clusters.end()) {
+        merged_clusters.push_back(cluster);
+        continue;
+      }
+      merged->points.insert(
+        merged->points.end(), cluster.points.begin(), cluster.points.end());
+      merged->center = Point2D();
+      for (const auto & point : merged->points) {
+        merged->center.x += point.x;
+        merged->center.y += point.y;
+      }
+      const double point_count = static_cast<double>(merged->points.size());
+      merged->center.x /= point_count;
+      merged->center.y /= point_count;
+    }
+    clusters = std::move(merged_clusters);
+  }
+
+  if (use_logic3_static_restriction_map) {
+    // 静态障碍通道从左右黑色禁行块底边开始；更低的白色区域属于大厅。
+    // 该门限只约束发车前绿色候选，不影响入口追点和运行中动态红簇。
+    clusters.erase(
+      std::remove_if(
+        clusters.begin(), clusters.end(), [&](const ScanPointCluster & cluster) {
+          return cluster.center.y <= logic3_static_channel_min_y_;
+        }),
+      clusters.end());
+  }
+
+  // 逻辑2/3运行阶段只处理各自配置的车体中心ROI。逻辑3只保留通道y下限以上
+  // 的动态红簇，并抑制冻结绿色圆内的旧簇；红色身份半径仅合并记录，
+  // 不屏蔽障碍物逐帧参与动态避障。
+  if (waypoint_shift_logic_ >= 2 && logic2_planning_pose_anchored_ &&
+    !replay_frozen_clusters)
+  {
+    const double half_width = 0.5 * logic2_runtime_roi_width_;
+    const double half_height = 0.5 * logic2_runtime_roi_height_;
+    const double old_radius_squared =
+      logic3_old_cluster_radius_ * logic3_old_cluster_radius_;
+    clusters.erase(
+      std::remove_if(
+        clusters.begin(), clusters.end(), [&](const ScanPointCluster & cluster) {
+          if (std::abs(cluster.center.x - robot_pose.x) > half_width ||
+          std::abs(cluster.center.y - robot_pose.y) > half_height)
+          {
+            return true;
+          }
+          if (waypoint_shift_logic_ != 3) {
+            return false;
+          }
+          if (cluster.center.y <= logic3_runtime_channel_min_y_) {
+            return true;
+          }
+          return std::any_of(
+            logic3_green_clusters_.begin(), logic3_green_clusters_.end(),
+            [&](const ScanPointCluster & old_cluster) {
+              const double dx = cluster.center.x - old_cluster.center.x;
+              const double dy = cluster.center.y - old_cluster.center.y;
+              return dx * dx + dy * dy <= old_radius_squared;
+            });
+        }),
+      clusters.end());
+  }
+
+  const bool full_route = waypoint_shift_logic_ == 3 &&
+    (logic3_force_full_route_ || replay_frozen_clusters);
+  const std::size_t first_index = full_route ? 0 :
+    std::min(target_waypoint_index, waypoints_.size() - 1);
+  const std::size_t last_index = full_route ? waypoints_.size() : std::min(
     waypoints_.size(), first_index + static_cast<std::size_t>(waypoint_shift_check_count_));
-  const std::size_t managed_last_index = std::min(
+  const std::size_t managed_last_index = full_route ? waypoints_.size() - 1 : std::min(
     waypoints_.size() - 1,
     first_index + static_cast<std::size_t>(waypoint_shift_check_count_) +
     static_cast<std::size_t>(waypoint_shift_points_after_));
@@ -2042,10 +3273,43 @@ void VisualLidarPathFollower::update_waypoint_shifts(
     double right_distance{0.0};
     double left_required_offset{0.0};
     double right_required_offset{0.0};
+    int preferred_direction{0};
   };
   std::vector<ShiftCandidateSegment> candidate_segments;
 
-  for (const auto & cluster : clusters) {
+  if (waypoint_shift_logic_ == 3 && !logic2_planning_pose_anchored_ &&
+    !replay_frozen_clusters)
+  {
+    // 第一条发车候选已经保存READY平均快照后，停止接收后续可能包含底盘
+    // 震动的静态帧；候选若取消，下一帧会恢复观察并按连续性规则重建。
+    if (logic2_motion_candidate_) {
+      return;
+    }
+    std::vector<ScanPointCluster> route_clusters;
+    for (const auto & cluster : clusters) {
+      if (logic2_cluster_hits_route_window(cluster, first_index, last_index)) {
+        route_clusters.push_back(cluster);
+      }
+    }
+    update_logic3_static_cluster_tracks(route_clusters, robot_pose);
+    const auto ready_obstacles = logic3_ready_static_obstacles();
+    maybe_log_logic3_static_obstacles(route_clusters.size(), ready_obstacles);
+    // 未扫码时只记录绿色坐标和世界偏移方向，不改动任何正式路径点。
+    return;
+  } else if (waypoint_shift_logic_ == 2 && logic2_planning_pose_anchored_ &&
+    !replay_frozen_clusters)
+  {
+    std::vector<ScanPointCluster> route_clusters;
+    for (const auto & cluster : clusters) {
+      if (logic2_cluster_hits_route_window(cluster, first_index, last_index)) {
+        route_clusters.push_back(cluster);
+      }
+    }
+    update_logic2_runtime_red_tracks(route_clusters);
+  }
+
+  for (std::size_t cluster_index = 0; cluster_index < clusters.size(); ++cluster_index) {
+    const auto & cluster = clusters[cluster_index];
     const bool cluster_hits_window = std::any_of(
       cluster.points.begin(), cluster.points.end(), [&](const Point2D & point) {
         for (std::size_t index = first_index; index < last_index; ++index) {
@@ -2130,6 +3394,15 @@ void VisualLidarPathFollower::update_waypoint_shifts(
     if (left_required_offset <= 1e-9 && right_required_offset <= 1e-9) {
       continue;
     }
+    int preferred_direction = 0;
+    if (replay_frozen_clusters &&
+      logic3_green_shift_directions_.size() == clusters.size())
+    {
+      const auto & recorded_direction = logic3_green_shift_directions_[cluster_index];
+      const double left_alignment =
+        recorded_direction.x * left_normal.x + recorded_direction.y * left_normal.y;
+      preferred_direction = left_alignment >= 0.0 ? 1 : -1;
+    }
 
     std::size_t obstacle_waypoint = best_t < 0.5 ? best_segment : best_segment + 1;
     obstacle_waypoint = std::max(
@@ -2143,9 +3416,16 @@ void VisualLidarPathFollower::update_waypoint_shifts(
       obstacle_waypoint > points_before ? obstacle_waypoint - points_before : 0);
     const std::size_t influence_last = std::min(
       original_waypoints_.size() - 1, obstacle_waypoint + points_after);
-    candidate_segments.push_back(ShiftCandidateSegment{
+    candidate_segments.push_back(
+      ShiftCandidateSegment{
       influence_first, influence_last, left_distance, right_distance,
-      left_required_offset, right_required_offset});
+      left_required_offset, right_required_offset, preferred_direction});
+    if (waypoint_shift_logic_ == 3 && logic2_planning_pose_anchored_ &&
+      !replay_frozen_clusters)
+    {
+      // 图3记录与实际雷达路径候选绑定：只要该簇真正形成避障段，就保留红色历史。
+      record_logic2_red_cluster(cluster);
+    }
   }
 
   // 每个点云簇先拥有自己的偏移段。只有区间重叠的段才组成冲突组：
@@ -2180,6 +3460,17 @@ void VisualLidarPathFollower::update_waypoint_shifts(
     double committed_right_magnitude = 0.0;
     long pending_left_score = 0;
     long pending_right_score = 0;
+    std::size_t preferred_left_count = 0;
+    std::size_t preferred_right_count = 0;
+    for (std::size_t segment_index = group_begin;
+      segment_index < group_end; ++segment_index)
+    {
+      if (candidate_segments[segment_index].preferred_direction > 0) {
+        ++preferred_left_count;
+      } else if (candidate_segments[segment_index].preferred_direction < 0) {
+        ++preferred_right_count;
+      }
+    }
     for (std::size_t index = group_first; index <= group_last; ++index) {
       const double committed = waypoint_shift_offsets_[index];
       if (committed > 1e-9) {
@@ -2211,7 +3502,14 @@ void VisualLidarPathFollower::update_waypoint_shifts(
 
     int shift_direction = 0;
     const char * direction_source = "空旷侧";
-    if (committed_left_count != committed_right_count) {
+    if (preferred_left_count + preferred_right_count > 0) {
+      if (preferred_left_count == preferred_right_count) {
+        shift_direction = candidate_segments[group_begin].preferred_direction;
+      } else {
+        shift_direction = preferred_left_count > preferred_right_count ? 1 : -1;
+      }
+      direction_source = "静态快照世界方向";
+    } else if (committed_left_count != committed_right_count) {
       shift_direction = committed_left_count > committed_right_count ? 1 : -1;
       direction_source = "已提交段锁定";
     } else if (committed_left_count > 0 &&
@@ -2287,7 +3585,9 @@ void VisualLidarPathFollower::update_waypoint_shifts(
         ++waypoint_shift_pending_counts_[index];
       }
 
-      if (waypoint_shift_pending_counts_[index] >= waypoint_shift_confirm_scans_) {
+      const int required_confirm_scans = logic3_force_confirm_ ?
+        1 : waypoint_shift_confirm_scans_;
+      if (waypoint_shift_pending_counts_[index] >= required_confirm_scans) {
         const double confirmed_offset = waypoint_shift_pending_offsets_[index];
         if (std::abs(confirmed_offset - waypoint_shift_offsets_[index]) >=
           waypoint_shift_min_change_)
@@ -2303,10 +3603,14 @@ void VisualLidarPathFollower::update_waypoint_shifts(
     waypoint_shift_pending_offsets_[index] = 0.0;
     waypoint_shift_pending_counts_[index] = 0;
     ++waypoint_shift_missing_counts_[index];
+    const double base_offset = waypoint_shift_logic_ == 3 &&
+      logic2_planning_pose_anchored_ &&
+      logic3_frozen_base_offsets_.size() == waypoint_shift_offsets_.size() ?
+      logic3_frozen_base_offsets_[index] : 0.0;
     if (waypoint_shift_missing_counts_[index] >= waypoint_shift_release_scans_ &&
-      std::abs(waypoint_shift_offsets_[index]) > 1e-9)
+      std::abs(waypoint_shift_offsets_[index] - base_offset) > 1e-9)
     {
-      waypoint_shift_offsets_[index] = 0.0;
+      waypoint_shift_offsets_[index] = base_offset;
       route_changed = true;
       ++released_count;
     }
@@ -2334,8 +3638,14 @@ void VisualLidarPathFollower::update_waypoint_shifts(
       waypoints_[index].x += lateral_offset * normal.x;
       waypoints_[index].y += lateral_offset * normal.y;
     }
+    if (waypoint_shift_logic_ >= 2 && logic2_planning_pose_anchored_ &&
+      !replay_frozen_clusters)
+    {
+      update_logic2_visualization_route();
+    }
     publish_debug_route();
   }
+
 }
 
 // ********************************************************************************
@@ -2439,6 +3749,11 @@ bool VisualLidarPathFollower::switch_route(const std::string & direction)
   selected_route_direction_ = resolved_direction.empty() ? direction : resolved_direction;
   insert_image_capture_waypoint(selected_route_direction_);
   reset_waypoint_shift_state();
+  if (waypoint_shift_logic_ == 2 && logic2_planning_pose_anchored_) {
+    initialize_logic2_route_visualization();
+  } else if (waypoint_shift_logic_ == 3 && logic2_planning_pose_anchored_) {
+    apply_logic3_frozen_clusters_to_current_route();
+  }
   waiting_for_qr_start_ = false;
   following_qr_path_ = false;
   qr_path_finished_ = false;
@@ -2654,7 +3969,10 @@ bool VisualLidarPathFollower::lookup_robot_pose_at(const rclcpp::Time & stamp, V
 bool VisualLidarPathFollower::lookup_robot_pose(double & x, double & y, double & yaw)
 {
   RobotPose pose;
-  if (!lookup_robot_pose_at(rclcpp::Time(0, 0, get_clock()->get_clock_type()), pose)) {
+  const bool pose_ready = waypoint_shift_logic_ >= 2 ?
+    lookup_logic2_planning_pose(pose) :
+    lookup_robot_pose_at(rclcpp::Time(0, 0, get_clock()->get_clock_type()), pose);
+  if (!pose_ready) {
     return false;
   }
   x = pose.x;
