@@ -102,25 +102,16 @@ private:
     Point2D center;
   };
 
-  struct QrLidarObstacle
+  struct LidarObstacle
   {
     bool found{false};
     double range{0.0};
     double relative_angle{0.0};
   };
 
-  struct Logic2TrackedCluster
-  {
-    ScanPointCluster cluster;
-    int hit_count{0};
-    int missing_count{0};
-    double last_seen_seconds{0.0};
-  };
-
   struct Logic3StaticObstacle
   {
     ScanPointCluster cluster;
-    Point2D shift_direction;
   };
 
   struct Logic3StaticClusterTrack
@@ -143,21 +134,15 @@ private:
     Logic3StaticObstacle ready_obstacle;
   };
 
-  // 发车后逻辑3使用独立的小半径身份跟踪。persistent 只改变控制生命周期，
-  // 不改变绘图颜色：所有运行后发现的障碍始终按红簇输出。
+  // 发车后逻辑3使用独立的小半径身份跟踪，仅用于红点历史记录和绘图；
+  // 红簇不再参与航点偏移，实时避障统一交给雷达控制。
   struct Logic3RuntimeClusterTrack
   {
     ScanPointCluster cluster;
     Point2D latest_center;
-    Point2D stability_anchor;
-    Point2D shift_direction;
-    bool direction_valid{false};
     bool confirmed{false};
-    bool persistent{false};
     int consecutive_hits{0};
     int missing_count{0};
-    double stable_since_seconds{0.0};
-    double last_seen_seconds{0.0};
     std::deque<ScanPointCluster> recent_samples;
   };
 
@@ -216,7 +201,6 @@ private:
   double cone_circle_min_radius_{0.035};
   double cone_circle_max_radius_{0.065};
   double cone_circle_max_rmse_{0.015};
-  double waypoint_shift_clearance_radius_{0.50};
   int waypoint_shift_occupied_threshold_{50};
   int waypoint_shift_check_count_{20};
   double waypoint_cloud_check_radius_{0.25};
@@ -233,30 +217,9 @@ private:
   bool enable_static_map_filter_{true};
   bool require_map_for_lidar_assist_{true};
   int static_map_occupied_threshold_{90};
-  int static_map_inflation_cells_{4};
+  int static_map_inflation_cells_{6};
 
-  // waypoint_shift 方案选择：1=原有实时，2=动态红簇，3=静态绿色快照+动态红簇。
-  int waypoint_shift_logic_{1};
-  std::string logic2_odom_topic_{"/chassis/odom"};
-  std::string logic2_odom_frame_id_{"odom"};
-  std::string logic2_planning_pose_source_{"filtered_map_odom"};
-  std::string logic2_output_root_{
-    "/root/D_Robot/test/dev_ws/src/origincar_system/path"};
-  std::string logic2_restriction_map_yaml_{
-    "/root/D_Robot/test/dev_ws/src/origincar_system/map/race_keepout.yaml"};
-  double logic2_motion_speed_threshold_{0.03};
-  double logic2_motion_displacement_threshold_{0.01};
-  int logic2_motion_confirm_messages_{2};
-  double logic2_runtime_roi_width_{2.0};
-  double logic2_runtime_roi_height_{2.0};
-  double logic2_red_history_merge_radius_{0.50};
-  double logic2_pose_correction_deadband_xy_{0.005};
-  double logic2_pose_correction_deadband_yaw_{0.003};
-  double logic2_pose_correction_rate_xy_{0.02};
-  double logic2_pose_correction_rate_yaw_{0.02};
-  double logic2_pose_outlier_xy_{0.20};
-  double logic2_pose_outlier_yaw_{0.15};
-
+  // 逻辑3：静态绿色快照冻结路径+绿圈外雷达避障（红点仅记录）。
   std::string logic3_static_route_direction_{"clockwise"};
   std::string logic3_odom_topic_{"/chassis/odom"};
   std::string logic3_odom_frame_id_{"odom"};
@@ -265,9 +228,6 @@ private:
     "/root/D_Robot/test/dev_ws/src/origincar_system/path"};
   std::string logic3_restriction_map_yaml_{
     "/root/D_Robot/test/dev_ws/src/origincar_system/map/race_keepout.yaml"};
-  std::string logic3_tts_topic_{"/tts_text"};
-  std::string logic3_static_record_ready_text_{"静态障碍与偏移记录完毕"};
-  std::string logic3_route_ready_text_{"路线已规划完毕"};
   double logic3_motion_speed_threshold_{0.03};
   double logic3_motion_displacement_threshold_{0.01};
   int logic3_motion_confirm_messages_{2};
@@ -277,13 +237,9 @@ private:
   double logic3_runtime_channel_min_y_{1.60};
   double logic3_runtime_cluster_match_radius_{0.35};
   int logic3_runtime_average_samples_{5};
-  double logic3_runtime_stability_duration_seconds_{1.0};
-  double logic3_runtime_stability_radius_{0.12};
-  double logic3_runtime_offset_max_step_{0.03};
   int logic3_static_cluster_min_points_{1};
   int logic3_static_restriction_inflation_cells_{0};
   double logic3_static_channel_min_y_{1.60};
-  double logic3_entry_exit_overlap_max_y_{2.50};
   double logic3_static_cluster_match_radius_{0.30};
   double logic3_static_confirmation_window_seconds_{2.0};
   int logic3_static_confirmation_min_hits_{10};
@@ -301,10 +257,9 @@ private:
   double logic3_pose_correction_rate_yaw_{0.02};
   double logic3_pose_outlier_xy_{0.20};
   double logic3_pose_outlier_yaw_{0.15};
-  bool logic3_enable_tts_{true};
   double logic3_static_status_log_rate_hz_{2.0};
 
-  // 扫码后的 zhy 条件倒车；前后检测区均为“扇形与矩形走廊的交集”。
+  // 扫码后的条件倒车；前后检测区均为“扇形与矩形走廊的交集”。
   double qr_reverse_y_threshold_{0.70};
   double qr_reverse_front_obstacle_distance_{0.40};
   double qr_reverse_front_fov_deg_{120.0};
@@ -315,23 +270,22 @@ private:
   double qr_reverse_linear_speed_{0.60};
   double qr_reverse_angular_speed_{3.0};
 
-  // 倒车结束后到进入 channel 前的 zhy 雷达避障。
-  double qr_channel_handoff_waypoint_distance_{0.30};
-  double qr_channel_lidar_lookahead_distance_{0.65};
-  double qr_channel_lidar_cruise_linear_speed_{1.15};
-  double qr_channel_lidar_turn_angular_gain_{1.0};
-  double qr_channel_lidar_min_turn_speed_percent_{30.0};
-  double qr_channel_lidar_avoid_distance_{0.65};
-  double qr_channel_lidar_avoid_fov_deg_{120.0};
-  double qr_channel_lidar_corridor_half_width_{0.35};
-  double qr_channel_lidar_avoid_linear_speed_{0.45};
-  double qr_channel_lidar_avoid_angular_gain_{1.60};
+  // 进入 channel 前只单独覆盖基础速度，其余追点和线性降速参数沿用 channel。
+  double channel_handoff_waypoint_distance_{0.30};
+  double channel_approach_linear_speed_{1.15};
+  double channel_lidar_avoid_distance_{0.65};
+  double channel_lidar_avoid_fov_deg_{120.0};
+  double channel_lidar_corridor_half_width_{0.35};
+  double channel_lidar_avoid_linear_speed_{0.45};
+  double channel_lidar_avoid_angular_gain_{1.60};
+  double channel_lidar_direction_upper_angle_deg_{8.0};
+  double channel_lidar_direction_lower_angle_deg_{-8.0};
 
   // 上述两段共用的雷达新鲜度与静态墙体过滤参数。
-  double qr_lidar_scan_timeout_{0.25};
-  bool qr_lidar_enable_static_map_filter_{true};
-  int qr_lidar_static_map_occupied_threshold_{50};
-  double qr_lidar_static_map_wall_padding_{0.08};
+  double lidar_scan_timeout_{0.25};
+  bool lidar_enable_static_map_filter_{true};
+  int lidar_static_map_occupied_threshold_{50};
+  double lidar_static_map_wall_padding_{0.15};
 
   // channel结束后由本节点继续追map起点。视觉仅提供锥桶避障与停车判定，
   // 不参与目标点转向，也不启用visual_control的巡线、丢线和回线状态机。
@@ -404,6 +358,7 @@ private:
   std::uint64_t processed_waypoint_shift_scan_sequence_{0};
   QrEscapeState qr_escape_state_{QrEscapeState::IDLE};
   bool qr_channel_approach_active_{false};
+  int channel_lidar_avoid_direction_{0};
   std::chrono::steady_clock::time_point latest_scan_received_at_;
   sensor_msgs::msg::LaserScan::ConstSharedPtr latest_scan_;
   nav_msgs::msg::OccupancyGrid::ConstSharedPtr latest_map_;
@@ -413,32 +368,29 @@ private:
   ai_msgs::msg::PerceptionTargets::ConstSharedPtr latest_return_visual_targets_;
   std::chrono::steady_clock::time_point latest_return_visual_received_at_;
 
-  // 逻辑2/3共用的可信运动、稳定规划位姿、动态红簇和绘图状态。
-  std::vector<Logic2TrackedCluster> logic2_runtime_red_tracks_;
-  std::vector<Point2D> logic2_red_cluster_history_;
-  std::vector<Waypoint> logic2_baseline_original_route_;
-  std::vector<Waypoint> logic2_baseline_route_;
-  std::vector<Waypoint> logic2_visualization_route_;
-  std::vector<double> logic2_visualization_offsets_;
-  bool logic2_motion_candidate_{false};
-  bool logic2_planning_pose_anchored_{false};
-  bool logic2_odom_reference_valid_{false};
-  bool logic2_map_odom_plan_valid_{false};
-  bool logic2_final_snapshot_published_{false};
-  int logic2_motion_candidate_count_{0};
-  double logic2_odom_reference_x_{0.0};
-  double logic2_odom_reference_y_{0.0};
-  RobotPose logic2_map_odom_plan_;
-  std::chrono::steady_clock::time_point logic2_last_pose_correction_at_;
-  std::string logic2_session_id_;
+  // 逻辑3的可信运动、稳定规划位姿、运行红点和绘图状态。
+  std::vector<Point2D> logic3_red_cluster_history_;
+  std::vector<Waypoint> logic3_baseline_original_route_;
+  std::vector<Waypoint> logic3_baseline_route_;
+  std::vector<Waypoint> logic3_visualization_route_;
+  bool logic3_motion_candidate_{false};
+  bool logic3_planning_pose_anchored_{false};
+  bool logic3_odom_reference_valid_{false};
+  bool logic3_map_odom_plan_valid_{false};
+  bool logic3_final_snapshot_published_{false};
+  int logic3_motion_candidate_count_{0};
+  double logic3_odom_reference_x_{0.0};
+  double logic3_odom_reference_y_{0.0};
+  RobotPose logic3_map_odom_plan_;
+  std::chrono::steady_clock::time_point logic3_last_pose_correction_at_;
+  std::string logic3_session_id_;
 
-  // 仅逻辑3使用：静止阶段持续快照，可信发车后冻结绿色簇并作为动态基线。
+  // 仅逻辑3使用：静止阶段持续快照，可信发车后冻结绿色簇和最终路线。
   std::vector<Logic3StaticClusterTrack> logic3_static_cluster_tracks_;
   std::deque<double> logic3_static_scan_times_;
   std::vector<Logic3RuntimeClusterTrack> logic3_runtime_cluster_tracks_;
   Logic3PlanningSnapshot logic3_motion_pending_snapshot_;
   std::vector<ScanPointCluster> logic3_green_clusters_;
-  std::vector<Point2D> logic3_green_shift_directions_;
   std::vector<double> logic3_frozen_base_offsets_;
   std::vector<Point2D> logic3_frozen_base_shift_directions_;
   std::vector<std::size_t> logic3_frozen_base_source_indices_;
@@ -457,8 +409,7 @@ private:
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_pub_;
   rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr image_analysis_trigger_pub_;
   rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr visual_control_suspend_pub_;
-  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr logic3_tts_pub_;
-  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr logic2_snapshot_pub_;
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr logic3_snapshot_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr debug_marker_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr debug_route_marker_pub_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr debug_path_pub_;
@@ -470,7 +421,7 @@ private:
   rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr
     logic3_runtime_restriction_map_sub_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr qr_sub_;
-  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr logic2_odom_sub_;
+  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr logic3_odom_sub_;
   rclcpp::Subscription<ai_msgs::msg::PerceptionTargets>::SharedPtr
     return_visual_detection_sub_;
   rclcpp::TimerBase::SharedPtr timer_;
@@ -520,9 +471,6 @@ private:
     const std::string & target_frame, const std::string & source_frame,
     const rclcpp::Time & stamp, RobotPose & pose) const;
   Point2D base_to_map(const RobotPose & robot_pose, const Point2D & base_point) const;
-  bool map_distance_to_blocked_along_ray(
-    const Point2D & ray_origin, const Point2D & ray_direction,
-    double & distance) const;
   bool original_route_normal_at(std::size_t waypoint_index, Point2D & normal) const;
   std::size_t rebuild_curvature_unsafe_shift_segments(
     std::vector<Waypoint> & shifted_route);
@@ -533,55 +481,52 @@ private:
     int restriction_inflation_cells) const;
   std::vector<ScanPointCluster> collect_non_static_scan_clusters_map(
     const RobotPose & robot_pose, int minimum_cluster_points,
-    bool use_logic3_static_restriction_map) const;
+    bool use_logic3_static_restriction_map,
+    bool filter_logic3_green_mask = false) const;
   bool fit_cone_circle(LidarCluster & cluster) const;
   std::vector<LidarCluster> collect_cone_clusters(const RobotPose & robot_pose) const;
-  bool latest_qr_lidar_scan_is_fresh() const;
-  bool prepare_qr_lidar_scan(RobotPose & scan_to_base, RobotPose & scan_to_map) const;
-  bool qr_lidar_map_point_is_wall(const Point2D & map_point) const;
-  QrLidarObstacle find_qr_lidar_obstacle(
+  bool latest_lidar_scan_is_fresh() const;
+  bool prepare_lidar_scan(
+    RobotPose & scan_to_base, RobotPose & scan_to_map,
+    bool require_map_transform = false,
+    bool require_logic3_runtime_map = false) const;
+  bool logic3_green_mask_contains(const Point2D & map_point) const;
+  bool logic3_runtime_map_point_is_filtered(const Point2D & map_point) const;
+  bool lidar_map_point_is_wall(const Point2D & map_point) const;
+  LidarObstacle find_lidar_obstacle(
     double center_angle, double maximum_distance, double fov_deg,
     double corridor_half_width, const RobotPose & scan_to_base,
-    const RobotPose & scan_to_map) const;
+    const RobotPose & scan_to_map,
+    bool filter_logic3_green_mask = false,
+    bool filter_logic3_runtime_map = false) const;
   bool apply_qr_reverse_maneuver(
     const RobotPose & robot_pose, geometry_msgs::msg::Twist & cmd);
   void update_qr_channel_approach_phase(const RobotPose & robot_pose);
-  bool apply_qr_channel_lidar_obstacle_avoidance(geometry_msgs::msg::Twist & cmd);
+  bool apply_channel_lidar_obstacle_avoidance(geometry_msgs::msg::Twist & cmd);
   void reset_waypoint_shift_state();
   void update_waypoint_shifts(
     const RobotPose & robot_pose, std::size_t target_waypoint_index);
-  bool logic2_cluster_hits_route_window(
+  bool logic3_cluster_hits_route_window(
     const ScanPointCluster & cluster, std::size_t first_index,
     std::size_t last_index) const;
-  void update_logic2_runtime_red_tracks(
-    const std::vector<ScanPointCluster> & clusters);
   void update_logic3_runtime_red_tracks(
-    const std::vector<ScanPointCluster> & clusters, std::size_t route_first_index,
-    std::size_t route_last_index);
-  void record_logic2_red_cluster(const ScanPointCluster & cluster);
+    const std::vector<ScanPointCluster> & clusters);
+  void record_logic3_red_cluster(const ScanPointCluster & cluster);
   void update_logic3_static_cluster_tracks(
     const std::vector<ScanPointCluster> & clusters, const RobotPose & robot_pose);
   double logic3_static_stability_radius_for_range(double obstacle_range) const;
   void reset_logic3_static_epoch();
   void begin_logic3_static_epoch();
-  bool logic3_static_shift_direction(
-    const ScanPointCluster & cluster, Point2D & shift_direction) const;
-  bool logic3_shift_direction_on_route_range(
-    const ScanPointCluster & cluster, std::size_t route_first_index,
-    std::size_t route_last_index, Point2D & shift_direction) const;
   std::vector<Logic3StaticObstacle> logic3_ready_static_obstacles() const;
   void maybe_log_logic3_static_obstacles(
     std::size_t current_frame_cluster_count,
     const std::vector<Logic3StaticObstacle> & obstacles);
-  void logic2_odom_callback(const nav_msgs::msg::Odometry::ConstSharedPtr msg);
-  void anchor_logic2_planning_pose();
+  void logic3_odom_callback(const nav_msgs::msg::Odometry::ConstSharedPtr msg);
   void freeze_logic3_route();
   void apply_logic3_frozen_clusters_to_current_route();
-  void initialize_logic2_route_visualization();
-  void update_logic2_visualization_route();
-  void publish_logic2_snapshot(const std::string & event);
-  std::string make_logic2_session_id() const;
-  bool lookup_logic2_planning_pose(RobotPose & pose);
+  void publish_logic3_snapshot(const std::string & event);
+  std::string make_logic3_session_id() const;
+  bool lookup_logic3_planning_pose(RobotPose & pose);
 
   void publish_debug_route();
   void publish_debug_visualization(const RobotPose & pose);
@@ -597,7 +542,6 @@ private:
   std::vector<Waypoint> load_waypoints(
     const std::string & waypoints_file, const std::string & requested_direction,
     std::string * resolved_direction = nullptr);
-  bool lookup_robot_pose_at(const rclcpp::Time & stamp, RobotPose & pose) const;
   bool lookup_robot_pose(double & x, double & y, double & yaw);
 };
 

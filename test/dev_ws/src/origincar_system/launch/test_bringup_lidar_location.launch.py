@@ -112,7 +112,7 @@ def generate_launch_description():
             default_value=PathJoinSubstitution([
                 test_share, 'map', 'race_keepout_logic3_runtime.yaml',
             ]),
-            description='Map 4 used only to filter logic3 runtime dynamic red clusters.',
+            description='Map 4 filters logic3 channel lidar points and runtime red records.',
         ),
         DeclareLaunchArgument(
             'qr_detector_params_file',

@@ -74,23 +74,23 @@ ros2 launch origincar_system visual_lidar_path_follower_fast.launch.xml
 ## 4. 终端三：启动 visual_control
 
 ```bash
-unset AMENT_PREFIX_PATH COLCON_PREFIX_PATH CMAKE_PREFIX_PATH LD_LIBRARY_PATH PYTHONPATH
-source /opt/tros/humble/setup.bash
-source /root/D_Robot/test/dev_ws/install/setup.bash
-fastdds shm clean
-export FASTDDS_BUILTIN_TRANSPORTS=UDPv4
-ros2 launch origincar_system visual_control_test.launch.py \
-  avoid_angular_ratio:=-0.005 avoid_linear_speed:=0.45 \
-  recovering_linear_speed:=0.75 recovering_angular_ratio:=1.3 \
-  follow_angular_ratio:=-4.0 follow_linear_speed:=0.85 \
-  bottom_threshold_caution:=295 bottom_threshold_avoid:=305 \
-  obstacle_y_jump_threshold:=50 parking_y_threshold:=405 \
-  line_confidence_threshold:=0.2 obstacle_confidence_threshold:=0.5 \
-  parking_sign_confidence_threshold:=0.7 qr_code_confidence_threshold:=0.6 \
-  qr_code_hight_follow_threshold:=45 qr_code_height_threshold:=45 \
-  line_center_threshold_x:=280 qr_code_speed_modifier:=0.2 \
-  follow_qr_code_ratio:=-4.0 follow_parking_sign_ratio:=-4.5 \
-  delta_x_ratio:=0.0 debug_control_logs:=false
+  unset AMENT_PREFIX_PATH COLCON_PREFIX_PATH CMAKE_PREFIX_PATH LD_LIBRARY_PATH PYTHONPATH
+  source /opt/tros/humble/setup.bash
+  source /root/D_Robot/test/dev_ws/install/setup.bash
+  fastdds shm clean
+  export FASTDDS_BUILTIN_TRANSPORTS=UDPv4
+  ros2 launch origincar_system visual_control_test.launch.py \
+    avoid_angular_ratio:=-0.005 avoid_linear_speed:=0.45 \
+    recovering_linear_speed:=0.75 recovering_angular_ratio:=1.3 \
+    follow_angular_ratio:=-4.0 follow_linear_speed:=0.85 \
+    bottom_threshold_caution:=295 bottom_threshold_avoid:=305 \
+    obstacle_y_jump_threshold:=50 parking_y_threshold:=405 \
+    line_confidence_threshold:=0.2 obstacle_confidence_threshold:=0.5 \
+    parking_sign_confidence_threshold:=0.7 qr_code_confidence_threshold:=0.6 \
+    qr_code_hight_follow_threshold:=45 qr_code_height_threshold:=45 \
+    line_center_threshold_x:=280 qr_code_speed_modifier:=0.2 \
+    follow_qr_code_ratio:=-4.0 follow_parking_sign_ratio:=-4.5 \
+    delta_x_ratio:=0.0 debug_control_logs:=false
 ```
 
 ## 5. lidar_location 定位单独测试（不要与总系统同时启动）
