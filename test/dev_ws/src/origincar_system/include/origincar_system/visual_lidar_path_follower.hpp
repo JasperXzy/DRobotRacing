@@ -29,6 +29,7 @@ struct Waypoint
   double y{0.0};
   bool reverse{false};
   bool image_capture{false};
+  bool return_route_start{false};
   double pass_radius{0.0};
   double reverse_pass_radius{0.0};
 };
@@ -56,6 +57,13 @@ private:
     IDLE,
     PENDING,
     BACKING_RIGHT
+  };
+
+  enum class ReturnLidarState
+  {
+    FOLLOWING_ROUTE,
+    AVOIDING,
+    REJOINING
   };
 
   struct RobotPose
@@ -231,15 +239,21 @@ private:
   double logic3_motion_speed_threshold_{0.03};
   double logic3_motion_displacement_threshold_{0.01};
   int logic3_motion_confirm_messages_{2};
+  bool logic3_start_zone_guard_enabled_{true};
+  double logic3_start_zone_min_x_{-0.15};
+  double logic3_start_zone_max_x_{0.15};
+  double logic3_start_zone_min_y_{-0.05};
+  double logic3_start_zone_max_y_{0.20};
+  double logic3_start_zone_guard_margin_{0.12};
   double logic3_old_cluster_radius_{0.60};
   double logic3_runtime_roi_width_{3.75};
   double logic3_runtime_roi_height_{3.75};
-  double logic3_runtime_channel_min_y_{1.60};
+  double logic3_runtime_channel_min_y_{-0.20};
   double logic3_runtime_cluster_match_radius_{0.35};
   int logic3_runtime_average_samples_{5};
   int logic3_static_cluster_min_points_{1};
   int logic3_static_restriction_inflation_cells_{0};
-  double logic3_static_channel_min_y_{1.60};
+  double logic3_static_channel_min_y_{1.00};
   double logic3_static_cluster_match_radius_{0.30};
   double logic3_static_confirmation_window_seconds_{2.0};
   int logic3_static_confirmation_min_hits_{10};
@@ -273,6 +287,7 @@ private:
   // 进入 channel 前只单独覆盖基础速度，其余追点和线性降速参数沿用 channel。
   double channel_handoff_waypoint_distance_{0.30};
   double channel_approach_linear_speed_{1.15};
+  double channel_entry_corner_smoothing_length_{0.20};
   double channel_lidar_avoid_distance_{0.65};
   double channel_lidar_avoid_fov_deg_{120.0};
   double channel_lidar_corridor_half_width_{0.35};
@@ -287,14 +302,18 @@ private:
   int lidar_static_map_occupied_threshold_{50};
   double lidar_static_map_wall_padding_{0.15};
 
-  // channel结束后由本节点继续追map起点。视觉仅提供锥桶避障与停车判定，
-  // 不参与目标点转向，也不启用visual_control的巡线、丢线和回线状态机。
+  // 生成路线的最后一段直接连到map起终点；该段仍使用channel追点和
+  // 雷达处理。视觉只提供停车标志判定，不启用visual_control状态机。
   bool return_to_start_enabled_{true};
   double return_target_x_{0.0};
   double return_target_y_{0.0};
   double return_stop_zone_length_{0.50};
   double return_stop_zone_upper_half_width_{0.25};
   double return_stop_zone_lower_half_width_{0.40};
+  double return_obstacle_split_y_{1.00};
+  int return_lidar_clear_cycles_{3};
+  double return_lidar_rejoin_lateral_tolerance_{0.12};
+  double return_lidar_rejoin_linear_speed_{0.45};
   double return_follow_linear_speed_{0.85};
   double return_turn_angular_gain_{1.60};
   std::string return_visual_detection_topic_{"/racing_obstacle_detection"};
@@ -332,6 +351,7 @@ private:
   // 运行状态
   std::vector<Waypoint> waypoints_;
   std::vector<Waypoint> original_waypoints_;
+  std::vector<Waypoint> channel_route_template_;
   std::vector<double> waypoint_shift_offsets_;
   std::vector<double> waypoint_shift_pending_offsets_;
   std::vector<int> waypoint_shift_pending_counts_;
@@ -353,11 +373,25 @@ private:
   std::size_t image_capture_waypoint_index_{0};
   std::chrono::steady_clock::time_point image_capture_stop_started_at_;
   bool publish_stop_on_exit_{true};
+  bool channel_return_extension_available_{false};
+  bool channel_return_extension_active_{false};
+  std::size_t channel_return_start_index_{0};
+  ReturnLidarState return_lidar_state_{ReturnLidarState::FOLLOWING_ROUTE};
+  int return_lidar_clear_count_{0};
+  // 旧版无return_route_start标记的航点文件才会使用独立返程控制。
   bool return_to_start_active_{false};
   std::uint64_t scan_sequence_{0};
   std::uint64_t processed_waypoint_shift_scan_sequence_{0};
   QrEscapeState qr_escape_state_{QrEscapeState::IDLE};
   bool qr_channel_approach_active_{false};
+  bool channel_entry_route_rebuild_pending_{false};
+  bool channel_entry_route_rebuild_after_reverse_{false};
+  std::size_t channel_entry_waypoint_index_{0};
+  // [channel_entry_smoothing_first_index_, channel_entry_waypoint_index_]
+  // 是偏移前已圆滑的B前末段；waypoint_shift只做原始直接偏移，
+  // 不允许偏移后的曲率兜底再重构该段。与B相等表示本次未圆滑。
+  std::size_t channel_entry_smoothing_first_index_{0};
+  std::size_t channel_completed_reverse_count_{0};
   int channel_lidar_avoid_direction_{0};
   std::chrono::steady_clock::time_point latest_scan_received_at_;
   sensor_msgs::msg::LaserScan::ConstSharedPtr latest_scan_;
@@ -374,14 +408,17 @@ private:
   std::vector<Waypoint> logic3_baseline_route_;
   std::vector<Waypoint> logic3_visualization_route_;
   bool logic3_motion_candidate_{false};
+  bool logic3_start_zone_motion_pending_{false};
   bool logic3_planning_pose_anchored_{false};
   bool logic3_odom_reference_valid_{false};
   bool logic3_map_odom_plan_valid_{false};
   bool logic3_final_snapshot_published_{false};
+  bool logic3_final_pose_valid_{false};
   int logic3_motion_candidate_count_{0};
   double logic3_odom_reference_x_{0.0};
   double logic3_odom_reference_y_{0.0};
   RobotPose logic3_map_odom_plan_;
+  RobotPose logic3_final_pose_;
   std::chrono::steady_clock::time_point logic3_last_pose_correction_at_;
   std::string logic3_session_id_;
 
@@ -390,6 +427,7 @@ private:
   std::deque<double> logic3_static_scan_times_;
   std::vector<Logic3RuntimeClusterTrack> logic3_runtime_cluster_tracks_;
   Logic3PlanningSnapshot logic3_motion_pending_snapshot_;
+  Logic3PlanningSnapshot logic3_last_complete_ready_snapshot_;
   std::vector<ScanPointCluster> logic3_green_clusters_;
   std::vector<double> logic3_frozen_base_offsets_;
   std::vector<Point2D> logic3_frozen_base_shift_directions_;
@@ -430,10 +468,15 @@ private:
   void set_control_state(ControlState next_state);
 
   void control_once();
-  bool stop_if_route_finished();
+  bool stop_if_route_finished(const RobotPose & pose);
+  bool handle_channel_return_extension(const RobotPose & pose);
+  void update_return_lidar_state(
+    const RobotPose & pose, bool observation_valid, bool obstacle_found);
+  double distance_to_return_route(const RobotPose & pose) const;
+  bool return_parking_completion_allowed() const;
   void start_return_to_start();
   void control_return_to_start(const RobotPose & pose);
-  void finish_return_to_start(const char * reason);
+  void finish_return_to_start(const RobotPose & pose, const char * reason);
   bool return_stop_zone_contains(const RobotPose & pose) const;
   bool return_visual_detection_is_fresh() const;
   int scale_return_visual_x(int x) const;
@@ -502,21 +545,18 @@ private:
   bool apply_qr_reverse_maneuver(
     const RobotPose & robot_pose, geometry_msgs::msg::Twist & cmd);
   void update_qr_channel_approach_phase(const RobotPose & robot_pose);
-  bool apply_channel_lidar_obstacle_avoidance(geometry_msgs::msg::Twist & cmd);
+  bool apply_channel_lidar_obstacle_avoidance(
+    geometry_msgs::msg::Twist & cmd, bool * observation_valid = nullptr,
+    bool * obstacle_found = nullptr);
   void reset_waypoint_shift_state();
   void update_waypoint_shifts(
     const RobotPose & robot_pose, std::size_t target_waypoint_index);
-  bool logic3_cluster_hits_route_window(
-    const ScanPointCluster & cluster, std::size_t first_index,
-    std::size_t last_index) const;
   void update_logic3_runtime_red_tracks(
     const std::vector<ScanPointCluster> & clusters);
   void record_logic3_red_cluster(const ScanPointCluster & cluster);
   void update_logic3_static_cluster_tracks(
     const std::vector<ScanPointCluster> & clusters, const RobotPose & robot_pose);
   double logic3_static_stability_radius_for_range(double obstacle_range) const;
-  void reset_logic3_static_epoch();
-  void begin_logic3_static_epoch();
   std::vector<Logic3StaticObstacle> logic3_ready_static_obstacles() const;
   void maybe_log_logic3_static_obstacles(
     std::size_t current_frame_cluster_count,
@@ -534,6 +574,10 @@ private:
   void qr_callback(const std_msgs::msg::String::ConstSharedPtr msg);
   std::string direction_from_qr(const std::string & data) const;
   bool switch_route(const std::string & direction);
+  double estimate_channel_waypoint_spacing(
+    const std::vector<Waypoint> & route) const;
+  bool rebuild_channel_entry_route(
+    const RobotPose & start_pose, const char * reason);
   void suspend_visual_control();
   void set_perception_mode(int value, const char * mode_name);
   void resume_visual_control(bool restore_full_perception = false);

@@ -11,13 +11,42 @@ from typing import Callable, Sequence
 
 PACKAGE_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_CLOCKWISE_OUTPUT = PACKAGE_DIR / "config" / "waypoints_channel_clockwise.yaml"
-DEFAULT_COUNTERCLOCKWISE_OUTPUT = PACKAGE_DIR / "config" / "waypoints_channel_counterclockwise.yaml"
+DEFAULT_COUNTERCLOCKWISE_OUTPUT = (
+    PACKAGE_DIR / "config" / "waypoints_channel_counterclockwise.yaml"
+)
 DEFAULT_MAP_YAML = PACKAGE_DIR / "map" / "race_keepout.yaml"
 DEFAULT_CLOCKWISE_PREVIEW_OUTPUT = (
     PACKAGE_DIR / "map" / "waypoints_channel_clockwise_on_restriction_map.png"
 )
 DEFAULT_COUNTERCLOCKWISE_PREVIEW_OUTPUT = (
     PACKAGE_DIR / "map" / "waypoints_channel_counterclockwise_on_restriction_map.png"
+)
+
+Point = tuple[float, float]
+
+# channel 环线的原入口/出口交点，以及最终起终点。返程仍是 channel
+# 的自然延续，不是切换到另一套返程控制。和上方四个圆角一样，返程
+# 前先把交点两侧的直线各裁掉一小段，再在两条切线之间插入 Bezier。
+CHANNEL_LOOP_ENDPOINT: Point = (1.95, 1.80)
+RETURN_TARGET: Point = (0.0, 0.0)
+RETURN_CORNER_TRIM = 0.25
+_RETURN_DISTANCE = math.hypot(
+    RETURN_TARGET[0] - CHANNEL_LOOP_ENDPOINT[0],
+    RETURN_TARGET[1] - CHANNEL_LOOP_ENDPOINT[1],
+)
+RETURN_CURVE_START: Point = (
+    CHANNEL_LOOP_ENDPOINT[0],
+    CHANNEL_LOOP_ENDPOINT[1] + RETURN_CORNER_TRIM,
+)
+RETURN_STRAIGHT_START: Point = (
+    CHANNEL_LOOP_ENDPOINT[0]
+    + (RETURN_TARGET[0] - CHANNEL_LOOP_ENDPOINT[0])
+    * RETURN_CORNER_TRIM
+    / _RETURN_DISTANCE,
+    CHANNEL_LOOP_ENDPOINT[1]
+    + (RETURN_TARGET[1] - CHANNEL_LOOP_ENDPOINT[1])
+    * RETURN_CORNER_TRIM
+    / _RETURN_DISTANCE,
 )
 
 # 顺、逆时针分别维护完整的有序几何，不能再由另一方向反向读取。
@@ -27,20 +56,22 @@ COUNTERCLOCKWISE_SEGMENTS: list[tuple[tuple[float, float], tuple[float, float]]]
     ((1.95, 1.80), (1.95, 2.50)),
     ((2.35, 2.95), (3.30, 2.95)),
     ((3.65, 3.20), (3.65, 3.85)),
-    ((3.30, 4.10), (0.35, 4.10)),
-    ((0.20, 4.00), (0.20, 3.20)),
+    ((3.30, 4.10), (0.45, 4.10)),
+    ((0.20, 3.85), (0.20, 3.20)),
     ((0.45, 2.95), (1.55, 2.95)),
-    ((1.95, 2.50), (1.75, 1.80)),
+    ((1.95, 2.50), RETURN_CURVE_START),
+    (RETURN_STRAIGHT_START, RETURN_TARGET),
 ]
 
 CLOCKWISE_SEGMENTS: list[tuple[tuple[float, float], tuple[float, float]]] = [
     ((1.95, 1.80), (1.95, 2.50)),
     ((1.55, 2.95), (0.45, 2.95)),
     ((0.20, 3.20), (0.20, 3.85)),
-    ((0.45, 4.10), (3.40, 4.10)),
-    ((3.65, 4.00), (3.65, 3.20)),
+    ((0.45, 4.10), (3.30, 4.10)),
+    ((3.65, 3.85), (3.65, 3.20)),
     ((3.30, 2.95), (2.35, 2.95)),
-    ((1.95, 2.50), (1.75, 1.80)),
+    ((1.95, 2.50), RETURN_CURVE_START),
+    (RETURN_STRAIGHT_START, RETURN_TARGET),
 ]
 
 TARGET_SPACING = 0.02
@@ -52,6 +83,7 @@ COUNTERCLOCKWISE_TRANSITION_HANDLE_RATIOS = [
     0.3,
     0.3,
     0.3,  # 出通道后对准直线
+    0.3,  # 绿圈处从竖直切线圆滑过渡到返程斜线
 ]
 CLOCKWISE_TRANSITION_HANDLE_RATIOS = [
     0.3,  # 进入环线
@@ -60,9 +92,8 @@ CLOCKWISE_TRANSITION_HANDLE_RATIOS = [
     0.3,
     0.3,
     0.3,  # 出通道后对准直线
+    0.3,  # 绿圈处从竖直切线圆滑过渡到返程斜线
 ]
-
-Point = tuple[float, float]
 
 
 @dataclass(frozen=True)
@@ -103,7 +134,13 @@ def line_piece(start: Point, end: Point) -> Piece | None:
     dx = end[0] - start[0]
     dy = end[1] - start[1]
 
-    def point_at(s: float, start: Point = start, dx: float = dx, dy: float = dy, length: float = length) -> Point:
+    def point_at(
+        s: float,
+        start: Point = start,
+        dx: float = dx,
+        dy: float = dy,
+        length: float = length,
+    ) -> Point:
         ratio = max(0.0, min(length, s)) / length
         return (start[0] + dx * ratio, start[1] + dy * ratio)
 
@@ -150,7 +187,11 @@ def bezier_piece(
         for i in range(len(cumulative) - 1):
             if target <= cumulative[i + 1]:
                 section_length = cumulative[i + 1] - cumulative[i]
-                ratio = 0.0 if section_length <= 1e-12 else (target - cumulative[i]) / section_length
+                ratio = (
+                    0.0
+                    if section_length <= 1e-12
+                    else (target - cumulative[i]) / section_length
+                )
                 return (
                     samples[i][0] + (samples[i + 1][0] - samples[i][0]) * ratio,
                     samples[i][1] + (samples[i + 1][1] - samples[i][1]) * ratio,
@@ -204,6 +245,23 @@ def sample_route(pieces: Sequence[Piece], spacing: float) -> list[Point]:
     return [point_at_distance(pieces, actual_spacing * i) for i in range(step_count + 1)]
 
 
+def first_sample_index_on_return_extension(
+    pieces: Sequence[Piece], points: Sequence[Point]
+) -> int:
+    """Return the first sampled waypoint on the final Bezier plus straight."""
+    if len(pieces) < 2 or len(points) < 2:
+        raise ValueError("route needs at least two sampled points")
+    if pieces[-2].kind != "bezier" or pieces[-1].kind != "line":
+        raise ValueError("return extension must end with one Bezier and one line")
+    total_length = sum(piece.length for piece in pieces)
+    sampled_spacing = total_length / (len(points) - 1)
+    return_start_distance = total_length - pieces[-2].length - pieces[-1].length
+    return min(
+        len(points) - 1,
+        max(1, math.ceil((return_start_distance - 1e-9) / sampled_spacing)),
+    )
+
+
 def yaw_at(points: Sequence[Point], index: int) -> float:
     if len(points) < 2:
         return 0.0
@@ -222,11 +280,14 @@ def fmt(value: float) -> str:
     return f"{value:.6f}".rstrip("0").rstrip(".")
 
 
-def render_yaml(points: Sequence[Point], spacing: float, direction: str) -> str:
+def render_yaml(
+    points: Sequence[Point], spacing: float, direction: str, return_start_index: int
+) -> str:
     direction_label = "顺时针" if direction == "clockwise" else "逆时针"
     lines = [
         f"# channel {direction_label}独立航点，禁止通过反向读取另一方向生成。",
-        "# 由 scripts/generate_channel_waypoints.py 生成：7 条直线段 + 6 段独立贝塞尔平滑过渡。",
+        "# 由 scripts/generate_channel_waypoints.py 生成：8 条直线段 + 7 段独立贝塞尔平滑过渡。",
+        "# 最后一段Bezier在绿圈处圆滑接入返程直线，return_route_start标记该过渡首点。",
         f"# 按 point_001..point_{len(points):03d} 的文件顺序行驶。",
         f"# 修改轨迹时请改脚本里的 {direction.upper()}_SEGMENTS 和对应过渡系数。",
         f"# target_spacing: {fmt(spacing)} m",
@@ -235,16 +296,17 @@ def render_yaml(points: Sequence[Point], spacing: float, direction: str) -> str:
         f"  {direction}:",
     ]
 
-    for index, point in enumerate(points, start=1):
-        lines.extend(
-            [
-                f"  - name: point_{index:03d}",
-                f"    x: {fmt(point[0])}",
-                f"    y: {fmt(point[1])}",
-                f"    yaw: {fmt(yaw_at(points, index - 1))}",
-                f"    pass_radius: {fmt(POINT_PASS_RADIUS)}",
-            ]
-        )
+    for index, point in enumerate(points):
+        waypoint_lines = [
+            f"  - name: point_{index + 1:03d}",
+            f"    x: {fmt(point[0])}",
+            f"    y: {fmt(point[1])}",
+            f"    yaw: {fmt(yaw_at(points, index))}",
+            f"    pass_radius: {fmt(POINT_PASS_RADIUS)}",
+        ]
+        if index == return_start_index:
+            waypoint_lines.append("    return_route_start: true")
+        lines.extend(waypoint_lines)
     return "\n".join(lines) + "\n"
 
 
@@ -371,7 +433,12 @@ def main() -> int:
         default=DEFAULT_COUNTERCLOCKWISE_OUTPUT,
         help="Counterclockwise YAML file to overwrite.",
     )
-    parser.add_argument("--spacing", type=float, default=TARGET_SPACING, help="Target point spacing in meters.")
+    parser.add_argument(
+        "--spacing",
+        type=float,
+        default=TARGET_SPACING,
+        help="Target point spacing in meters.",
+    )
     parser.add_argument(
         "--map-yaml",
         type=Path,
@@ -417,7 +484,8 @@ def main() -> int:
     for direction, segments, transition_ratios, output, preview_output in route_jobs:
         pieces = build_pieces(segments, transition_ratios)
         points = sample_route(pieces, args.spacing)
-        rendered = render_yaml(points, args.spacing, direction)
+        return_start_index = first_sample_index_on_return_extension(pieces, points)
+        rendered = render_yaml(points, args.spacing, direction, return_start_index)
 
         if args.dry_run:
             print(f"# ===== {direction} =====")
