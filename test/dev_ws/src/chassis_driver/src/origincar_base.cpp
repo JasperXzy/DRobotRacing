@@ -1,6 +1,5 @@
 #include "chassis_driver.h"
 #include "rclcpp/rclcpp.hpp"
-#include "Quaternion_Solution.h"
 #include "ackermann_msgs/msg/ackermann_drive_stamped.hpp" 
 #include "geometry_msgs/msg/vector3.hpp"
 
@@ -203,23 +202,23 @@ void chassis_driver::Publish_ImuSensor()
     sensor_msgs::msg::Imu Imu_Data_Pub;
     Imu_Data_Pub.header.stamp = rclcpp::Node::now();
     Imu_Data_Pub.header.frame_id = gyro_frame_id; 
-                                                  
-    Imu_Data_Pub.orientation.x = Mpu6050.orientation.x;
-    Imu_Data_Pub.orientation.y = Mpu6050.orientation.y;
-    Imu_Data_Pub.orientation.z = Mpu6050.orientation.z;
-    Imu_Data_Pub.orientation.w = Mpu6050.orientation.w;
-    Imu_Data_Pub.orientation_covariance[0] = 1e6; 
-    Imu_Data_Pub.orientation_covariance[4] = 1e6;
-    Imu_Data_Pub.orientation_covariance[8] = 1e-6;
+
+    // MPU6050 has no magnetometer, so it cannot provide an absolute yaw.
+    // Mark orientation unavailable and publish angular velocity only.
+    Imu_Data_Pub.orientation.w = 1.0;
+    Imu_Data_Pub.orientation_covariance[0] = -1.0;
     Imu_Data_Pub.angular_velocity.x = Mpu6050.angular_velocity.x;
     Imu_Data_Pub.angular_velocity.y = Mpu6050.angular_velocity.y;
     Imu_Data_Pub.angular_velocity.z = Mpu6050.angular_velocity.z;
-    Imu_Data_Pub.angular_velocity_covariance[0] = 1e6;
-    Imu_Data_Pub.angular_velocity_covariance[4] = 1e6;
-    Imu_Data_Pub.angular_velocity_covariance[8] = 1e-6;
+    Imu_Data_Pub.angular_velocity_covariance[0] = 0.20;
+    Imu_Data_Pub.angular_velocity_covariance[4] = 0.20;
+    Imu_Data_Pub.angular_velocity_covariance[8] = 0.05;
     Imu_Data_Pub.linear_acceleration.x = Mpu6050.linear_acceleration.x;
     Imu_Data_Pub.linear_acceleration.y = Mpu6050.linear_acceleration.y;
     Imu_Data_Pub.linear_acceleration.z = Mpu6050.linear_acceleration.z;
+    Imu_Data_Pub.linear_acceleration_covariance[0] = 0.50;
+    Imu_Data_Pub.linear_acceleration_covariance[4] = 0.50;
+    Imu_Data_Pub.linear_acceleration_covariance[8] = 0.50;
 
     imu_publisher->publish(Imu_Data_Pub);
 
@@ -244,11 +243,23 @@ void chassis_driver::Publish_Odom()
 
     odom.pose.pose.position.z = 0.0;
     odom.pose.pose.orientation = odom_quat;
+    odom.pose.covariance[0] = 0.03;
+    odom.pose.covariance[7] = 0.03;
+    odom.pose.covariance[14] = 99999.0;
+    odom.pose.covariance[21] = 99999.0;
+    odom.pose.covariance[28] = 99999.0;
+    odom.pose.covariance[35] = 0.06;
 
 
     odom.twist.twist.linear.x =  Robot_Vel.X;
     odom.twist.twist.linear.y =  Robot_Vel.Y;
     odom.twist.twist.angular.z = Robot_Vel.Z; 
+    odom.twist.covariance[0] = 0.04;
+    odom.twist.covariance[7] = 0.20;
+    odom.twist.covariance[14] = 99999.0;
+    odom.twist.covariance[21] = 99999.0;
+    odom.twist.covariance[28] = 99999.0;
+    odom.twist.covariance[35] = 0.08;
 
     robotpose.x = Robot_Pos.X;
     robotpose.y = Robot_Pos.Y;
@@ -399,9 +410,22 @@ void chassis_driver::Control()
           calibrated_lateral_velocity * cos(Robot_Pos.Z)) * Sampling_Time;
         Robot_Pos.Z += angular_scale * static_cast<double>(Robot_Vel.Z) * Sampling_Time;
 
-        Quaternion_Solution(Mpu6050.angular_velocity.x, Mpu6050.angular_velocity.y, Mpu6050.angular_velocity.z,\
-                  Mpu6050.linear_acceleration.x, Mpu6050.linear_acceleration.y, Mpu6050.linear_acceleration.z);
-        Publish_ImuSensor();
+        if (Receive_Data.Flag_Stop == 0) {
+          if (imu_suppressed_by_chassis_) {
+            RCLCPP_INFO(
+              this->get_logger(),
+              "Chassis calibration/stop flag cleared; resuming IMU angular velocity");
+          }
+          imu_suppressed_by_chassis_ = false;
+          Publish_ImuSensor();
+        } else {
+          if (!imu_suppressed_by_chassis_) {
+            RCLCPP_WARN(
+              this->get_logger(),
+              "Chassis calibration/stop flag set; suppressing IMU measurements");
+          }
+          imu_suppressed_by_chassis_ = true;
+        }
         Publish_Voltage();
         Publish_Odom();
       }

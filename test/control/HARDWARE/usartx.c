@@ -14,19 +14,26 @@ Output  : none
 void data_task(void *pvParameters)
 {
 	 u32 lastWakeTime = getSysTickCnt();
+	 u8 slow_send_accumulator = RATE_50_HZ-RATE_20_HZ;
 	
    while(1)
     {	
-			//The task is run at 20hz
-			//此任务以20Hz的频率运行
-			vTaskDelayUntil(&lastWakeTime, F2T(RATE_20_HZ));
+			// Run the ROS telemetry path at 50 Hz. The other serial ports and
+			// CAN remain at an average 20 Hz to limit blocking transmit time.
+			vTaskDelayUntil(&lastWakeTime, F2T(RATE_50_HZ));
 			//Assign the data to be sent
 			//对要进行发送的数据进行赋值
 			data_transition(); 
-			USART1_SEND();     //Serial port 1 sends data //串口1发送数据
 			USART3_SEND();     //Serial port 3 (ROS) sends data  //串口3(ROS)发送数据
-			USART5_SEND();		 //Serial port 5 sends data //串口5发送数据
-			CAN_SEND();        //CAN send data //CAN发送数据	
+
+			slow_send_accumulator += RATE_20_HZ;
+			if(slow_send_accumulator >= RATE_50_HZ)
+			{
+				slow_send_accumulator -= RATE_50_HZ;
+				USART1_SEND();     //Serial port 1 sends data //串口1发送数据
+				USART5_SEND();		 //Serial port 5 sends data //串口5发送数据
+				CAN_SEND();        //CAN send data //CAN发送数据
+			}
 		}
 }
 /**************************************************************************

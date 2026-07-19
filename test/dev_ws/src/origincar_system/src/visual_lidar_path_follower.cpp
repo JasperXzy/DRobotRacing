@@ -3597,8 +3597,8 @@ void VisualLidarPathFollower::update_waypoint_shifts(
     }
   }
 
-  // 逻辑3按路线进度依次应用每个障碍物；后一个障碍物的before窗口
-  // 无条件覆盖前一个障碍物的after重叠区。逻辑1/2保留原冲突组规则。
+  // 逻辑3按路线进度依次应用每个障碍物。相邻障碍物窗口重叠时，
+  // 前1/4保留前一个，后3/4由后一个覆盖。逻辑1/2保留原冲突组规则。
   std::sort(
     candidate_segments.begin(), candidate_segments.end(),
     [&](const ShiftCandidateSegment & lhs, const ShiftCandidateSegment & rhs) {
@@ -3616,6 +3616,7 @@ void VisualLidarPathFollower::update_waypoint_shifts(
   std::vector<double> observed_offsets(waypoints_.size(), 0.0);
   std::vector<bool> observed_offsets_valid(waypoints_.size(), false);
   if (waypoint_shift_logic_ == 3) {
+    const ShiftCandidateSegment * previous_active_segment = nullptr;
     for (const auto & segment : candidate_segments) {
       if (segment.preferred_direction == 0) {
         continue;
@@ -3627,23 +3628,38 @@ void VisualLidarPathFollower::update_waypoint_shifts(
       }
       const double candidate =
         static_cast<double>(segment.preferred_direction) * required_offset;
+      std::size_t applied_first = segment.first;
+      std::size_t overlap_count = 0;
+      if (previous_active_segment) {
+        const std::size_t overlap_first = std::max(
+          previous_active_segment->first, segment.first);
+        const std::size_t overlap_last = std::min(
+          previous_active_segment->last, segment.last);
+        if (overlap_first <= overlap_last) {
+          overlap_count = overlap_last - overlap_first + 1;
+          // 整数除法将不能四等分的余数交给后一个障碍物。
+          applied_first = overlap_first + overlap_count / 4;
+        }
+      }
       std::size_t overwritten_count = 0;
-      for (std::size_t index = segment.first; index <= segment.last; ++index) {
+      for (std::size_t index = applied_first; index <= segment.last; ++index) {
         if (observed_offsets_valid[index]) {
           ++overwritten_count;
         }
-        // 候选已按路线进度排序，后写入的下一个障碍物直接取得重叠区控制权。
+        // 候选已按路线进度排序；后一个障碍物从重叠区1/4位置开始取得控制权。
         observed_offsets[index] = candidate;
         observed_offsets_valid[index] = true;
       }
+      previous_active_segment = &segment;
       if (debug_control_logs_) {
         RCLCPP_INFO(
           get_logger(),
-          "debug: 逻辑3顺序覆盖：障碍点=%zu，覆盖点=%zu-%zu，向%s偏移%.3fm，"
-          "覆盖前障碍航点=%zu个。",
+          "debug: 逻辑3四分之一覆盖：障碍点=%zu，原窗口=%zu-%zu，实际写入=%zu-%zu，"
+          "向%s偏移%.3fm，重叠=%zu个，覆盖前障碍=%zu个。",
           segment.obstacle_waypoint + 1, segment.first + 1, segment.last + 1,
+          applied_first + 1, segment.last + 1,
           segment.preferred_direction > 0 ? "左" : "右", required_offset,
-          overwritten_count);
+          overlap_count, overwritten_count);
       }
     }
   }

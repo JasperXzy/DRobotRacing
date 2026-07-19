@@ -193,6 +193,7 @@ private:
 	std::atomic<bool> control_suspended_{false};
 	std::atomic<bool> command_active_{false};
 	std::atomic<bool> timeout_stop_sent_{true};
+	bool imu_suppressed_by_chassis_ = false;
 	rclcpp::Time last_cmd_vel_time_;
 	RECEIVE_DATA Receive_Data;
 	SEND_DATA Send_Data;

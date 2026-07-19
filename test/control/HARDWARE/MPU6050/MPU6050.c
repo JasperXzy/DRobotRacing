@@ -19,6 +19,10 @@ int Deviation_Count;
 //陀螺仪静差，原始数据
 short Deviation_gyro[3],Original_gyro[3];  
 short Deviation_accel[3],Original_accel[3]; 
+// Accumulate the complete startup calibration window. A 32-bit signed long is
+// sufficient for 1000 samples of a signed 16-bit MPU6050 reading.
+static long Deviation_gyro_sum[3];
+static long Deviation_accel_sum[3];
 float q0=1.0f,q1=0.0f,q2=0.0f,q3=0.0f;
 //static signed char gyro_orientation[9] = {-1, 0, 0,
 //                                           0,-1, 0,
@@ -48,23 +52,46 @@ float q0=1.0f,q1=0.0f,q2=0.0f,q3=0.0f;
 void MPU6050_task(void *pvParameters)
 {
     u32 lastWakeTime = getSysTickCnt();
+    u8 axis;
     while(1)
     {	
 			//This task runs at 100Hz
 			//此任务以100Hz的频率运行
 			vTaskDelayUntil(&lastWakeTime, F2T(RATE_100_HZ));	
 		
-			//Read the gyroscope zero before starting
-      //开机前，读取陀螺仪零点			
-		  if(Deviation_Count<CONTROL_DELAY)
-		  {	 
-		  	Deviation_Count++;
-			  memcpy(Deviation_gyro,gyro,sizeof(gyro));		
-				memcpy(Deviation_accel,accel,sizeof(accel));	
-		  }		
-
      MPU_Get_Gyroscope(); //得到陀螺仪数据
      MPU_Get_Accelscope(); //获得加速度计值(原始值)
+
+      // Average all raw samples. The old implementation overwrote the
+      // deviation arrays every cycle and therefore kept only one sample.
+		  if(Deviation_Count<CONTROL_DELAY)
+		  {
+				for(axis=0; axis<3; axis++)
+				{
+					Deviation_gyro_sum[axis] += gyro[axis];
+					Deviation_accel_sum[axis] += accel[axis];
+				}
+		  	Deviation_Count++;
+
+				if(Deviation_Count==CONTROL_DELAY)
+				{
+					for(axis=0; axis<3; axis++)
+					{
+						Deviation_gyro[axis] =
+							(short)(Deviation_gyro_sum[axis]/CONTROL_DELAY);
+						Deviation_accel[axis] =
+							(short)(Deviation_accel_sum[axis]/CONTROL_DELAY);
+						Original_gyro[axis] = gyro[axis];
+						Original_accel[axis] = accel[axis];
+						gyro[axis] = Original_gyro[axis]-Deviation_gyro[axis];
+						accel[axis] = Original_accel[axis]-Deviation_accel[axis];
+					}
+					accel[2] += 16384;
+					// Do not release the stop flag until averaged offsets have
+					// already been applied to the current sensor sample.
+					Flag_Stop=0;
+				}
+		  }
     }
 }  
 
@@ -477,8 +504,6 @@ void MPU_Get_Gyroscope(void)
 		}
 	else //10 seconds after starting //开机10秒后
 		{  
-			if(Deviation_Count==CONTROL_DELAY)
-				Flag_Stop=0; //The software fails to flag location 0 //软件失能标志位置0
 			Led_Count=300; //The LED returns to normal flicker frequency //LED恢复正常闪烁频率	
 			
 			//Save the raw data to update zero by clicking the user button

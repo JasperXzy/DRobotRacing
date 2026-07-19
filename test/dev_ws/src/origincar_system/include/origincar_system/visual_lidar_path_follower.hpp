@@ -242,15 +242,15 @@ private:
   double logic3_motion_speed_threshold_{0.03};
   double logic3_motion_displacement_threshold_{0.01};
   int logic3_motion_confirm_messages_{2};
-  double logic3_old_cluster_radius_{0.50};
-  double logic3_runtime_roi_width_{2.0};
-  double logic3_runtime_roi_height_{2.0};
+  double logic3_old_cluster_radius_{0.60};
+  double logic3_runtime_roi_width_{3.75};
+  double logic3_runtime_roi_height_{3.75};
   double logic3_runtime_channel_min_y_{1.60};
   int logic3_static_cluster_min_points_{1};
   int logic3_static_restriction_inflation_cells_{0};
   double logic3_static_channel_min_y_{1.60};
   double logic3_entry_exit_overlap_max_y_{2.50};
-  double logic3_static_cluster_match_radius_{0.40};
+  double logic3_static_cluster_match_radius_{0.30};
   double logic3_static_stability_duration_seconds_{1.0};
   double logic3_static_stability_radius_{0.10};
   double logic3_static_far_stability_radius_{0.20};
@@ -258,7 +258,7 @@ private:
   double logic3_static_stability_far_distance_{3.0};
   int logic3_static_average_samples_{10};
   double logic3_static_track_release_seconds_{0.50};
-  double logic3_red_history_merge_radius_{0.50};
+  double logic3_red_history_merge_radius_{0.75};
   double logic3_pose_correction_deadband_xy_{0.005};
   double logic3_pose_correction_deadband_yaw_{0.003};
   double logic3_pose_correction_rate_xy_{0.02};

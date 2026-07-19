@@ -5,7 +5,7 @@ ekf_filter_node:
     # =========================================================================
     
     # EKF update frequency (Hz)
-    frequency: 30.0
+    frequency: 50.0
     
     # Sensor timeout
     sensor_timeout: 0.20
@@ -69,23 +69,22 @@ ekf_filter_node:
     
     imu0: /chassis/imu/data_raw
     
-    # Configuration matrix for imu0
-    imu0_config: [false, false, false,    # Position: IMU doesn't provide
-                  true,  true,  true,     # Orientation: use roll, pitch, yaw
-                  false, false, false,    # Linear velocity: IMU doesn't provide
-                  true,  true,  true,     # Angular velocity: use all axes
-                  true,  true,  false]    # Acceleration: use ax, ay (not az in 2D)
+    # MPU6050 has no magnetometer, so its integrated yaw is not an absolute
+    # heading. Fuse only the measured Z angular velocity; wheel odometry still
+    # provides vx, vy and vyaw through odom0.
+    imu0_config: [false, false, false,    # Position
+                  false, false, false,    # Orientation: do not fuse integrated yaw
+                  false, false, false,    # Linear velocity
+                  false, false, true,     # Angular velocity: use vyaw only
+                  false, false, false]    # Acceleration: do not integrate MPU6050 accel
     
     # IMU options
     imu0_differential: false
     imu0_relative: false
     imu0_queue_size: 10
     
-    # Remove gravity component from acceleration
-    imu0_remove_gravitational_acceleration: true
-    
-    # Rejection threshold
-    imu0_rejection_threshold: 2.0
+    # Acceleration is not fused, so no gravity removal is required.
+    imu0_remove_gravitational_acceleration: false
     
     # =========================================================================
     # Process Noise Covariance
