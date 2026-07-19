@@ -318,6 +318,7 @@ private:
     const RobotPose & pose, std::size_t & nearest_index, double & nearest_distance) const;
   TargetPoint compute_lookahead_target(
     const RobotPose & pose, double lookahead_distance) const;
+  void commit_channel_lookahead_progress(const TargetPoint & target);
   bool can_advance_to_index(
     std::size_t candidate_index, const RobotPose & pose,
     std::size_t & allowed_index) const;

@@ -889,6 +889,7 @@ void VisualLidarPathFollower::control_once()
     update_waypoint_shifts(pose, target.waypoint_index);
     target = compute_lookahead_target(pose, lookahead_distance_);
   }
+  commit_channel_lookahead_progress(target);
 
   auto cmd = compute_tracking_command(pose, target);
   const bool lidar_approach_active = approach_lidar_phase_active() && !target.reverse;
@@ -1291,6 +1292,34 @@ VisualLidarPathFollower::TargetPoint VisualLidarPathFollower::compute_lookahead_
   target.reverse = waypoint.reverse;
   target.point = Point2D{waypoint.x, waypoint.y};
   return target;
+}
+
+// channel 前瞻已经选定 target 后，将 target 之前的普通点正式提交。
+// current_index_ 是线段起点，因此只推进到 target - 1，仍保留 target 作为下一追踪点。
+// 拍照点是硬边界；即使未来目标选择逻辑变化，也不允许提交越过它。
+void VisualLidarPathFollower::commit_channel_lookahead_progress(
+  const VisualLidarPathFollower::TargetPoint & target)
+{
+  if (following_qr_path_ || !first_waypoint_reached_ || waypoints_.size() < 2) {
+    return;
+  }
+
+  const std::size_t target_index = std::min(target.waypoint_index, waypoints_.size() - 1);
+  if (target_index == 0 || target_index - 1 <= current_index_) {
+    return;
+  }
+
+  std::size_t committed_index = target_index - 1;
+  for (std::size_t index = current_index_ + 1; index <= committed_index; ++index) {
+    if (is_precision_waypoint(index)) {
+      committed_index = index - 1;
+      break;
+    }
+  }
+
+  if (committed_index > current_index_) {
+    advance_current_index_to(committed_index, "前瞻提交");
+  }
 }
 
 // 精准点不能被窗口投影直接跨过去；只有车真的到它半径内，才允许推进到该点。

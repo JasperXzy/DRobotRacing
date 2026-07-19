@@ -91,7 +91,7 @@ class RouteSnapshotRenderer(Node):
                 red_identity_radius, (225, 35, 35), True)
         self._draw_title(
             image,
-            f'02 Final dynamic route / red clusters (identity R={red_identity_radius:.2f}m)')
+            f'02 Final dynamic route / red clusters (history R={red_identity_radius:.2f}m)')
         self._save_png(image, final_path)
         self.get_logger().info(f'已生成逻辑2任务结束路线图: {final_path}')
 
@@ -139,7 +139,7 @@ class RouteSnapshotRenderer(Node):
                 red_identity_radius, (225, 35, 35), True)
             self._draw_title(
                 image,
-                f'03 Final route / red clusters (identity R={red_identity_radius:.2f}m)')
+                f'03 Final route / red clusters (history R={red_identity_radius:.2f}m)')
             self._save_png(image, final_path)
         self.get_logger().info(f'已生成逻辑3任务结束路线图: {final_path}')
 

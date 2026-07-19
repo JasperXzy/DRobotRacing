@@ -4,10 +4,12 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <memory>
 #include <string>
 #include <vector>
 
+#include "ai_msgs/msg/perception_targets.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "nav_msgs/msg/odometry.hpp"
@@ -45,6 +47,7 @@ private:
     WAITING_FOR_POSE,
     WAITING_FOR_QR,
     PATH_FOLLOWING,
+    RETURNING_TO_START,
     FINISHED
   };
 
@@ -122,18 +125,40 @@ private:
 
   struct Logic3StaticClusterTrack
   {
+    std::uint64_t identity_id{0};
     ScanPointCluster cluster;
     Point2D stability_anchor;
-    bool observation_active{false};
-    bool state1_active{false};
+    bool confirmed{false};
+    bool fixed_in_state1{false};
+    bool loss_pending{false};
     bool ready{false};
-    double stable_since_seconds{0.0};
     double last_seen_seconds{0.0};
-    int consecutive_sample_count{0};
+    double loss_started_seconds{0.0};
+    std::deque<double> rolling_hit_times;
+    std::deque<Point2D> rolling_hit_centers;
+    int state1_sample_count{0};
     double sample_center_sum_x{0.0};
     double sample_center_sum_y{0.0};
     std::vector<Point2D> sampled_points;
     Logic3StaticObstacle ready_obstacle;
+  };
+
+  // 发车后逻辑3使用独立的小半径身份跟踪。persistent 只改变控制生命周期，
+  // 不改变绘图颜色：所有运行后发现的障碍始终按红簇输出。
+  struct Logic3RuntimeClusterTrack
+  {
+    ScanPointCluster cluster;
+    Point2D latest_center;
+    Point2D stability_anchor;
+    Point2D shift_direction;
+    bool direction_valid{false};
+    bool confirmed{false};
+    bool persistent{false};
+    int consecutive_hits{0};
+    int missing_count{0};
+    double stable_since_seconds{0.0};
+    double last_seen_seconds{0.0};
+    std::deque<ScanPointCluster> recent_samples;
   };
 
   struct Logic3PlanningSnapshot
@@ -196,6 +221,10 @@ private:
   int waypoint_shift_check_count_{20};
   double waypoint_cloud_check_radius_{0.25};
   double waypoint_shift_target_clearance_{0.15};
+  bool waypoint_shift_enable_local_rebuild_{true};
+  double waypoint_shift_rebuild_min_progress_ratio_{0.15};
+  double waypoint_shift_rebuild_plateau_half_length_{0.08};
+  double waypoint_shift_rebuild_bezier_handle_ratio_{0.30};
   int waypoint_shift_points_before_{5};
   int waypoint_shift_points_after_{5};
   int waypoint_shift_confirm_scans_{3};
@@ -246,18 +275,25 @@ private:
   double logic3_runtime_roi_width_{3.75};
   double logic3_runtime_roi_height_{3.75};
   double logic3_runtime_channel_min_y_{1.60};
+  double logic3_runtime_cluster_match_radius_{0.35};
+  int logic3_runtime_average_samples_{5};
+  double logic3_runtime_stability_duration_seconds_{1.0};
+  double logic3_runtime_stability_radius_{0.12};
+  double logic3_runtime_offset_max_step_{0.03};
   int logic3_static_cluster_min_points_{1};
   int logic3_static_restriction_inflation_cells_{0};
   double logic3_static_channel_min_y_{1.60};
   double logic3_entry_exit_overlap_max_y_{2.50};
   double logic3_static_cluster_match_radius_{0.30};
-  double logic3_static_stability_duration_seconds_{1.0};
+  double logic3_static_confirmation_window_seconds_{2.0};
+  int logic3_static_confirmation_min_hits_{10};
   double logic3_static_stability_radius_{0.10};
   double logic3_static_far_stability_radius_{0.20};
   double logic3_static_stability_near_distance_{2.0};
   double logic3_static_stability_far_distance_{3.0};
   int logic3_static_average_samples_{10};
-  double logic3_static_track_release_seconds_{0.50};
+  double logic3_static_loss_grace_seconds_{1.0};
+  double logic3_static_reacquire_radius_{0.20};
   double logic3_red_history_merge_radius_{0.75};
   double logic3_pose_correction_deadband_xy_{0.005};
   double logic3_pose_correction_deadband_yaw_{0.003};
@@ -297,6 +333,31 @@ private:
   int qr_lidar_static_map_occupied_threshold_{50};
   double qr_lidar_static_map_wall_padding_{0.08};
 
+  // channel结束后由本节点继续追map起点。视觉仅提供锥桶避障与停车判定，
+  // 不参与目标点转向，也不启用visual_control的巡线、丢线和回线状态机。
+  bool return_to_start_enabled_{true};
+  double return_target_x_{0.0};
+  double return_target_y_{0.0};
+  double return_stop_zone_length_{0.50};
+  double return_stop_zone_upper_half_width_{0.25};
+  double return_stop_zone_lower_half_width_{0.40};
+  double return_follow_linear_speed_{0.85};
+  double return_turn_angular_gain_{1.60};
+  std::string return_visual_detection_topic_{"/racing_obstacle_detection"};
+  double return_visual_detection_timeout_{0.50};
+  int return_visual_source_width_{1920};
+  int return_visual_source_height_{1080};
+  int return_visual_control_width_{640};
+  int return_visual_control_height_{480};
+  double return_visual_avoid_linear_speed_{0.45};
+  double return_visual_avoid_angular_ratio_{-0.005};
+  double return_visual_obstacle_confidence_threshold_{0.50};
+  int return_visual_bottom_threshold_caution_{295};
+  int return_visual_bottom_threshold_avoid_{305};
+  double return_visual_delta_x_ratio_{0.0};
+  double return_visual_parking_sign_confidence_threshold_{0.70};
+  int return_visual_parking_y_threshold_{405};
+
   bool enable_qr_direction_select_{true};
   bool use_qr_parity_direction_{true};
   bool suspend_visual_control_on_qr_{true};
@@ -322,6 +383,8 @@ private:
   std::vector<int> waypoint_shift_pending_counts_;
   std::vector<int> waypoint_shift_missing_counts_;
   std::vector<int> waypoint_shift_dynamic_directions_;
+  std::vector<Point2D> waypoint_shift_world_directions_;
+  std::vector<std::size_t> waypoint_shift_source_indices_;
   std::size_t current_index_{0};
   bool first_waypoint_reached_{false};
   bool waiting_for_qr_start_{false};
@@ -336,6 +399,7 @@ private:
   std::size_t image_capture_waypoint_index_{0};
   std::chrono::steady_clock::time_point image_capture_stop_started_at_;
   bool publish_stop_on_exit_{true};
+  bool return_to_start_active_{false};
   std::uint64_t scan_sequence_{0};
   std::uint64_t processed_waypoint_shift_scan_sequence_{0};
   QrEscapeState qr_escape_state_{QrEscapeState::IDLE};
@@ -346,6 +410,8 @@ private:
   nav_msgs::msg::OccupancyGrid::ConstSharedPtr latest_restriction_map_;
   nav_msgs::msg::OccupancyGrid::ConstSharedPtr latest_logic3_static_restriction_map_;
   nav_msgs::msg::OccupancyGrid::ConstSharedPtr latest_logic3_runtime_restriction_map_;
+  ai_msgs::msg::PerceptionTargets::ConstSharedPtr latest_return_visual_targets_;
+  std::chrono::steady_clock::time_point latest_return_visual_received_at_;
 
   // 逻辑2/3共用的可信运动、稳定规划位姿、动态红簇和绘图状态。
   std::vector<Logic2TrackedCluster> logic2_runtime_red_tracks_;
@@ -368,13 +434,20 @@ private:
 
   // 仅逻辑3使用：静止阶段持续快照，可信发车后冻结绿色簇并作为动态基线。
   std::vector<Logic3StaticClusterTrack> logic3_static_cluster_tracks_;
+  std::deque<double> logic3_static_scan_times_;
+  std::vector<Logic3RuntimeClusterTrack> logic3_runtime_cluster_tracks_;
   Logic3PlanningSnapshot logic3_motion_pending_snapshot_;
   std::vector<ScanPointCluster> logic3_green_clusters_;
   std::vector<Point2D> logic3_green_shift_directions_;
   std::vector<double> logic3_frozen_base_offsets_;
+  std::vector<Point2D> logic3_frozen_base_shift_directions_;
+  std::vector<std::size_t> logic3_frozen_base_source_indices_;
   bool logic3_replay_frozen_clusters_{false};
   bool logic3_force_full_route_{false};
   bool logic3_force_confirm_{false};
+  bool logic3_static_state1_active_{false};
+  bool logic3_static_ready_{false};
+  std::uint64_t logic3_static_next_identity_id_{1};
   bool logic3_static_status_log_started_{false};
   double logic3_last_static_status_log_seconds_{0.0};
 
@@ -398,6 +471,8 @@ private:
     logic3_runtime_restriction_map_sub_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr qr_sub_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr logic2_odom_sub_;
+  rclcpp::Subscription<ai_msgs::msg::PerceptionTargets>::SharedPtr
+    return_visual_detection_sub_;
   rclcpp::TimerBase::SharedPtr timer_;
 
   const char * control_state_name(ControlState state) const;
@@ -405,6 +480,19 @@ private:
 
   void control_once();
   bool stop_if_route_finished();
+  void start_return_to_start();
+  void control_return_to_start(const RobotPose & pose);
+  void finish_return_to_start(const char * reason);
+  bool return_stop_zone_contains(const RobotPose & pose) const;
+  bool return_visual_detection_is_fresh() const;
+  int scale_return_visual_x(int x) const;
+  int scale_return_visual_y(int y) const;
+  int return_visual_target_center_x(const ai_msgs::msg::Target & target) const;
+  int return_visual_target_center_y(const ai_msgs::msg::Target & target) const;
+  int return_visual_target_bottom_y(const ai_msgs::msg::Target & target) const;
+  const ai_msgs::msg::Target * find_return_visual_avoidance_obstacle() const;
+  bool return_visual_obstacle_in_caution_zone() const;
+  bool return_visual_parking_condition_met() const;
 
   void update_route_progress(const RobotPose & pose);
   bool find_route_projection(
@@ -413,6 +501,7 @@ private:
     const RobotPose & pose, std::size_t & nearest_index, double & nearest_distance) const;
   TargetPoint compute_lookahead_target(
     const RobotPose & pose, double lookahead_distance) const;
+  void commit_channel_lookahead_progress(const TargetPoint & target);
   bool can_advance_to_index(std::size_t candidate_index, const RobotPose & pose, std::size_t & allowed_index) const;
   void advance_current_index_to(std::size_t new_index, const char * reason);
   double waypoint_pass_radius(std::size_t index) const;
@@ -435,6 +524,8 @@ private:
     const Point2D & ray_origin, const Point2D & ray_direction,
     double & distance) const;
   bool original_route_normal_at(std::size_t waypoint_index, Point2D & normal) const;
+  std::size_t rebuild_curvature_unsafe_shift_segments(
+    std::vector<Waypoint> & shifted_route);
   bool is_static_map_point(const RobotPose & robot_pose, const Point2D & base_point) const;
   bool is_static_map_point(
     const RobotPose & robot_pose, const Point2D & base_point,
@@ -464,13 +555,20 @@ private:
     std::size_t last_index) const;
   void update_logic2_runtime_red_tracks(
     const std::vector<ScanPointCluster> & clusters);
+  void update_logic3_runtime_red_tracks(
+    const std::vector<ScanPointCluster> & clusters, std::size_t route_first_index,
+    std::size_t route_last_index);
   void record_logic2_red_cluster(const ScanPointCluster & cluster);
   void update_logic3_static_cluster_tracks(
     const std::vector<ScanPointCluster> & clusters, const RobotPose & robot_pose);
   double logic3_static_stability_radius_for_range(double obstacle_range) const;
-  void reset_logic3_static_track_state(Logic3StaticClusterTrack & track) const;
+  void reset_logic3_static_epoch();
+  void begin_logic3_static_epoch();
   bool logic3_static_shift_direction(
     const ScanPointCluster & cluster, Point2D & shift_direction) const;
+  bool logic3_shift_direction_on_route_range(
+    const ScanPointCluster & cluster, std::size_t route_first_index,
+    std::size_t route_last_index, Point2D & shift_direction) const;
   std::vector<Logic3StaticObstacle> logic3_ready_static_obstacles() const;
   void maybe_log_logic3_static_obstacles(
     std::size_t current_frame_cluster_count,

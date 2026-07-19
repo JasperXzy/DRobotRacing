@@ -17,7 +17,7 @@ visual_lidar_path_follower:
     turn_angular_gain: 1.6  # 与SZC参数一致；正向航向误差到下位机前轮目标转角的比例增益
     enable_turn_speed_slowdown: true  # 是否根据即将下发的目标前轮转角绝对值线性降低巡点速度
     turn_speed_full_steering_angle: 0.55  # 达到最大降速比例时的目标前轮转角绝对值，单位rad
-    max_turn_speed_reduction_percent: 30.0  # 达到上述转角时的最大降速百分比，允许范围0～90
+    max_turn_speed_reduction_percent: 20.0  # 达到上述转角时的最大降速百分比，允许范围0～90
     lookahead_distance: 0.65  # 与SZC参数一致；正常巡点目标的前瞻距离，单位 m
     pass_radius: 0.6  # 航点未单独配置时使用的默认通过半径，单位 m
     route_projection_max_distance: 0.6  # 允许车辆匹配当前路线段的最大横向距离，单位 m
@@ -45,6 +45,10 @@ visual_lidar_path_follower:
     waypoint_shift_check_count: 100          # waypoint_shift模式每帧从当前追踪点开始检查的航点数量
     waypoint_cloud_check_radius: 0.5       # 点云距未来路线小于该距离才触发平移，单位 m；提前距离由check_count决定
     waypoint_shift_target_clearance: 0.40  # 偏移后的路线在选定横截方向越过点云最外沿的目标净距，单位 m
+    waypoint_shift_enable_local_rebuild: true  # 圆弧内侧法线偏移将反相时，保持原绕障方向并重建局部曲线
+    waypoint_shift_rebuild_min_progress_ratio: 0.15  # 1-kappa*d或离散前进比例不高于该值时提前触发重建
+    waypoint_shift_rebuild_plateau_half_length: 0.08  # 障碍对应点前后保持完整目标偏移量的半段长度，单位m
+    waypoint_shift_rebuild_bezier_handle_ratio: 0.30  # 局部重建Bezier控制柄占端点弦长的比例
     waypoint_shift_points_before: 30        # 障碍物最近路线点之前、车与障碍物之间统一偏移的点数
     waypoint_shift_points_after: 25          # 障碍物最近路线点之后的偏移点数；逻辑3重叠区前1/4保留前一个、后3/4由下一个覆盖
     waypoint_shift_confirm_scans: 3          # 同方向候选偏移连续命中这么多帧后首次提交；之后持续刷新
@@ -102,16 +106,18 @@ visual_lidar_path_follower:
     logic3_static_restriction_map_topic: /logic3_static_restriction_map  # 仅发车前绿色候选使用的Y向拓宽地图
     logic3_static_restriction_inflation_cells: 0  # 第三张地图已经显式拓宽，静态查询不再额外膨胀黑区
     logic3_static_channel_min_y: 1.60        # 静态绿色候选必须满足map.y严格大于该值，单位m
-    logic3_entry_exit_overlap_max_y: 2.45   # 该高度以下入口与出口路线重合；冻结绿色簇分别检查首段和尾段
+    logic3_entry_exit_overlap_max_y: 2.94   # 该高度以下入口与出口路线重合；冻结绿色簇分别检查首段和尾段
     logic3_static_cluster_min_points: 1       # 仅静止阶段允许1~3个远距离稀疏雷达点形成候选
     logic3_static_cluster_match_radius: 0.30  # 跨帧关联同一障碍物；仅关联身份，不代表该帧通过稳定性检查
-    logic3_static_stability_duration_seconds: 1.0  # 固定锚点的自适应半径内连续稳定多久才进入状态1
+    logic3_static_confirmation_window_seconds: 2.0  # 状态1前候选身份确认使用的滚动窗口，单位s
+    logic3_static_confirmation_min_hits: 10       # 候选在滚动窗口内至少命中该帧数才分配正式ID
     logic3_static_stability_radius: 0.10      # 近距离稳定观察、采样及READY持续监视半径，单位m
     logic3_static_far_stability_radius: 0.20  # 远距离稀疏回波使用的最大稳定半径，单位m
     logic3_static_stability_near_distance: 2.0  # 障碍物不超过该雷达距离时使用0.10m，单位m
     logic3_static_stability_far_distance: 3.0   # 超过该雷达距离时使用0.20m，中间线性插值
-    logic3_static_average_samples: 10        # 状态1后必须连续出现这么多雷达帧，才生成平均绿色坐标
-    logic3_static_track_release_seconds: 0.50  # 单帧丢失立即作废状态1；持续消失这么久再删除身份
+    logic3_static_average_samples: 10        # 状态1后累计这么多个有效观测，生成最终平均绿色坐标
+    logic3_static_loss_grace_seconds: 1.0    # 仅状态1后启用；判定失联后等待重捕的最长时间，单位s
+    logic3_static_reacquire_radius: 0.20     # 状态1后失联ID相对固定锚点的严格重捕半径，单位m
     logic3_old_cluster_radius: 0.60           # 仅发车冻结后启用的绿色身份/运行抑制半径，单位m
 
     # --------------------- 逻辑3：可信发车与位姿锚定 -----------------------
@@ -129,8 +135,13 @@ visual_lidar_path_follower:
     logic3_runtime_roi_width: 3.75            # 地图坐标下以车辆为中心，X方向总宽度，单位m
     logic3_runtime_roi_height: 3.75           # 地图坐标下以车辆为中心，Y方向总高度，单位m
     logic3_runtime_restriction_map_topic: /logic3_runtime_restriction_map  # 图4；仅过滤运行中的动态红簇
-    logic3_runtime_channel_min_y: 1.60       # 动态红簇必须满足map.y严格大于该值，单位m
-    logic3_red_history_merge_radius: 0.75     # 红簇身份/图片历史合并半径；不屏蔽逐帧动态避障
+    logic3_runtime_channel_min_y: 1.70       # 动态红簇必须满足map.y严格大于该值，单位m
+    logic3_runtime_cluster_match_radius: 0.35  # 运行红簇跨帧身份关联半径；小于障碍最小间距的一半，单位m
+    logic3_runtime_average_samples: 5        # 已关联红簇最近多少帧做坐标平滑；不把运动轨迹累积成大点云
+    logic3_runtime_stability_duration_seconds: 1.0  # 固定锚点附近持续多久后升级为任务内持久红簇
+    logic3_runtime_stability_radius: 0.12     # 判断运行红簇是否稳定的固定锚点半径，单位m
+    logic3_runtime_offset_max_step: 0.03      # 红簇已确认后每个雷达帧允许的最大偏移变化，单位m
+    logic3_red_history_merge_radius: 0.75     # 仅用于图片红圈和历史坐标归并；不参与运行轨迹关联或避障，单位m
 
     # ---------------------- 逻辑3：规划专用稳定坐标 ------------------------
     logic3_planning_pose_source: live_lidar_location  # 发车后仍完全沿用AMCL/lidar_location实时map定位
@@ -150,14 +161,14 @@ visual_lidar_path_follower:
     logic3_restriction_map_yaml: /root/D_Robot/test/dev_ws/src/origincar_system/map/race_keepout.yaml
 
     # 扫到二维码后的 zhy 条件倒车；数值来自 zhy 实跑的 1.15 profile
-    qr_reverse_y_threshold: 0.3  # map.y大于该值或前方有非墙障碍时触发；回到阈值内且前方清空后退出，单位m
+    qr_reverse_y_threshold: 0.5  # map.y大于该值或前方有非墙障碍时触发；回到阈值内且前方清空后退出，单位m
     qr_reverse_front_obstacle_distance: 0.6  # 前方触发/退出判断的最大距离，单位m
-    qr_reverse_front_fov_deg: 120.0  # 前方扇形总视野角，可手动设置，单位degree
+    qr_reverse_front_fov_deg: 160.0  # 前方扇形总视野角，可手动设置，单位degree
     qr_reverse_front_corridor_half_width: 0.4  # 前方矩形走廊半宽，可手动设置，单位m
     qr_reverse_rear_obstacle_distance: 0.3  # 后方停止判断的最大距离，单位m
     qr_reverse_rear_fov_deg: 120.0  # 后方扇形总视野角，可手动设置，单位degree
     qr_reverse_rear_corridor_half_width: 0.3  # 后方矩形走廊半宽，可手动设置，单位m
-    qr_reverse_linear_speed: 0.50  # 固定倒车线速度绝对值，单位m/s
+    qr_reverse_linear_speed: 0.75  # 固定倒车线速度绝对值，单位m/s
     qr_reverse_angular_speed: 0.5  # 固定倒车转向量；保留正负号
 
     # 倒车结束后到进入 channel 前：使用 zhy 实跑追点参数并叠加其雷达避障
@@ -177,16 +188,42 @@ visual_lidar_path_follower:
     qr_lidar_static_map_occupied_threshold: 50  # 占用值达到该值视为墙体
     qr_lidar_static_map_wall_padding: 0.1  # 墙体过滤膨胀半径，单位m
 
-    # QR 选路和 visual_control 接管切换
+    # channel结束后返回起点；本节点保持/cmd_vel控制权，visual_control继续挂起
+    return_to_start_enabled: true  # channel巡点结束后是否继续追map起点
+    return_target_x: 0.0  # 返回目标及停车矩形中心的map.x，单位m
+    return_target_y: 0.0  # 返回目标及停车矩形中心的map.y，单位m
+    # ZHY 1.15停车矩形：x=[-0.25,0.25]、y=[-0.40,0.25]；按base_link中心判定
+    return_stop_zone_length: 0.5  # X方向总长度，单位m
+    return_stop_zone_upper_half_width: 0.25  # 相对目标点的Y正方向边界，单位m
+    return_stop_zone_lower_half_width: 0.4  # 相对目标点的Y负方向边界绝对值，单位m
+    return_follow_linear_speed: 0.85  # 无近障碍时沿用visual_control巡线线速度，单位m/s
+    return_turn_angular_gain: 1.6  # 地图目标航向误差转向增益；停车标志不参与转向
+    return_visual_detection_topic: /racing_obstacle_detection  # 锥桶和停车标志检测话题
+    return_visual_detection_timeout: 0.5  # 检测超过该时间未更新时停车，单位s
+    # 检测框由1920x1080缩放到visual_control使用的640x480后再应用以下像素阈值
+    return_visual_source_width: 1920
+    return_visual_source_height: 1080
+    return_visual_control_width: 640
+    return_visual_control_height: 480
+    return_visual_avoid_linear_speed: 0.45  # 谨慎区降速和避障时沿用的visual_control速度，单位m/s
+    return_visual_avoid_angular_ratio: -0.005  # 沿用visual_control锥桶像素偏移转向系数
+    return_visual_obstacle_confidence_threshold: 0.5
+    return_visual_bottom_threshold_caution: 295
+    return_visual_bottom_threshold_avoid: 305
+    return_visual_delta_x_ratio: 0.0
+    return_visual_parking_sign_confidence_threshold: 0.7
+    return_visual_parking_y_threshold: 405  # 满足置信度且停车标志中心Y达到该值就停车，不追标志
+
+    # QR 选路、感知模式和 visual_control 挂起切换
     route_direction: auto  # 未通过二维码指定时的路线方向；auto 使用航点文件设置
     enable_qr_direction_select: true  # 是否根据二维码内容选择顺逆时针路线
     qr_topic: /qr_code  # 二维码识别结果话题
     suspend_visual_control_on_qr: true  # 扫码后立即挂起 visual_control，禁止其巡线、回线和丢线处理
-    resume_visual_control_on_finish: true  # 巡点结束后是否通知 visual_control 恢复
+    resume_visual_control_on_finish: false  # 返回起点由本节点负责；仅关闭return_to_start_enabled时作为旧流程开关
     visual_control_suspend_topic: /sign4return  # visual_control 接管状态切换话题
     visual_control_suspend_value: 5  # 通知 visual_control 挂起时发布的整数值
-    visual_control_resume_value: 6  # 环线结束后恢复 visual_control
-    perception_full_resume_value: 9  # 环线结束时让 YOLO 恢复完整识别
+    visual_control_resume_value: 6  # 仅旧流程恢复visual_control时使用；返回起点流程不发布该值
+    perception_full_resume_value: 9  # channel结束时只恢复YOLO完整识别，visual_control仍保持挂起
     perception_pause_value: 10  # 扫码成功后立即暂停YOLO；QR到channel已改用雷达避障
     use_qr_parity_direction: true  # 是否使用奇数顺时针、偶数逆时针的选路规则
     clockwise_qr_value: 1  # 不使用奇偶规则时代表顺时针的二维码值
