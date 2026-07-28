@@ -82,7 +82,7 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'ding_enable',
-            default_value='true',
+            default_value='false',
             description='Whether to publish a short TTS start notice before API inference.',
         ),
         DeclareLaunchArgument(
@@ -94,6 +94,16 @@ def generate_launch_description():
             'error_notice',
             default_value='识别失败，请检查网络或接口配置',
             description='TTS notice used when API inference fails.',
+        ),
+        DeclareLaunchArgument(
+            'last_success_text_file',
+            default_value='/root/D_Robot/test/dev_ws/captures/last_successful_vlm_text.txt',
+            description='Persistent cache of the last successful VLM speech text.',
+        ),
+        DeclareLaunchArgument(
+            'failure_prefix',
+            default_value='一',
+            description='Prefix spoken before the cached VLM text after inference failure.',
         ),
         DeclareLaunchArgument(
             'user_prompt',
@@ -186,14 +196,19 @@ def generate_launch_description():
                 'ding_enable': ParameterValue(ding_enable, value_type=bool),
                 'start_notice': LaunchConfiguration('start_notice'),
                 'error_notice': LaunchConfiguration('error_notice'),
+                'last_success_text_file': LaunchConfiguration('last_success_text_file'),
+                'failure_prefix': LaunchConfiguration('failure_prefix'),
                 'user_prompt': LaunchConfiguration('user_prompt'),
                 'env_file': LaunchConfiguration('env_file'),
                 'api_endpoint': LaunchConfiguration('api_endpoint'),
                 'api_model': LaunchConfiguration('api_model'),
                 'api_key': LaunchConfiguration('api_key'),
-                'api_timeout': ParameterValue(LaunchConfiguration('api_timeout'), value_type=float),
-                'api_max_tokens': ParameterValue(LaunchConfiguration('api_max_tokens'), value_type=int),
-                'api_temperature': ParameterValue(LaunchConfiguration('api_temperature'), value_type=float),
+                'api_timeout': ParameterValue(
+                    LaunchConfiguration('api_timeout'), value_type=float),
+                'api_max_tokens': ParameterValue(
+                    LaunchConfiguration('api_max_tokens'), value_type=int),
+                'api_temperature': ParameterValue(
+                    LaunchConfiguration('api_temperature'), value_type=float),
                 'api_image_detail': LaunchConfiguration('api_image_detail'),
                 'no_auth': ParameterValue(no_auth, value_type=bool),
             }],

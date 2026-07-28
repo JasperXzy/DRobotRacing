@@ -1,0 +1,35 @@
+<launch>
+  <arg
+    name="params_file"
+    default="$(find-pkg-share origincar_system)/config/visual_lidar_path_follower.yaml"/>
+  <arg
+    name="waypoints_file"
+    default="$(find-pkg-share origincar_system)/config/waypoints_qr.yaml"/>
+  <arg
+    name="route_waypoints_clockwise_file"
+    default="$(find-pkg-share origincar_system)/config/waypoints_channel_clockwise.yaml"/>
+  <arg
+    name="route_waypoints_counterclockwise_file"
+    default="$(find-pkg-share origincar_system)/config/waypoints_channel_counterclockwise.yaml"/>
+
+  <node
+    pkg="origincar_system"
+    exec="visual_lidar_path_follower"
+    name="visual_lidar_path_follower"
+    output="screen">
+    <param from="$(var params_file)"/>
+    <param name="waypoints_file" value="$(var waypoints_file)"/>
+    <param
+      name="route_waypoints_clockwise_file"
+      value="$(var route_waypoints_clockwise_file)"/>
+    <param
+      name="route_waypoints_counterclockwise_file"
+      value="$(var route_waypoints_counterclockwise_file)"/>
+  </node>
+
+  <node
+    pkg="origincar_system"
+    exec="route_snapshot_renderer.py"
+    name="route_snapshot_renderer"
+    output="screen"/>
+</launch>

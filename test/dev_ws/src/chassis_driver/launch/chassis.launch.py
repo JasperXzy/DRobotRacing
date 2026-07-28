@@ -24,7 +24,8 @@ def generate_launch_description():
         executable='chassis_driver_node',
         name='chassis_driver_node',
         output='screen',
-        parameters=[config_file]
+        parameters=[config_file],
+        arguments=['--ros-args', '--log-level', 'warn']
     )
 
     return LaunchDescription([

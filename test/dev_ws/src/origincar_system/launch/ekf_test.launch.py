@@ -37,6 +37,7 @@ def generate_launch_description():
         remappings=[
             ('odometry/filtered', '/odometry/filtered'),
         ],
+        arguments=['--ros-args', '--log-level', 'warn'],
     )
 
     # Keep the same static TFs as the mainline state_estimation ekf.launch.py.
@@ -53,6 +54,7 @@ def generate_launch_description():
             '--yaw', '0',
             '--frame-id', 'base_link',
             '--child-frame-id', 'imu_link',
+            '--ros-args', '--log-level', 'warn',
         ],
     )
 
@@ -69,6 +71,7 @@ def generate_launch_description():
             '--yaw', '0',
             '--frame-id', 'imu_link',
             '--child-frame-id', 'gyro_link',
+            '--ros-args', '--log-level', 'warn',
         ],
     )
 

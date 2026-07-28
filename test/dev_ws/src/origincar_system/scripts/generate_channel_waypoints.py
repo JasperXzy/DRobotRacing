@@ -28,7 +28,10 @@ Point = tuple[float, float]
 # 的自然延续，不是切换到另一套返程控制。和上方四个圆角一样，返程
 # 前先把交点两侧的直线各裁掉一小段，再在两条切线之间插入 Bezier。
 CHANNEL_LOOP_ENDPOINT: Point = (1.95, 1.80)
-RETURN_TARGET: Point = (0.0, 0.0)
+# Task3路线的最终虚拟牵引点取蓝色基地/紫色停车矩形中心。
+# base_link一进入该矩形便会立即停车，通常不要求真正压到中心点；
+# 中心点只负责在尚未触发停车时维持正确的末段运动趋势。
+RETURN_TARGET: Point = (0.00, 0.075)
 RETURN_CORNER_TRIM = 0.25
 _RETURN_DISTANCE = math.hypot(
     RETURN_TARGET[0] - CHANNEL_LOOP_ENDPOINT[0],
@@ -287,7 +290,7 @@ def render_yaml(
     lines = [
         f"# channel {direction_label}独立航点，禁止通过反向读取另一方向生成。",
         "# 由 scripts/generate_channel_waypoints.py 生成：8 条直线段 + 7 段独立贝塞尔平滑过渡。",
-        "# 最后一段Bezier在绿圈处圆滑接入返程直线，return_route_start标记该过渡首点。",
+        "# 最后一段Bezier在绿圈处圆滑接入返程直线，task3_start标记该过渡首点。",
         f"# 按 point_001..point_{len(points):03d} 的文件顺序行驶。",
         f"# 修改轨迹时请改脚本里的 {direction.upper()}_SEGMENTS 和对应过渡系数。",
         f"# target_spacing: {fmt(spacing)} m",
@@ -305,7 +308,7 @@ def render_yaml(
             f"    pass_radius: {fmt(POINT_PASS_RADIUS)}",
         ]
         if index == return_start_index:
-            waypoint_lines.append("    return_route_start: true")
+            waypoint_lines.append("    task3_start: true")
         lines.extend(waypoint_lines)
     return "\n".join(lines) + "\n"
 

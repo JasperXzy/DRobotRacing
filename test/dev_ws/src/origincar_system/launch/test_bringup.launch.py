@@ -30,7 +30,6 @@ def generate_launch_description():
     )
     qr_detector_params_file = LaunchConfiguration('qr_detector_params_file')
     perception_detector_params_file = LaunchConfiguration('perception_detector_params_file')
-    line_detector_params_file = LaunchConfiguration('line_detector_params_file')
     vlm_trigger_value = LaunchConfiguration('vlm_trigger_value')
     vlm_camera_topic = LaunchConfiguration('vlm_camera_topic')
     qr_stop_on_detect = LaunchConfiguration('qr_stop_on_detect')
@@ -115,13 +114,6 @@ def generate_launch_description():
             description='Perception detector config maintained in the test workspace.',
         ),
         DeclareLaunchArgument(
-            'line_detector_params_file',
-            default_value=PathJoinSubstitution([
-                test_share, 'config', 'perception', 'line_detector.yaml',
-            ]),
-            description='Line detector config maintained in the test workspace.',
-        ),
-        DeclareLaunchArgument(
             'vlm_trigger_value',
             default_value='8',
             description='Int32 value on /sign4return that triggers VLM capture/inference.',
@@ -166,6 +158,7 @@ def generate_launch_description():
         output='screen',
         emulate_tty=True,
         parameters=[lidar_config_file],
+        arguments=['--ros-args', '--log-level', 'warn'],
     )
 
     laser_static_tf = Node(
@@ -181,6 +174,7 @@ def generate_launch_description():
             '--yaw', '0.0',
             '--frame-id', 'base_link',
             '--child-frame-id', 'laser',
+            '--ros-args', '--log-level', 'warn',
         ],
     )
 
@@ -215,6 +209,7 @@ def generate_launch_description():
             nav2_params_file,
             {'yaml_filename': map_yaml_file},
         ],
+        arguments=['--ros-args', '--log-level', 'warn'],
     )
 
     restriction_map_server_node = Node(
@@ -228,6 +223,7 @@ def generate_launch_description():
             'topic_name': 'restriction_map',
             'frame_id': 'map',
         }],
+        arguments=['--ros-args', '--log-level', 'warn'],
     )
 
     logic3_static_restriction_map_server_node = Node(
@@ -241,6 +237,7 @@ def generate_launch_description():
             'topic_name': 'logic3_static_restriction_map',
             'frame_id': 'map',
         }],
+        arguments=['--ros-args', '--log-level', 'warn'],
     )
 
     logic3_runtime_restriction_map_server_node = Node(
@@ -254,6 +251,7 @@ def generate_launch_description():
             'topic_name': 'logic3_runtime_restriction_map',
             'frame_id': 'map',
         }],
+        arguments=['--ros-args', '--log-level', 'warn'],
     )
 
     amcl_node = Node(
@@ -265,6 +263,7 @@ def generate_launch_description():
         remappings=[
             ('/scan', '/scan'),
         ],
+        arguments=['--ros-args', '--log-level', 'warn'],
     )
 
     amcl_lifecycle_manager = Node(
@@ -283,6 +282,7 @@ def generate_launch_description():
                 'amcl',
             ],
         }],
+        arguments=['--ros-args', '--log-level', 'warn'],
     )
 
     perception_detector_node = Node(
@@ -291,15 +291,7 @@ def generate_launch_description():
         name='perception_detector_node',
         output='screen',
         parameters=[perception_detector_params_file],
-    )
-
-    line_detector_node = Node(
-        package='line_detector',
-        executable='line_detector_node',
-        name='GetLineCoordinate',
-        output='screen',
-        parameters=[line_detector_params_file],
-        arguments=['--ros-args', '--log-level', 'info'],
+        arguments=['--ros-args', '--log-level', 'warn'],
     )
 
     vlm_launch = IncludeLaunchDescription(
@@ -330,8 +322,10 @@ def generate_launch_description():
             qr_detector_params_file,
             {
                 'stop_on_detect': ParameterValue(qr_stop_on_detect, value_type=bool),
+                'speak_on_detect': False,
             },
         ],
+        arguments=['--ros-args', '--log-level', 'warn'],
     )
 
     foxglove_launch = IncludeLaunchDescription(
@@ -368,10 +362,9 @@ def generate_launch_description():
             amcl_lifecycle_manager,
         ]),
 
-        # t=7s: camera perception, line detection and VLM/TTS.
+        # t=7s: camera perception and VLM/TTS. Task1不再启动视觉巡线节点。
         TimerAction(period=7.0, actions=[
             perception_detector_node,
-            line_detector_node,
             vlm_launch,
         ]),
 

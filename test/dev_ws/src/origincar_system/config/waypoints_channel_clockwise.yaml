@@ -1,7 +1,7 @@
 # channel 顺时针独立航点，禁止通过反向读取另一方向生成。
 # 由 scripts/generate_channel_waypoints.py 生成：8 条直线段 + 7 段独立贝塞尔平滑过渡。
-# 最后一段Bezier在绿圈处圆滑接入返程直线，return_route_start标记该过渡首点。
-# 按 point_001..point_661 的文件顺序行驶。
+# 最后一段Bezier在绿圈处圆滑接入返程直线，task3_start标记该过渡首点。
+# 按 point_001..point_658 的文件顺序行驶。
 # 修改轨迹时请改脚本里的 CLOCKWISE_SEGMENTS 和对应过渡系数。
 # target_spacing: 0.02 m
 route_direction: clockwise
@@ -14,3302 +14,3287 @@ routes:
     pass_radius: 0.6
   - name: point_002
     x: 1.95
-    y: 1.819999
+    y: 1.820011
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_003
     x: 1.95
-    y: 1.839998
+    y: 1.840023
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_004
     x: 1.95
-    y: 1.859997
+    y: 1.860034
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_005
     x: 1.95
-    y: 1.879996
+    y: 1.880045
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_006
     x: 1.95
-    y: 1.899995
+    y: 1.900056
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_007
     x: 1.95
-    y: 1.919994
+    y: 1.920068
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_008
     x: 1.95
-    y: 1.939993
+    y: 1.940079
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_009
     x: 1.95
-    y: 1.959993
+    y: 1.96009
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_010
     x: 1.95
-    y: 1.979992
+    y: 1.980102
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_011
     x: 1.95
-    y: 1.999991
+    y: 2.000113
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_012
     x: 1.95
-    y: 2.01999
+    y: 2.020124
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_013
     x: 1.95
-    y: 2.039989
+    y: 2.040135
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_014
     x: 1.95
-    y: 2.059988
+    y: 2.060147
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_015
     x: 1.95
-    y: 2.079987
+    y: 2.080158
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_016
     x: 1.95
-    y: 2.099986
+    y: 2.100169
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_017
     x: 1.95
-    y: 2.119985
+    y: 2.120181
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_018
     x: 1.95
-    y: 2.139984
+    y: 2.140192
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_019
     x: 1.95
-    y: 2.159983
+    y: 2.160203
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_020
     x: 1.95
-    y: 2.179982
+    y: 2.180215
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_021
     x: 1.95
-    y: 2.199981
+    y: 2.200226
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_022
     x: 1.95
-    y: 2.21998
+    y: 2.220237
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_023
     x: 1.95
-    y: 2.23998
+    y: 2.240248
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_024
     x: 1.95
-    y: 2.259979
+    y: 2.26026
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_025
     x: 1.95
-    y: 2.279978
+    y: 2.280271
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_026
     x: 1.95
-    y: 2.299977
+    y: 2.300282
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_027
     x: 1.95
-    y: 2.319976
+    y: 2.320294
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_028
     x: 1.95
-    y: 2.339975
+    y: 2.340305
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_029
     x: 1.95
-    y: 2.359974
+    y: 2.360316
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_030
     x: 1.95
-    y: 2.379973
+    y: 2.380327
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_031
     x: 1.95
-    y: 2.399972
+    y: 2.400339
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_032
     x: 1.95
-    y: 2.419971
+    y: 2.42035
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_033
     x: 1.95
-    y: 2.43997
+    y: 2.440361
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_034
     x: 1.95
-    y: 2.459969
+    y: 2.460373
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_035
     x: 1.95
-    y: 2.479968
-    yaw: 1.570796
+    y: 2.480384
+    yaw: 1.570945
     pass_radius: 0.6
   - name: point_036
-    x: 1.95
-    y: 2.499967
-    yaw: 1.592277
+    x: 1.949994
+    y: 2.500395
+    yaw: 1.593058
     pass_radius: 0.6
   - name: point_037
-    x: 1.949141
-    y: 2.519943
-    yaw: 1.652491
+    x: 1.949109
+    y: 2.520381
+    yaw: 1.653991
     pass_radius: 0.6
   - name: point_038
-    x: 1.946739
-    y: 2.539792
-    yaw: 1.724607
+    x: 1.946672
+    y: 2.540239
+    yaw: 1.726271
     pass_radius: 0.6
   - name: point_039
-    x: 1.943018
-    y: 2.559438
-    yaw: 1.787026
+    x: 1.942917
+    y: 2.559891
+    yaw: 1.788563
     pass_radius: 0.6
   - name: point_040
-    x: 1.938163
-    y: 2.578836
-    yaw: 1.843089
+    x: 1.93803
+    y: 2.579293
+    yaw: 1.844295
     pass_radius: 0.6
   - name: point_041
-    x: 1.932266
-    y: 2.597943
-    yaw: 1.892972
+    x: 1.932112
+    y: 2.598407
+    yaw: 1.894104
     pass_radius: 0.6
   - name: point_042
-    x: 1.925503
-    y: 2.616762
-    yaw: 1.937883
+    x: 1.925319
+    y: 2.617228
+    yaw: 1.938973
     pass_radius: 0.6
   - name: point_043
-    x: 1.917916
-    y: 2.635264
-    yaw: 1.97911
+    x: 1.917712
+    y: 2.635735
+    yaw: 1.979948
     pass_radius: 0.6
   - name: point_044
-    x: 1.909625
-    y: 2.653463
-    yaw: 2.017157
+    x: 1.909401
+    y: 2.653938
+    yaw: 2.018174
     pass_radius: 0.6
   - name: point_045
-    x: 1.900653
-    y: 2.671335
-    yaw: 2.053244
+    x: 1.900402
+    y: 2.67181
+    yaw: 2.054242
     pass_radius: 0.6
   - name: point_046
-    x: 1.891072
-    y: 2.688888
-    yaw: 2.086656
+    x: 1.890801
+    y: 2.689367
+    yaw: 2.087441
     pass_radius: 0.6
   - name: point_047
-    x: 1.880927
-    y: 2.706121
-    yaw: 2.119014
+    x: 1.880636
+    y: 2.706603
+    yaw: 2.119988
     pass_radius: 0.6
   - name: point_048
-    x: 1.87023
-    y: 2.723018
-    yaw: 2.150645
+    x: 1.869913
+    y: 2.723498
+    yaw: 2.151619
     pass_radius: 0.6
   - name: point_049
-    x: 1.859015
-    y: 2.739576
-    yaw: 2.181014
+    x: 1.858679
+    y: 2.740057
+    yaw: 2.181798
     pass_radius: 0.6
   - name: point_050
-    x: 1.847313
-    y: 2.755793
-    yaw: 2.210653
+    x: 1.846956
+    y: 2.756274
+    yaw: 2.211447
     pass_radius: 0.6
   - name: point_051
-    x: 1.835137
-    y: 2.771657
-    yaw: 2.240648
+    x: 1.83476
+    y: 2.772138
+    yaw: 2.241663
     pass_radius: 0.6
   - name: point_052
-    x: 1.822483
-    y: 2.787143
-    yaw: 2.270937
+    x: 1.82208
+    y: 2.787618
+    yaw: 2.271977
     pass_radius: 0.6
   - name: point_053
-    x: 1.809369
-    y: 2.802241
-    yaw: 2.301053
+    x: 1.808945
+    y: 2.802714
+    yaw: 2.301916
     pass_radius: 0.6
   - name: point_054
-    x: 1.795806
-    y: 2.816937
-    yaw: 2.331556
+    x: 1.795361
+    y: 2.817407
+    yaw: 2.332525
     pass_radius: 0.6
   - name: point_055
-    x: 1.781796
-    y: 2.831207
-    yaw: 2.363653
+    x: 1.781327
+    y: 2.831671
+    yaw: 2.364829
     pass_radius: 0.6
   - name: point_056
-    x: 1.767318
-    y: 2.845003
-    yaw: 2.397141
+    x: 1.766823
+    y: 2.845456
+    yaw: 2.398296
     pass_radius: 0.6
   - name: point_057
-    x: 1.752385
-    y: 2.858303
-    yaw: 2.431434
+    x: 1.751867
+    y: 2.85875
+    yaw: 2.432483
     pass_radius: 0.6
   - name: point_058
-    x: 1.736996
-    y: 2.871074
-    yaw: 2.468244
+    x: 1.736454
+    y: 2.871512
+    yaw: 2.469653
     pass_radius: 0.6
   - name: point_059
-    x: 1.721125
-    y: 2.88324
-    yaw: 2.507858
+    x: 1.720552
+    y: 2.883658
+    yaw: 2.509357
     pass_radius: 0.6
   - name: point_060
-    x: 1.704774
-    y: 2.894752
-    yaw: 2.549868
+    x: 1.704177
+    y: 2.895156
+    yaw: 2.551523
     pass_radius: 0.6
   - name: point_061
-    x: 1.687939
-    y: 2.905543
-    yaw: 2.596232
+    x: 1.687309
+    y: 2.905919
+    yaw: 2.598008
     pass_radius: 0.6
   - name: point_062
-    x: 1.670592
-    y: 2.915492
-    yaw: 2.647
+    x: 1.669937
+    y: 2.915848
+    yaw: 2.648987
     pass_radius: 0.6
   - name: point_063
-    x: 1.652751
-    y: 2.92452
-    yaw: 2.702964
+    x: 1.652063
+    y: 2.924837
+    yaw: 2.705112
     pass_radius: 0.6
   - name: point_064
-    x: 1.634403
-    y: 2.932468
-    yaw: 2.766196
+    x: 1.633689
+    y: 2.932757
+    yaw: 2.768617
     pass_radius: 0.6
   - name: point_065
-    x: 1.615567
-    y: 2.939174
-    yaw: 2.836671
+    x: 1.614821
+    y: 2.93941
+    yaw: 2.839888
     pass_radius: 0.6
   - name: point_066
-    x: 1.596287
-    y: 2.944465
-    yaw: 2.915879
+    x: 1.595512
+    y: 2.944638
+    yaw: 2.919506
     pass_radius: 0.6
   - name: point_067
-    x: 1.576631
-    y: 2.948114
-    yaw: 3.005691
+    x: 1.575831
+    y: 2.948214
+    yaw: 3.00976
     pass_radius: 0.6
   - name: point_068
-    x: 1.556718
-    y: 2.949876
-    yaw: 3.094381
+    x: 1.555899
+    y: 2.949891
+    yaw: 3.09691
     pass_radius: 0.6
   - name: point_069
-    x: 1.53672
+    x: 1.535889
     y: 2.95
-    yaw: 3.138487
+    yaw: 3.138867
     pass_radius: 0.6
   - name: point_070
-    x: 1.516721
+    x: 1.515878
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_071
-    x: 1.496722
+    x: 1.495866
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_072
-    x: 1.476723
+    x: 1.475855
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_073
-    x: 1.456724
+    x: 1.455844
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_074
-    x: 1.436725
+    x: 1.435832
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_075
-    x: 1.416725
+    x: 1.415821
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_076
-    x: 1.396726
+    x: 1.39581
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_077
-    x: 1.376727
+    x: 1.375799
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_078
-    x: 1.356728
+    x: 1.355787
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_079
-    x: 1.336729
+    x: 1.335776
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_080
-    x: 1.31673
+    x: 1.315765
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_081
-    x: 1.296731
+    x: 1.295753
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_082
-    x: 1.276732
+    x: 1.275742
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_083
-    x: 1.256733
+    x: 1.255731
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_084
-    x: 1.236734
+    x: 1.235719
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_085
-    x: 1.216735
+    x: 1.215708
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_086
-    x: 1.196736
+    x: 1.195697
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_087
-    x: 1.176737
+    x: 1.175686
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_088
-    x: 1.156738
+    x: 1.155674
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_089
-    x: 1.136738
+    x: 1.135663
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_090
-    x: 1.116739
+    x: 1.115652
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_091
-    x: 1.09674
+    x: 1.09564
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_092
-    x: 1.076741
+    x: 1.075629
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_093
-    x: 1.056742
+    x: 1.055618
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_094
-    x: 1.036743
+    x: 1.035607
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_095
-    x: 1.016744
+    x: 1.015595
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_096
-    x: 0.996745
+    x: 0.995584
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_097
-    x: 0.976746
+    x: 0.975573
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_098
-    x: 0.956747
+    x: 0.955561
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_099
-    x: 0.936748
+    x: 0.93555
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_100
-    x: 0.916749
+    x: 0.915539
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_101
-    x: 0.89675
+    x: 0.895528
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_102
-    x: 0.876751
+    x: 0.875516
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_103
-    x: 0.856751
+    x: 0.855505
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_104
-    x: 0.836752
+    x: 0.835494
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_105
-    x: 0.816753
+    x: 0.815482
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_106
-    x: 0.796754
+    x: 0.795471
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_107
-    x: 0.776755
+    x: 0.77546
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_108
-    x: 0.756756
+    x: 0.755449
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_109
-    x: 0.736757
+    x: 0.735437
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_110
-    x: 0.716758
+    x: 0.715426
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_111
-    x: 0.696759
+    x: 0.695415
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_112
-    x: 0.67676
+    x: 0.675403
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_113
-    x: 0.656761
+    x: 0.655392
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_114
-    x: 0.636762
+    x: 0.635381
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_115
-    x: 0.616763
+    x: 0.615369
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_116
-    x: 0.596764
+    x: 0.595358
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_117
-    x: 0.576765
+    x: 0.575347
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_118
-    x: 0.556765
+    x: 0.555336
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_119
-    x: 0.536766
+    x: 0.535324
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_120
-    x: 0.516767
+    x: 0.515313
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_121
-    x: 0.496768
+    x: 0.495302
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_122
-    x: 0.476769
+    x: 0.47529
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_123
-    x: 0.45677
+    x: 0.455279
     y: 2.95
-    yaw: 3.123496
+    yaw: 3.119309
     pass_radius: 0.6
   - name: point_124
-    x: 0.436797
-    y: 2.950723
-    yaw: 3.036946
+    x: 0.435303
+    y: 2.950891
+    yaw: 3.027566
     pass_radius: 0.6
   - name: point_125
-    x: 0.417111
-    y: 2.954165
-    yaw: 2.90844
+    x: 0.415643
+    y: 2.954539
+    yaw: 2.899683
     pass_radius: 0.6
   - name: point_126
-    x: 0.397975
-    y: 2.959943
-    yaw: 2.800216
+    x: 0.396537
+    y: 2.960457
+    yaw: 2.793013
     pass_radius: 0.6
   - name: point_127
-    x: 0.379481
-    y: 2.967535
-    yaw: 2.711088
+    x: 0.378086
+    y: 2.968188
+    yaw: 2.704448
     pass_radius: 0.6
   - name: point_128
-    x: 0.361668
-    y: 2.976616
-    yaw: 2.634791
+    x: 0.360318
+    y: 2.977382
+    yaw: 2.629263
     pass_radius: 0.6
   - name: point_129
-    x: 0.34454
-    y: 2.986933
-    yaw: 2.56816
+    x: 0.343231
+    y: 2.987791
+    yaw: 2.563286
     pass_radius: 0.6
   - name: point_130
-    x: 0.328089
-    y: 2.998302
-    yaw: 2.508174
+    x: 0.326825
+    y: 2.999244
+    yaw: 2.503645
     pass_radius: 0.6
   - name: point_131
-    x: 0.312318
-    y: 3.010595
-    yaw: 2.452354
+    x: 0.311099
+    y: 3.011613
+    yaw: 2.448261
     pass_radius: 0.6
   - name: point_132
-    x: 0.297237
-    y: 3.023726
-    yaw: 2.399206
+    x: 0.296058
+    y: 3.02481
+    yaw: 2.395335
     pass_radius: 0.6
   - name: point_133
-    x: 0.282859
-    y: 3.037624
-    yaw: 2.347384
+    x: 0.281726
+    y: 3.038772
+    yaw: 2.343241
     pass_radius: 0.6
   - name: point_134
-    x: 0.269217
-    y: 3.052244
-    yaw: 2.295334
+    x: 0.26814
+    y: 3.053461
+    yaw: 2.290882
     pass_radius: 0.6
   - name: point_135
-    x: 0.256361
-    y: 3.06756
-    yaw: 2.241618
+    x: 0.255345
+    y: 3.068845
+    yaw: 2.236969
     pass_radius: 0.6
   - name: point_136
-    x: 0.244366
-    y: 3.083559
-    yaw: 2.184656
+    x: 0.243419
+    y: 3.08491
+    yaw: 2.179697
     pass_radius: 0.6
   - name: point_137
-    x: 0.233335
-    y: 3.100237
-    yaw: 2.122584
+    x: 0.232468
+    y: 3.101655
+    yaw: 2.117188
     pass_radius: 0.6
   - name: point_138
-    x: 0.223413
-    y: 3.117596
-    yaw: 2.053104
+    x: 0.222639
+    y: 3.11908
+    yaw: 2.047118
     pass_radius: 0.6
   - name: point_139
-    x: 0.2148
-    y: 3.135639
-    yaw: 1.973307
+    x: 0.214134
+    y: 3.137188
+    yaw: 1.965712
     pass_radius: 0.6
   - name: point_140
-    x: 0.207765
-    y: 3.154352
-    yaw: 1.877988
+    x: 0.207261
+    y: 3.155974
+    yaw: 1.869131
     pass_radius: 0.6
   - name: point_141
-    x: 0.202728
-    y: 3.173694
-    yaw: 1.761837
+    x: 0.202392
+    y: 3.175372
+    yaw: 1.751078
     pass_radius: 0.6
   - name: point_142
-    x: 0.200191
-    y: 3.193513
-    yaw: 1.639198
+    x: 0.200105
+    y: 3.195234
+    yaw: 1.630725
     pass_radius: 0.6
   - name: point_143
     x: 0.2
-    y: 3.213509
-    yaw: 1.575567
+    y: 3.215244
+    yaw: 1.573429
     pass_radius: 0.6
   - name: point_144
     x: 0.2
-    y: 3.233508
+    y: 3.235255
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_145
     x: 0.2
-    y: 3.253507
+    y: 3.255267
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_146
     x: 0.2
-    y: 3.273506
+    y: 3.275278
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_147
     x: 0.2
-    y: 3.293505
+    y: 3.295289
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_148
     x: 0.2
-    y: 3.313504
+    y: 3.3153
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_149
     x: 0.2
-    y: 3.333503
+    y: 3.335312
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_150
     x: 0.2
-    y: 3.353502
+    y: 3.355323
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_151
     x: 0.2
-    y: 3.373501
+    y: 3.375334
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_152
     x: 0.2
-    y: 3.3935
+    y: 3.395346
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_153
     x: 0.2
-    y: 3.413499
+    y: 3.415357
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_154
     x: 0.2
-    y: 3.433498
+    y: 3.435368
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_155
     x: 0.2
-    y: 3.453497
+    y: 3.455379
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_156
     x: 0.2
-    y: 3.473497
+    y: 3.475391
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_157
     x: 0.2
-    y: 3.493496
+    y: 3.495402
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_158
     x: 0.2
-    y: 3.513495
+    y: 3.515413
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_159
     x: 0.2
-    y: 3.533494
+    y: 3.535425
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_160
     x: 0.2
-    y: 3.553493
+    y: 3.555436
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_161
     x: 0.2
-    y: 3.573492
+    y: 3.575447
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_162
     x: 0.2
-    y: 3.593491
+    y: 3.595459
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_163
     x: 0.2
-    y: 3.61349
+    y: 3.61547
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_164
     x: 0.2
-    y: 3.633489
+    y: 3.635481
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_165
     x: 0.2
-    y: 3.653488
+    y: 3.655492
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_166
     x: 0.2
-    y: 3.673487
+    y: 3.675504
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_167
     x: 0.2
-    y: 3.693486
+    y: 3.695515
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_168
     x: 0.2
-    y: 3.713485
+    y: 3.715526
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_169
     x: 0.2
-    y: 3.733484
+    y: 3.735538
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_170
     x: 0.2
-    y: 3.753483
+    y: 3.755549
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_171
     x: 0.2
-    y: 3.773483
+    y: 3.77556
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_172
     x: 0.2
-    y: 3.793482
+    y: 3.795571
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_173
     x: 0.2
-    y: 3.813481
+    y: 3.815583
     yaw: 1.570796
     pass_radius: 0.6
   - name: point_174
     x: 0.2
-    y: 3.83348
-    yaw: 1.569335
+    y: 3.835594
+    yaw: 1.567125
     pass_radius: 0.6
   - name: point_175
-    x: 0.200058
-    y: 3.853478
-    yaw: 1.516494
+    x: 0.200147
+    y: 3.855603
+    yaw: 1.506739
     pass_radius: 0.6
   - name: point_176
-    x: 0.202167
-    y: 3.873347
-    yaw: 1.399007
+    x: 0.202557
+    y: 3.87545
+    yaw: 1.385316
     pass_radius: 0.6
   - name: point_177
-    x: 0.206876
-    y: 3.892771
-    yaw: 1.279586
+    x: 0.207507
+    y: 3.894827
+    yaw: 1.268094
     pass_radius: 0.6
   - name: point_178
-    x: 0.213629
-    y: 3.911587
-    yaw: 1.181948
+    x: 0.214465
+    y: 3.913581
+    yaw: 1.172044
     pass_radius: 0.6
   - name: point_179
-    x: 0.22202
-    y: 3.929734
-    yaw: 1.099732
+    x: 0.223026
+    y: 3.931662
+    yaw: 1.09148
     pass_radius: 0.6
   - name: point_180
-    x: 0.231764
-    y: 3.947194
-    yaw: 1.028787
+    x: 0.232905
+    y: 3.94906
+    yaw: 1.021686
     pass_radius: 0.6
   - name: point_181
-    x: 0.242638
-    y: 3.963974
-    yaw: 0.965988
+    x: 0.2439
+    y: 3.965776
+    yaw: 0.959378
     pass_radius: 0.6
   - name: point_182
-    x: 0.254493
-    y: 3.980077
-    yaw: 0.90842
+    x: 0.255865
+    y: 3.981813
+    yaw: 0.902245
     pass_radius: 0.6
   - name: point_183
-    x: 0.267224
-    y: 3.995498
-    yaw: 0.854122
+    x: 0.268695
+    y: 3.997166
+    yaw: 0.848416
     pass_radius: 0.6
   - name: point_184
-    x: 0.280755
-    y: 4.010222
-    yaw: 0.801764
+    x: 0.282314
+    y: 4.011825
+    yaw: 0.796302
     pass_radius: 0.6
   - name: point_185
-    x: 0.295028
-    y: 4.024227
-    yaw: 0.750002
+    x: 0.296672
+    y: 4.025761
+    yaw: 0.744266
     pass_radius: 0.6
   - name: point_186
-    x: 0.310008
-    y: 4.037473
-    yaw: 0.697288
+    x: 0.311741
+    y: 4.038925
+    yaw: 0.691072
     pass_radius: 0.6
   - name: point_187
-    x: 0.325675
-    y: 4.049899
-    yaw: 0.642128
+    x: 0.327497
+    y: 4.051257
+    yaw: 0.635507
     pass_radius: 0.6
   - name: point_188
-    x: 0.342021
-    y: 4.061415
-    yaw: 0.582817
+    x: 0.343932
+    y: 4.062668
+    yaw: 0.575697
     pass_radius: 0.6
   - name: point_189
-    x: 0.359048
-    y: 4.071899
-    yaw: 0.517292
+    x: 0.361047
+    y: 4.073032
+    yaw: 0.509483
     pass_radius: 0.6
   - name: point_190
-    x: 0.376758
-    y: 4.081179
-    yaw: 0.442967
+    x: 0.378843
+    y: 4.082172
+    yaw: 0.433531
     pass_radius: 0.6
   - name: point_191
-    x: 0.395147
-    y: 4.089024
-    yaw: 0.355823
+    x: 0.397326
+    y: 4.089825
+    yaw: 0.344492
     pass_radius: 0.6
   - name: point_192
-    x: 0.414193
-    y: 4.095092
-    yaw: 0.251085
+    x: 0.416455
+    y: 4.095667
+    yaw: 0.237066
     pass_radius: 0.6
   - name: point_193
-    x: 0.433804
-    y: 4.09894
-    yaw: 0.123428
+    x: 0.436136
+    y: 4.099202
+    yaw: 0.108804
     pass_radius: 0.6
   - name: point_194
-    x: 0.453758
+    x: 0.456117
     y: 4.1
-    yaw: 0.026531
+    yaw: 0.019943
     pass_radius: 0.6
   - name: point_195
-    x: 0.473758
+    x: 0.476128
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_196
-    x: 0.493757
+    x: 0.49614
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_197
-    x: 0.513756
+    x: 0.516151
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_198
-    x: 0.533755
+    x: 0.536162
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_199
-    x: 0.553754
+    x: 0.556174
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_200
-    x: 0.573753
+    x: 0.576185
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_201
-    x: 0.593752
+    x: 0.596196
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_202
-    x: 0.613751
+    x: 0.616207
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_203
-    x: 0.63375
+    x: 0.636219
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_204
-    x: 0.653749
+    x: 0.65623
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_205
-    x: 0.673748
+    x: 0.676241
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_206
-    x: 0.693747
+    x: 0.696253
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_207
-    x: 0.713746
+    x: 0.716264
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_208
-    x: 0.733745
+    x: 0.736275
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_209
-    x: 0.753745
+    x: 0.756286
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_210
-    x: 0.773744
+    x: 0.776298
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_211
-    x: 0.793743
+    x: 0.796309
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_212
-    x: 0.813742
+    x: 0.81632
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_213
-    x: 0.833741
+    x: 0.836332
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_214
-    x: 0.85374
+    x: 0.856343
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_215
-    x: 0.873739
+    x: 0.876354
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_216
-    x: 0.893738
+    x: 0.896366
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_217
-    x: 0.913737
+    x: 0.916377
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_218
-    x: 0.933736
+    x: 0.936388
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_219
-    x: 0.953735
+    x: 0.956399
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_220
-    x: 0.973734
+    x: 0.976411
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_221
-    x: 0.993733
+    x: 0.996422
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_222
-    x: 1.013732
+    x: 1.016433
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_223
-    x: 1.033732
+    x: 1.036445
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_224
-    x: 1.053731
+    x: 1.056456
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_225
-    x: 1.07373
+    x: 1.076467
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_226
-    x: 1.093729
+    x: 1.096478
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_227
-    x: 1.113728
+    x: 1.11649
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_228
-    x: 1.133727
+    x: 1.136501
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_229
-    x: 1.153726
+    x: 1.156512
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_230
-    x: 1.173725
+    x: 1.176524
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_231
-    x: 1.193724
+    x: 1.196535
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_232
-    x: 1.213723
+    x: 1.216546
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_233
-    x: 1.233722
+    x: 1.236557
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_234
-    x: 1.253721
+    x: 1.256569
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_235
-    x: 1.27372
+    x: 1.27658
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_236
-    x: 1.293719
+    x: 1.296591
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_237
-    x: 1.313718
+    x: 1.316603
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_238
-    x: 1.333718
+    x: 1.336614
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_239
-    x: 1.353717
+    x: 1.356625
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_240
-    x: 1.373716
+    x: 1.376637
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_241
-    x: 1.393715
+    x: 1.396648
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_242
-    x: 1.413714
+    x: 1.416659
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_243
-    x: 1.433713
+    x: 1.43667
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_244
-    x: 1.453712
+    x: 1.456682
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_245
-    x: 1.473711
+    x: 1.476693
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_246
-    x: 1.49371
+    x: 1.496704
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_247
-    x: 1.513709
+    x: 1.516716
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_248
-    x: 1.533708
+    x: 1.536727
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_249
-    x: 1.553707
+    x: 1.556738
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_250
-    x: 1.573706
+    x: 1.576749
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_251
-    x: 1.593705
+    x: 1.596761
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_252
-    x: 1.613705
+    x: 1.616772
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_253
-    x: 1.633704
+    x: 1.636783
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_254
-    x: 1.653703
+    x: 1.656795
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_255
-    x: 1.673702
+    x: 1.676806
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_256
-    x: 1.693701
+    x: 1.696817
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_257
-    x: 1.7137
+    x: 1.716828
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_258
-    x: 1.733699
+    x: 1.73684
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_259
-    x: 1.753698
+    x: 1.756851
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_260
-    x: 1.773697
+    x: 1.776862
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_261
-    x: 1.793696
+    x: 1.796874
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_262
-    x: 1.813695
+    x: 1.816885
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_263
-    x: 1.833694
+    x: 1.836896
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_264
-    x: 1.853693
+    x: 1.856907
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_265
-    x: 1.873692
+    x: 1.876919
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_266
-    x: 1.893692
+    x: 1.89693
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_267
-    x: 1.913691
+    x: 1.916941
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_268
-    x: 1.93369
+    x: 1.936953
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_269
-    x: 1.953689
+    x: 1.956964
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_270
-    x: 1.973688
+    x: 1.976975
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_271
-    x: 1.993687
+    x: 1.996987
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_272
-    x: 2.013686
+    x: 2.016998
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_273
-    x: 2.033685
+    x: 2.037009
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_274
-    x: 2.053684
+    x: 2.05702
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_275
-    x: 2.073683
+    x: 2.077032
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_276
-    x: 2.093682
+    x: 2.097043
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_277
-    x: 2.113681
+    x: 2.117054
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_278
-    x: 2.13368
+    x: 2.137066
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_279
-    x: 2.153679
+    x: 2.157077
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_280
-    x: 2.173678
+    x: 2.177088
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_281
-    x: 2.193678
+    x: 2.197099
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_282
-    x: 2.213677
+    x: 2.217111
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_283
-    x: 2.233676
+    x: 2.237122
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_284
-    x: 2.253675
+    x: 2.257133
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_285
-    x: 2.273674
+    x: 2.277145
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_286
-    x: 2.293673
+    x: 2.297156
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_287
-    x: 2.313672
+    x: 2.317167
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_288
-    x: 2.333671
+    x: 2.337178
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_289
-    x: 2.35367
+    x: 2.35719
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_290
-    x: 2.373669
+    x: 2.377201
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_291
-    x: 2.393668
+    x: 2.397212
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_292
-    x: 2.413667
+    x: 2.417224
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_293
-    x: 2.433666
+    x: 2.437235
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_294
-    x: 2.453665
+    x: 2.457246
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_295
-    x: 2.473665
+    x: 2.477258
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_296
-    x: 2.493664
+    x: 2.497269
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_297
-    x: 2.513663
+    x: 2.51728
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_298
-    x: 2.533662
+    x: 2.537291
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_299
-    x: 2.553661
+    x: 2.557303
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_300
-    x: 2.57366
+    x: 2.577314
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_301
-    x: 2.593659
+    x: 2.597325
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_302
-    x: 2.613658
+    x: 2.617337
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_303
-    x: 2.633657
+    x: 2.637348
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_304
-    x: 2.653656
+    x: 2.657359
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_305
-    x: 2.673655
+    x: 2.67737
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_306
-    x: 2.693654
+    x: 2.697382
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_307
-    x: 2.713653
+    x: 2.717393
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_308
-    x: 2.733652
+    x: 2.737404
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_309
-    x: 2.753652
+    x: 2.757416
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_310
-    x: 2.773651
+    x: 2.777427
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_311
-    x: 2.79365
+    x: 2.797438
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_312
-    x: 2.813649
+    x: 2.817449
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_313
-    x: 2.833648
+    x: 2.837461
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_314
-    x: 2.853647
+    x: 2.857472
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_315
-    x: 2.873646
+    x: 2.877483
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_316
-    x: 2.893645
+    x: 2.897495
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_317
-    x: 2.913644
+    x: 2.917506
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_318
-    x: 2.933643
+    x: 2.937517
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_319
-    x: 2.953642
+    x: 2.957528
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_320
-    x: 2.973641
+    x: 2.97754
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_321
-    x: 2.99364
+    x: 2.997551
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_322
-    x: 3.013639
+    x: 3.017562
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_323
-    x: 3.033638
+    x: 3.037574
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_324
-    x: 3.053638
+    x: 3.057585
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_325
-    x: 3.073637
+    x: 3.077596
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_326
-    x: 3.093636
+    x: 3.097608
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_327
-    x: 3.113635
+    x: 3.117619
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_328
-    x: 3.133634
+    x: 3.13763
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_329
-    x: 3.153633
+    x: 3.157641
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_330
-    x: 3.173632
+    x: 3.177653
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_331
-    x: 3.193631
+    x: 3.197664
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_332
-    x: 3.21363
+    x: 3.217675
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_333
-    x: 3.233629
+    x: 3.237687
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_334
-    x: 3.253628
+    x: 3.257698
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_335
-    x: 3.273627
+    x: 3.277709
     y: 4.1
     yaw: 0
     pass_radius: 0.6
   - name: point_336
-    x: 3.293626
+    x: 3.29772
     y: 4.1
-    yaw: -0.010851
+    yaw: -0.01797
     pass_radius: 0.6
   - name: point_337
-    x: 3.313616
-    y: 4.099566
-    yaw: -0.060138
+    x: 3.317713
+    y: 4.099281
+    yaw: -0.07454
     pass_radius: 0.6
   - name: point_338
-    x: 3.333514
-    y: 4.097598
-    yaw: -0.13169
+    x: 3.337591
+    y: 4.097023
+    yaw: -0.145025
     pass_radius: 0.6
   - name: point_339
-    x: 3.353238
-    y: 4.094318
-    yaw: -0.193006
+    x: 3.357287
+    y: 4.093501
+    yaw: -0.20452
     pass_radius: 0.6
   - name: point_340
-    x: 3.372748
-    y: 4.089931
-    yaw: -0.245498
+    x: 3.37676
+    y: 4.088898
+    yaw: -0.255825
     pass_radius: 0.6
   - name: point_341
-    x: 3.392021
-    y: 4.084601
-    yaw: -0.292216
+    x: 3.395992
+    y: 4.083378
+    yaw: -0.301101
     pass_radius: 0.6
   - name: point_342
-    x: 3.411037
-    y: 4.078412
-    yaw: -0.334956
+    x: 3.41497
+    y: 4.077032
+    yaw: -0.343218
     pass_radius: 0.6
   - name: point_343
-    x: 3.429786
-    y: 4.071456
-    yaw: -0.374618
+    x: 3.43367
+    y: 4.069913
+    yaw: -0.382939
     pass_radius: 0.6
   - name: point_344
-    x: 3.448252
-    y: 4.06378
-    yaw: -0.412764
+    x: 3.452084
+    y: 4.062082
+    yaw: -0.420838
     pass_radius: 0.6
   - name: point_345
-    x: 3.466416
-    y: 4.055415
-    yaw: -0.450185
+    x: 3.470192
+    y: 4.053567
+    yaw: -0.458194
     pass_radius: 0.6
   - name: point_346
-    x: 3.484256
-    y: 4.046379
-    yaw: -0.487673
+    x: 3.48797
+    y: 4.044383
+    yaw: -0.495712
     pass_radius: 0.6
   - name: point_347
-    x: 3.501743
-    y: 4.036677
-    yaw: -0.52601
+    x: 3.505388
+    y: 4.034534
+    yaw: -0.534081
     pass_radius: 0.6
   - name: point_348
-    x: 3.518839
-    y: 4.026302
-    yaw: -0.565725
+    x: 3.52241
+    y: 4.024015
+    yaw: -0.574016
     pass_radius: 0.6
   - name: point_349
-    x: 3.5355
-    y: 4.015243
-    yaw: -0.607526
+    x: 3.538987
+    y: 4.012808
+    yaw: -0.616647
     pass_radius: 0.6
   - name: point_350
-    x: 3.551669
-    y: 4.003477
-    yaw: -0.652406
+    x: 3.55505
+    y: 4.000877
+    yaw: -0.662749
     pass_radius: 0.6
   - name: point_351
-    x: 3.567271
-    y: 3.99097
-    yaw: -0.701368
+    x: 3.570524
+    y: 3.988192
+    yaw: -0.712984
     pass_radius: 0.6
   - name: point_352
-    x: 3.582212
-    y: 3.977679
-    yaw: -0.756657
+    x: 3.585309
+    y: 3.974711
+    yaw: -0.769115
     pass_radius: 0.6
   - name: point_353
-    x: 3.596338
-    y: 3.963527
-    yaw: -0.819087
+    x: 3.599264
+    y: 3.960374
+    yaw: -0.833593
     pass_radius: 0.6
   - name: point_354
-    x: 3.609506
-    y: 3.948481
-    yaw: -0.890996
+    x: 3.612191
+    y: 3.945105
+    yaw: -0.908156
     pass_radius: 0.6
   - name: point_355
-    x: 3.621457
-    y: 3.932453
-    yaw: -0.975538
+    x: 3.623859
+    y: 3.928856
+    yaw: -0.995361
     pass_radius: 0.6
   - name: point_356
-    x: 3.631902
-    y: 3.91541
-    yaw: -1.075517
+    x: 3.633938
+    y: 3.911579
+    yaw: -1.099712
     pass_radius: 0.6
   - name: point_357
-    x: 3.640428
-    y: 3.897332
-    yaw: -1.195361
+    x: 3.641984
+    y: 3.893269
+    yaw: -1.224247
     pass_radius: 0.6
   - name: point_358
-    x: 3.646527
-    y: 3.878304
-    yaw: -1.336975
+    x: 3.647491
+    y: 3.874049
+    yaw: -1.370597
     pass_radius: 0.6
   - name: point_359
-    x: 3.64966
-    y: 3.858575
-    yaw: -1.483578
+    x: 3.64991
+    y: 3.854207
+    yaw: -1.507928
     pass_radius: 0.6
   - name: point_360
     x: 3.65
-    y: 3.838584
-    yaw: -1.562283
+    y: 3.834197
+    yaw: -1.568557
     pass_radius: 0.6
   - name: point_361
     x: 3.65
-    y: 3.818585
+    y: 3.814186
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_362
     x: 3.65
-    y: 3.798586
+    y: 3.794174
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_363
     x: 3.65
-    y: 3.778587
+    y: 3.774163
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_364
     x: 3.65
-    y: 3.758588
+    y: 3.754152
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_365
     x: 3.65
-    y: 3.738589
+    y: 3.734141
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_366
     x: 3.65
-    y: 3.71859
+    y: 3.714129
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_367
     x: 3.65
-    y: 3.698591
+    y: 3.694118
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_368
     x: 3.65
-    y: 3.678592
+    y: 3.674107
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_369
     x: 3.65
-    y: 3.658593
+    y: 3.654095
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_370
     x: 3.65
-    y: 3.638594
+    y: 3.634084
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_371
     x: 3.65
-    y: 3.618595
+    y: 3.614073
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_372
     x: 3.65
-    y: 3.598595
+    y: 3.594062
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_373
     x: 3.65
-    y: 3.578596
+    y: 3.57405
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_374
     x: 3.65
-    y: 3.558597
+    y: 3.554039
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_375
     x: 3.65
-    y: 3.538598
+    y: 3.534028
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_376
     x: 3.65
-    y: 3.518599
+    y: 3.514016
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_377
     x: 3.65
-    y: 3.4986
+    y: 3.494005
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_378
     x: 3.65
-    y: 3.478601
+    y: 3.473994
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_379
     x: 3.65
-    y: 3.458602
+    y: 3.453982
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_380
     x: 3.65
-    y: 3.438603
+    y: 3.433971
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_381
     x: 3.65
-    y: 3.418604
+    y: 3.41396
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_382
     x: 3.65
-    y: 3.398605
+    y: 3.393949
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_383
     x: 3.65
-    y: 3.378606
+    y: 3.373937
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_384
     x: 3.65
-    y: 3.358607
+    y: 3.353926
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_385
     x: 3.65
-    y: 3.338608
+    y: 3.333915
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_386
     x: 3.65
-    y: 3.318609
+    y: 3.313903
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_387
     x: 3.65
-    y: 3.298609
+    y: 3.293892
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_388
     x: 3.65
-    y: 3.27861
+    y: 3.273881
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_389
     x: 3.65
-    y: 3.258611
+    y: 3.25387
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_390
     x: 3.65
-    y: 3.238612
+    y: 3.233858
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_391
     x: 3.65
-    y: 3.218613
-    yaw: -1.571534
+    y: 3.213847
+    yaw: -1.575473
     pass_radius: 0.6
   - name: point_392
-    x: 3.64997
-    y: 3.198614
-    yaw: -1.620617
+    x: 3.649813
+    y: 3.193839
+    yaw: -1.64454
     pass_radius: 0.6
   - name: point_393
-    x: 3.648012
-    y: 3.178738
-    yaw: -1.748837
+    x: 3.647059
+    y: 3.174044
+    yaw: -1.786426
     pass_radius: 0.6
   - name: point_394
-    x: 3.642918
-    y: 3.15942
-    yaw: -1.897721
+    x: 3.641285
+    y: 3.154904
+    yaw: -1.93025
     pass_radius: 0.6
   - name: point_395
-    x: 3.635209
-    y: 3.140982
-    yaw: -2.024893
+    x: 3.633024
+    y: 3.136692
+    yaw: -2.05228
     pass_radius: 0.6
   - name: point_396
-    x: 3.625413
-    y: 3.123559
-    yaw: -2.131829
+    x: 3.62279
+    y: 3.119507
+    yaw: -2.155096
     pass_radius: 0.6
   - name: point_397
-    x: 3.613962
-    y: 3.107171
-    yaw: -2.221947
+    x: 3.61098
+    y: 3.10336
+    yaw: -2.241528
     pass_radius: 0.6
   - name: point_398
-    x: 3.601198
-    y: 3.091781
-    yaw: -2.298034
+    x: 3.597939
+    y: 3.088187
+    yaw: -2.314778
     pass_radius: 0.6
   - name: point_399
-    x: 3.587393
-    y: 3.077317
-    yaw: -2.363332
+    x: 3.583897
+    y: 3.073935
+    yaw: -2.378016
     pass_radius: 0.6
   - name: point_400
-    x: 3.572732
-    y: 3.063719
-    yaw: -2.420959
+    x: 3.569045
+    y: 3.060528
+    yaw: -2.433724
     pass_radius: 0.6
   - name: point_401
-    x: 3.557354
-    y: 3.050937
-    yaw: -2.472179
+    x: 3.553504
+    y: 3.047924
+    yaw: -2.483917
     pass_radius: 0.6
   - name: point_402
-    x: 3.541379
-    y: 3.038909
-    yaw: -2.518378
+    x: 3.537383
+    y: 3.036072
+    yaw: -2.529334
     pass_radius: 0.6
   - name: point_403
-    x: 3.524887
-    y: 3.0276
-    yaw: -2.561165
+    x: 3.520762
+    y: 3.02493
+    yaw: -2.5714
     pass_radius: 0.6
   - name: point_404
-    x: 3.507941
-    y: 3.016981
-    yaw: -2.601444
+    x: 3.503702
+    y: 3.014474
+    yaw: -2.611182
     pass_radius: 0.6
   - name: point_405
-    x: 3.490592
-    y: 3.007035
-    yaw: -2.64012
+    x: 3.486248
+    y: 3.004689
+    yaw: -2.64945
     pass_radius: 0.6
   - name: point_406
-    x: 3.472876
-    y: 2.997758
-    yaw: -2.677919
+    x: 3.468438
+    y: 2.995568
+    yaw: -2.686915
     pass_radius: 0.6
   - name: point_407
-    x: 3.454825
-    y: 2.989151
-    yaw: -2.715357
+    x: 3.4503
+    y: 2.987116
+    yaw: -2.724477
     pass_radius: 0.6
   - name: point_408
-    x: 3.436465
-    y: 2.981225
-    yaw: -2.753166
+    x: 3.431855
+    y: 2.979357
+    yaw: -2.762816
     pass_radius: 0.6
   - name: point_409
-    x: 3.417816
-    y: 2.974006
-    yaw: -2.792202
+    x: 3.413124
+    y: 2.97232
+    yaw: -2.802455
     pass_radius: 0.6
   - name: point_410
-    x: 3.398894
-    y: 2.967536
-    yaw: -2.833511
+    x: 3.394123
+    y: 2.966047
+    yaw: -2.844372
     pass_radius: 0.6
   - name: point_411
-    x: 3.379713
-    y: 2.961881
-    yaw: -2.878711
+    x: 3.374868
+    y: 2.960603
+    yaw: -2.890643
     pass_radius: 0.6
   - name: point_412
-    x: 3.360285
-    y: 2.957146
-    yaw: -2.928786
+    x: 3.35537
+    y: 2.956112
+    yaw: -2.942407
     pass_radius: 0.6
   - name: point_413
-    x: 3.340636
-    y: 2.953438
-    yaw: -2.986422
+    x: 3.335657
+    y: 2.952687
+    yaw: -3.00259
     pass_radius: 0.6
   - name: point_414
-    x: 3.320794
-    y: 2.950969
-    yaw: -3.0557
+    x: 3.315762
+    y: 2.950571
+    yaw: -3.074332
     pass_radius: 0.6
   - name: point_415
-    x: 3.300824
-    y: 2.95001
-    yaw: -3.117364
+    x: 3.295764
+    y: 2.95
+    yaw: -3.127327
     pass_radius: 0.6
   - name: point_416
-    x: 3.280825
+    x: 3.275753
     y: 2.95
-    yaw: -3.141354
+    yaw: 3.141593
     pass_radius: 0.6
   - name: point_417
-    x: 3.260826
+    x: 3.255742
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_418
-    x: 3.240827
+    x: 3.235731
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_419
-    x: 3.220828
+    x: 3.215719
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_420
-    x: 3.200829
+    x: 3.195708
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_421
-    x: 3.180829
+    x: 3.175697
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_422
-    x: 3.16083
+    x: 3.155685
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_423
-    x: 3.140831
+    x: 3.135674
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_424
-    x: 3.120832
+    x: 3.115663
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_425
-    x: 3.100833
+    x: 3.095651
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_426
-    x: 3.080834
+    x: 3.07564
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_427
-    x: 3.060835
+    x: 3.055629
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_428
-    x: 3.040836
+    x: 3.035618
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_429
-    x: 3.020837
+    x: 3.015606
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_430
-    x: 3.000838
+    x: 2.995595
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_431
-    x: 2.980839
+    x: 2.975584
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_432
-    x: 2.96084
+    x: 2.955572
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_433
-    x: 2.940841
+    x: 2.935561
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_434
-    x: 2.920842
+    x: 2.91555
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_435
-    x: 2.900842
+    x: 2.895539
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_436
-    x: 2.880843
+    x: 2.875527
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_437
-    x: 2.860844
+    x: 2.855516
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_438
-    x: 2.840845
+    x: 2.835505
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_439
-    x: 2.820846
+    x: 2.815493
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_440
-    x: 2.800847
+    x: 2.795482
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_441
-    x: 2.780848
+    x: 2.775471
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_442
-    x: 2.760849
+    x: 2.75546
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_443
-    x: 2.74085
+    x: 2.735448
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_444
-    x: 2.720851
+    x: 2.715437
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_445
-    x: 2.700852
+    x: 2.695426
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_446
-    x: 2.680853
+    x: 2.675414
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_447
-    x: 2.660854
+    x: 2.655403
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_448
-    x: 2.640855
+    x: 2.635392
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_449
-    x: 2.620856
+    x: 2.615381
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_450
-    x: 2.600856
+    x: 2.595369
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_451
-    x: 2.580857
+    x: 2.575358
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_452
-    x: 2.560858
+    x: 2.555347
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_453
-    x: 2.540859
+    x: 2.535335
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_454
-    x: 2.52086
+    x: 2.515324
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_455
-    x: 2.500861
+    x: 2.495313
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_456
-    x: 2.480862
+    x: 2.475301
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_457
-    x: 2.460863
+    x: 2.45529
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_458
-    x: 2.440864
+    x: 2.435279
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_459
-    x: 2.420865
+    x: 2.415268
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_460
-    x: 2.400866
+    x: 2.395256
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_461
-    x: 2.380867
+    x: 2.375245
     y: 2.95
     yaw: 3.141593
     pass_radius: 0.6
   - name: point_462
-    x: 2.360868
+    x: 2.355234
     y: 2.95
-    yaw: -3.135253
+    yaw: -3.126526
     pass_radius: 0.6
   - name: point_463
-    x: 2.340873
-    y: 2.949746
-    yaw: -3.085507
+    x: 2.335238
+    y: 2.949397
+    yaw: -3.063048
     pass_radius: 0.6
   - name: point_464
-    x: 2.320983
-    y: 2.947761
-    yaw: -2.995268
+    x: 2.315396
+    y: 2.946865
+    yaw: -2.9687
     pass_radius: 0.6
   - name: point_465
-    x: 2.301362
-    y: 2.943923
-    yaw: -2.906265
+    x: 2.295868
+    y: 2.942522
+    yaw: -2.882391
     pass_radius: 0.6
   - name: point_466
-    x: 2.282133
-    y: 2.938446
-    yaw: -2.827139
+    x: 2.276753
+    y: 2.936618
+    yaw: -2.80677
     pass_radius: 0.6
   - name: point_467
-    x: 2.263361
-    y: 2.931564
-    yaw: -2.75802
+    x: 2.258101
+    y: 2.929382
+    yaw: -2.739902
     pass_radius: 0.6
   - name: point_468
-    x: 2.245069
-    y: 2.923488
-    yaw: -2.696116
+    x: 2.239942
+    y: 2.920981
+    yaw: -2.679492
     pass_radius: 0.6
   - name: point_469
-    x: 2.227288
-    y: 2.914339
-    yaw: -2.640441
+    x: 2.222296
+    y: 2.911549
+    yaw: -2.625706
     pass_radius: 0.6
   - name: point_470
-    x: 2.210006
-    y: 2.904281
-    yaw: -2.59038
+    x: 2.205143
+    y: 2.901246
+    yaw: -2.576951
     pass_radius: 0.6
   - name: point_471
-    x: 2.193228
-    y: 2.8934
-    yaw: -2.544941
+    x: 2.188499
+    y: 2.89014
+    yaw: -2.532138
     pass_radius: 0.6
   - name: point_472
-    x: 2.176929
-    y: 2.881814
-    yaw: -2.502747
+    x: 2.172337
+    y: 2.878344
+    yaw: -2.491509
     pass_radius: 0.6
   - name: point_473
-    x: 2.161128
-    y: 2.869557
-    yaw: -2.463505
+    x: 2.156648
+    y: 2.865923
+    yaw: -2.452959
     pass_radius: 0.6
   - name: point_474
-    x: 2.145787
-    y: 2.856729
-    yaw: -2.427598
+    x: 2.141442
+    y: 2.852916
+    yaw: -2.416884
     pass_radius: 0.6
   - name: point_475
-    x: 2.130905
-    y: 2.84337
-    yaw: -2.392713
+    x: 2.12669
+    y: 2.839397
+    yaw: -2.383417
     pass_radius: 0.6
   - name: point_476
-    x: 2.116496
-    y: 2.829503
-    yaw: -2.35949
+    x: 2.112388
+    y: 2.825402
+    yaw: -2.350523
     pass_radius: 0.6
   - name: point_477
-    x: 2.102534
-    y: 2.815185
-    yaw: -2.328223
+    x: 2.098556
+    y: 2.810942
+    yaw: -2.318682
     pass_radius: 0.6
   - name: point_478
-    x: 2.08902
-    y: 2.800445
-    yaw: -2.297498
+    x: 2.085173
+    y: 2.796065
+    yaw: -2.288406
     pass_radius: 0.6
   - name: point_479
-    x: 2.075964
-    y: 2.785297
-    yaw: -2.266906
+    x: 2.072242
+    y: 2.780794
+    yaw: -2.258659
     pass_radius: 0.6
   - name: point_480
-    x: 2.063376
-    y: 2.769757
-    yaw: -2.236922
+    x: 2.059767
+    y: 2.765148
+    yaw: -2.22843
     pass_radius: 0.6
   - name: point_481
-    x: 2.051251
-    y: 2.753854
-    yaw: -2.207447
+    x: 2.047782
+    y: 2.749124
+    yaw: -2.19817
     pass_radius: 0.6
   - name: point_482
-    x: 2.0396
-    y: 2.7376
-    yaw: -2.177481
+    x: 2.036277
+    y: 2.732752
+    yaw: -2.168354
     pass_radius: 0.6
   - name: point_483
-    x: 2.02845
-    y: 2.720999
-    yaw: -2.146544
+    x: 2.025268
+    y: 2.716042
+    yaw: -2.137848
     pass_radius: 0.6
   - name: point_484
-    x: 2.017827
-    y: 2.704056
-    yaw: -2.115141
+    x: 2.014782
+    y: 2.698999
+    yaw: -2.105778
     pass_radius: 0.6
   - name: point_485
-    x: 2.00774
-    y: 2.686788
-    yaw: -2.083171
+    x: 2.004867
+    y: 2.681618
+    yaw: -2.072696
     pass_radius: 0.6
   - name: point_486
-    x: 1.998221
-    y: 2.669201
-    yaw: -2.048751
+    x: 1.995532
+    y: 2.663919
+    yaw: -2.038598
     pass_radius: 0.6
   - name: point_487
-    x: 1.989346
-    y: 2.65128
-    yaw: -2.012523
+    x: 1.986824
+    y: 2.645903
+    yaw: -2.001561
     pass_radius: 0.6
   - name: point_488
-    x: 1.981126
-    y: 2.63305
-    yaw: -1.974395
+    x: 1.978824
+    y: 2.627562
+    yaw: -1.962339
     pass_radius: 0.6
   - name: point_489
-    x: 1.973642
-    y: 2.614506
-    yaw: -1.932623
+    x: 1.971555
+    y: 2.60892
+    yaw: -1.919529
     pass_radius: 0.6
   - name: point_490
-    x: 1.966972
-    y: 2.595654
-    yaw: -1.887075
+    x: 1.965153
+    y: 2.589962
+    yaw: -1.87262
     pass_radius: 0.6
   - name: point_491
-    x: 1.961207
-    y: 2.576507
-    yaw: -1.83698
+    x: 1.959662
+    y: 2.570721
+    yaw: -1.82059
     pass_radius: 0.6
   - name: point_492
-    x: 1.956455
-    y: 2.557083
-    yaw: -1.780138
+    x: 1.955264
+    y: 2.551202
+    yaw: -1.761443
     pass_radius: 0.6
   - name: point_493
-    x: 1.9529
-    y: 2.537407
-    yaw: -1.715699
+    x: 1.952083
+    y: 2.53145
+    yaw: -1.694996
     pass_radius: 0.6
   - name: point_494
-    x: 1.950685
-    y: 2.517536
-    yaw: -1.643426
+    x: 1.950311
+    y: 2.511524
+    yaw: -1.622924
     pass_radius: 0.6
   - name: point_495
     x: 1.95
-    y: 2.497555
-    yaw: -1.587917
+    y: 2.491518
+    yaw: -1.57856
     pass_radius: 0.6
   - name: point_496
     x: 1.95
-    y: 2.477556
+    y: 2.471506
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_497
     x: 1.95
-    y: 2.457557
+    y: 2.451495
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_498
     x: 1.95
-    y: 2.437558
+    y: 2.431484
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_499
     x: 1.95
-    y: 2.417559
+    y: 2.411473
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_500
     x: 1.95
-    y: 2.39756
+    y: 2.391461
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_501
     x: 1.95
-    y: 2.37756
+    y: 2.37145
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_502
     x: 1.95
-    y: 2.357561
+    y: 2.351439
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_503
     x: 1.95
-    y: 2.337562
+    y: 2.331427
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_504
     x: 1.95
-    y: 2.317563
+    y: 2.311416
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_505
     x: 1.95
-    y: 2.297564
+    y: 2.291405
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_506
     x: 1.95
-    y: 2.277565
+    y: 2.271394
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_507
     x: 1.95
-    y: 2.257566
+    y: 2.251382
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_508
     x: 1.95
-    y: 2.237567
+    y: 2.231371
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_509
     x: 1.95
-    y: 2.217568
+    y: 2.21136
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_510
     x: 1.95
-    y: 2.197569
+    y: 2.191348
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_511
     x: 1.95
-    y: 2.17757
+    y: 2.171337
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_512
     x: 1.95
-    y: 2.157571
+    y: 2.151326
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_513
     x: 1.95
-    y: 2.137572
+    y: 2.131315
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_514
     x: 1.95
-    y: 2.117573
+    y: 2.111303
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_515
     x: 1.95
-    y: 2.097574
+    y: 2.091292
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_516
     x: 1.95
-    y: 2.077574
+    y: 2.071281
     yaw: -1.570796
     pass_radius: 0.6
   - name: point_517
     x: 1.95
-    y: 2.057575
-    yaw: -1.576487
+    y: 2.051269
+    yaw: -1.583705
     pass_radius: 0.6
   - name: point_518
-    x: 1.949772
-    y: 2.037579
-    yaw: -1.60652
+    x: 1.949483
+    y: 2.031267
+    yaw: -1.622868
     pass_radius: 0.6
-    return_route_start: true
+    task3_start: true
   - name: point_519
-    x: 1.948572
-    y: 2.017618
-    yaw: -1.654622
+    x: 1.947918
+    y: 2.01132
+    yaw: -1.672456
     pass_radius: 0.6
   - name: point_520
-    x: 1.946425
-    y: 1.997737
-    yaw: -1.699354
+    x: 1.945423
+    y: 1.991466
+    yaw: -1.717026
     pass_radius: 0.6
   - name: point_521
-    x: 1.943446
-    y: 1.977962
-    yaw: -1.739352
+    x: 1.942088
+    y: 1.971736
+    yaw: -1.757042
     pass_radius: 0.6
   - name: point_522
-    x: 1.939716
-    y: 1.958315
-    yaw: -1.775807
+    x: 1.938014
+    y: 1.952145
+    yaw: -1.793556
     pass_radius: 0.6
   - name: point_523
-    x: 1.935305
-    y: 1.93881
-    yaw: -1.809638
+    x: 1.933248
+    y: 1.932711
+    yaw: -1.827575
     pass_radius: 0.6
   - name: point_524
-    x: 1.930255
-    y: 1.919459
-    yaw: -1.841185
+    x: 1.927852
+    y: 1.913442
+    yaw: -1.859159
     pass_radius: 0.6
   - name: point_525
-    x: 1.924622
-    y: 1.900271
-    yaw: -1.870842
+    x: 1.921868
+    y: 1.894347
+    yaw: -1.889352
     pass_radius: 0.6
   - name: point_526
-    x: 1.918435
-    y: 1.881254
-    yaw: -1.899575
+    x: 1.915319
+    y: 1.875439
+    yaw: -1.918493
     pass_radius: 0.6
   - name: point_527
-    x: 1.911709
-    y: 1.86242
-    yaw: -1.927363
+    x: 1.908233
+    y: 1.856725
+    yaw: -1.94656
     pass_radius: 0.6
   - name: point_528
-    x: 1.904475
-    y: 1.843776
-    yaw: -1.95428
+    x: 1.900633
+    y: 1.838214
+    yaw: -1.974032
     pass_radius: 0.6
   - name: point_529
-    x: 1.896746
-    y: 1.825332
-    yaw: -1.980909
+    x: 1.89253
+    y: 1.819917
+    yaw: -2.001434
     pass_radius: 0.6
   - name: point_530
-    x: 1.888529
-    y: 1.807099
-    yaw: -2.007683
+    x: 1.883928
+    y: 1.80185
+    yaw: -2.029079
     pass_radius: 0.6
   - name: point_531
-    x: 1.879824
-    y: 1.789095
-    yaw: -2.034821
+    x: 1.874826
+    y: 1.784029
+    yaw: -2.056958
     pass_radius: 0.6
   - name: point_532
-    x: 1.87063
-    y: 1.771335
-    yaw: -2.062318
+    x: 1.86523
+    y: 1.766469
+    yaw: -2.085324
     pass_radius: 0.6
   - name: point_533
-    x: 1.860948
-    y: 1.753837
-    yaw: -2.090513
+    x: 1.855133
+    y: 1.749193
+    yaw: -2.114913
     pass_radius: 0.6
   - name: point_534
-    x: 1.850769
-    y: 1.736623
-    yaw: -2.120172
+    x: 1.844515
+    y: 1.732232
+    yaw: -2.146058
     pass_radius: 0.6
   - name: point_535
-    x: 1.840067
-    y: 1.71973
-    yaw: -2.151508
+    x: 1.833362
+    y: 1.715618
+    yaw: -2.178717
     pass_radius: 0.6
   - name: point_536
-    x: 1.828829
-    y: 1.703188
-    yaw: -2.184588
+    x: 1.82166
+    y: 1.699386
+    yaw: -2.214083
     pass_radius: 0.6
   - name: point_537
-    x: 1.817033
-    y: 1.687039
-    yaw: -2.220644
+    x: 1.809361
+    y: 1.683602
+    yaw: -2.252409
     pass_radius: 0.6
   - name: point_538
-    x: 1.804633
-    y: 1.67135
-    yaw: -2.260059
+    x: 1.796451
+    y: 1.668315
+    yaw: -2.294662
     pass_radius: 0.6
   - name: point_539
-    x: 1.791603
-    y: 1.656181
-    yaw: -2.303527
+    x: 1.782864
+    y: 1.653625
+    yaw: -2.342163
     pass_radius: 0.6
   - name: point_540
-    x: 1.777888
-    y: 1.641628
-    yaw: -2.352172
+    x: 1.768562
+    y: 1.639632
+    yaw: -2.389695
     pass_radius: 0.6
   - name: point_541
-    x: 1.763446
-    y: 1.627797
-    yaw: -2.386975
+    x: 1.753641
+    y: 1.626298
+    yaw: -2.414819
     pass_radius: 0.6
   - name: point_542
-    x: 1.748751
-    y: 1.614232
-    yaw: -2.396173
+    x: 1.738653
+    y: 1.613039
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_543
-    x: 1.734055
-    y: 1.600667
-    yaw: -2.396173
+    x: 1.723665
+    y: 1.59978
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_544
-    x: 1.71936
-    y: 1.587102
-    yaw: -2.396173
+    x: 1.708676
+    y: 1.586521
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_545
-    x: 1.704665
-    y: 1.573537
-    yaw: -2.396173
+    x: 1.693688
+    y: 1.573262
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_546
-    x: 1.689969
-    y: 1.559972
-    yaw: -2.396173
+    x: 1.678699
+    y: 1.560003
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_547
-    x: 1.675274
-    y: 1.546407
-    yaw: -2.396173
+    x: 1.663711
+    y: 1.546744
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_548
-    x: 1.660579
-    y: 1.532842
-    yaw: -2.396173
+    x: 1.648723
+    y: 1.533485
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_549
-    x: 1.645883
-    y: 1.519277
-    yaw: -2.396173
+    x: 1.633734
+    y: 1.520226
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_550
-    x: 1.631188
-    y: 1.505712
-    yaw: -2.396173
+    x: 1.618746
+    y: 1.506968
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_551
-    x: 1.616492
-    y: 1.492147
-    yaw: -2.396173
+    x: 1.603758
+    y: 1.493709
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_552
-    x: 1.601797
-    y: 1.478582
-    yaw: -2.396173
+    x: 1.588769
+    y: 1.48045
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_553
-    x: 1.587102
-    y: 1.465017
-    yaw: -2.396173
+    x: 1.573781
+    y: 1.467191
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_554
-    x: 1.572406
-    y: 1.451452
-    yaw: -2.396173
+    x: 1.558792
+    y: 1.453932
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_555
-    x: 1.557711
-    y: 1.437887
-    yaw: -2.396173
+    x: 1.543804
+    y: 1.440673
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_556
-    x: 1.543015
-    y: 1.424322
-    yaw: -2.396173
+    x: 1.528816
+    y: 1.427414
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_557
-    x: 1.52832
-    y: 1.410757
-    yaw: -2.396173
+    x: 1.513827
+    y: 1.414155
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_558
-    x: 1.513625
-    y: 1.397192
-    yaw: -2.396173
+    x: 1.498839
+    y: 1.400896
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_559
-    x: 1.498929
-    y: 1.383627
-    yaw: -2.396173
+    x: 1.48385
+    y: 1.387637
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_560
-    x: 1.484234
-    y: 1.370062
-    yaw: -2.396173
+    x: 1.468862
+    y: 1.374378
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_561
-    x: 1.469539
-    y: 1.356497
-    yaw: -2.396173
+    x: 1.453874
+    y: 1.361119
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_562
-    x: 1.454843
-    y: 1.342932
-    yaw: -2.396173
+    x: 1.438885
+    y: 1.34786
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_563
-    x: 1.440148
-    y: 1.329367
-    yaw: -2.396173
+    x: 1.423897
+    y: 1.334601
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_564
-    x: 1.425452
-    y: 1.315802
-    yaw: -2.396173
+    x: 1.408908
+    y: 1.321342
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_565
-    x: 1.410757
-    y: 1.302237
-    yaw: -2.396173
+    x: 1.39392
+    y: 1.308083
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_566
-    x: 1.396062
-    y: 1.288672
-    yaw: -2.396173
+    x: 1.378932
+    y: 1.294824
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_567
-    x: 1.381366
-    y: 1.275107
-    yaw: -2.396173
+    x: 1.363943
+    y: 1.281565
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_568
-    x: 1.366671
-    y: 1.261542
-    yaw: -2.396173
+    x: 1.348955
+    y: 1.268306
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_569
-    x: 1.351975
-    y: 1.247977
-    yaw: -2.396173
+    x: 1.333967
+    y: 1.255047
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_570
-    x: 1.33728
-    y: 1.234412
-    yaw: -2.396173
+    x: 1.318978
+    y: 1.241788
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_571
-    x: 1.322585
-    y: 1.220847
-    yaw: -2.396173
+    x: 1.30399
+    y: 1.228529
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_572
-    x: 1.307889
-    y: 1.207282
-    yaw: -2.396173
+    x: 1.289001
+    y: 1.21527
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_573
-    x: 1.293194
-    y: 1.193717
-    yaw: -2.396173
+    x: 1.274013
+    y: 1.202011
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_574
-    x: 1.278499
-    y: 1.180152
-    yaw: -2.396173
+    x: 1.259025
+    y: 1.188753
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_575
-    x: 1.263803
-    y: 1.166588
-    yaw: -2.396173
+    x: 1.244036
+    y: 1.175494
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_576
-    x: 1.249108
-    y: 1.153023
-    yaw: -2.396173
+    x: 1.229048
+    y: 1.162235
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_577
-    x: 1.234412
-    y: 1.139458
-    yaw: -2.396173
+    x: 1.214059
+    y: 1.148976
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_578
-    x: 1.219717
-    y: 1.125893
-    yaw: -2.396173
+    x: 1.199071
+    y: 1.135717
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_579
-    x: 1.205022
-    y: 1.112328
-    yaw: -2.396173
+    x: 1.184083
+    y: 1.122458
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_580
-    x: 1.190326
-    y: 1.098763
-    yaw: -2.396173
+    x: 1.169094
+    y: 1.109199
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_581
-    x: 1.175631
-    y: 1.085198
-    yaw: -2.396173
+    x: 1.154106
+    y: 1.09594
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_582
-    x: 1.160935
-    y: 1.071633
-    yaw: -2.396173
+    x: 1.139117
+    y: 1.082681
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_583
-    x: 1.14624
-    y: 1.058068
-    yaw: -2.396173
+    x: 1.124129
+    y: 1.069422
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_584
-    x: 1.131545
-    y: 1.044503
-    yaw: -2.396173
+    x: 1.109141
+    y: 1.056163
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_585
-    x: 1.116849
-    y: 1.030938
-    yaw: -2.396173
+    x: 1.094152
+    y: 1.042904
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_586
-    x: 1.102154
-    y: 1.017373
-    yaw: -2.396173
+    x: 1.079164
+    y: 1.029645
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_587
-    x: 1.087459
-    y: 1.003808
-    yaw: -2.396173
+    x: 1.064176
+    y: 1.016386
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_588
-    x: 1.072763
-    y: 0.990243
-    yaw: -2.396173
+    x: 1.049187
+    y: 1.003127
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_589
-    x: 1.058068
-    y: 0.976678
-    yaw: -2.396173
+    x: 1.034199
+    y: 0.989868
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_590
-    x: 1.043372
-    y: 0.963113
-    yaw: -2.396173
+    x: 1.01921
+    y: 0.976609
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_591
-    x: 1.028677
-    y: 0.949548
-    yaw: -2.396173
+    x: 1.004222
+    y: 0.96335
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_592
-    x: 1.013982
-    y: 0.935983
-    yaw: -2.396173
+    x: 0.989234
+    y: 0.950091
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_593
-    x: 0.999286
-    y: 0.922418
-    yaw: -2.396173
+    x: 0.974245
+    y: 0.936832
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_594
-    x: 0.984591
-    y: 0.908853
-    yaw: -2.396173
+    x: 0.959257
+    y: 0.923573
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_595
-    x: 0.969895
-    y: 0.895288
-    yaw: -2.396173
+    x: 0.944268
+    y: 0.910314
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_596
-    x: 0.9552
-    y: 0.881723
-    yaw: -2.396173
+    x: 0.92928
+    y: 0.897055
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_597
-    x: 0.940505
-    y: 0.868158
-    yaw: -2.396173
+    x: 0.914292
+    y: 0.883796
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_598
-    x: 0.925809
-    y: 0.854593
-    yaw: -2.396173
+    x: 0.899303
+    y: 0.870538
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_599
-    x: 0.911114
-    y: 0.841028
-    yaw: -2.396173
+    x: 0.884315
+    y: 0.857279
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_600
-    x: 0.896419
-    y: 0.827463
-    yaw: -2.396173
+    x: 0.869327
+    y: 0.84402
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_601
-    x: 0.881723
-    y: 0.813898
-    yaw: -2.396173
+    x: 0.854338
+    y: 0.830761
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_602
-    x: 0.867028
-    y: 0.800333
-    yaw: -2.396173
+    x: 0.83935
+    y: 0.817502
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_603
-    x: 0.852332
-    y: 0.786768
-    yaw: -2.396173
+    x: 0.824361
+    y: 0.804243
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_604
-    x: 0.837637
-    y: 0.773203
-    yaw: -2.396173
+    x: 0.809373
+    y: 0.790984
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_605
-    x: 0.822942
-    y: 0.759638
-    yaw: -2.396173
+    x: 0.794385
+    y: 0.777725
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_606
-    x: 0.808246
-    y: 0.746073
-    yaw: -2.396173
+    x: 0.779396
+    y: 0.764466
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_607
-    x: 0.793551
-    y: 0.732508
-    yaw: -2.396173
+    x: 0.764408
+    y: 0.751207
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_608
-    x: 0.778855
-    y: 0.718943
-    yaw: -2.396173
+    x: 0.749419
+    y: 0.737948
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_609
-    x: 0.76416
-    y: 0.705378
-    yaw: -2.396173
+    x: 0.734431
+    y: 0.724689
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_610
-    x: 0.749465
-    y: 0.691814
-    yaw: -2.396173
+    x: 0.719443
+    y: 0.71143
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_611
-    x: 0.734769
-    y: 0.678249
-    yaw: -2.396173
+    x: 0.704454
+    y: 0.698171
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_612
-    x: 0.720074
-    y: 0.664684
-    yaw: -2.396173
+    x: 0.689466
+    y: 0.684912
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_613
-    x: 0.705378
-    y: 0.651119
-    yaw: -2.396173
+    x: 0.674477
+    y: 0.671653
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_614
-    x: 0.690683
-    y: 0.637554
-    yaw: -2.396173
+    x: 0.659489
+    y: 0.658394
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_615
-    x: 0.675988
-    y: 0.623989
-    yaw: -2.396173
+    x: 0.644501
+    y: 0.645135
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_616
-    x: 0.661292
-    y: 0.610424
-    yaw: -2.396173
+    x: 0.629512
+    y: 0.631876
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_617
-    x: 0.646597
-    y: 0.596859
-    yaw: -2.396173
+    x: 0.614524
+    y: 0.618617
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_618
-    x: 0.631902
-    y: 0.583294
-    yaw: -2.396173
+    x: 0.599536
+    y: 0.605358
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_619
-    x: 0.617206
-    y: 0.569729
-    yaw: -2.396173
+    x: 0.584547
+    y: 0.592099
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_620
-    x: 0.602511
-    y: 0.556164
-    yaw: -2.396173
+    x: 0.569559
+    y: 0.57884
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_621
-    x: 0.587815
-    y: 0.542599
-    yaw: -2.396173
+    x: 0.55457
+    y: 0.565581
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_622
-    x: 0.57312
-    y: 0.529034
-    yaw: -2.396173
+    x: 0.539582
+    y: 0.552323
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_623
-    x: 0.558425
-    y: 0.515469
-    yaw: -2.396173
+    x: 0.524594
+    y: 0.539064
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_624
-    x: 0.543729
-    y: 0.501904
-    yaw: -2.396173
+    x: 0.509605
+    y: 0.525805
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_625
-    x: 0.529034
-    y: 0.488339
-    yaw: -2.396173
+    x: 0.494617
+    y: 0.512546
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_626
-    x: 0.514338
-    y: 0.474774
-    yaw: -2.396173
+    x: 0.479628
+    y: 0.499287
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_627
-    x: 0.499643
-    y: 0.461209
-    yaw: -2.396173
+    x: 0.46464
+    y: 0.486028
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_628
-    x: 0.484948
-    y: 0.447644
-    yaw: -2.396173
+    x: 0.449652
+    y: 0.472769
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_629
-    x: 0.470252
-    y: 0.434079
-    yaw: -2.396173
+    x: 0.434663
+    y: 0.45951
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_630
-    x: 0.455557
-    y: 0.420514
-    yaw: -2.396173
+    x: 0.419675
+    y: 0.446251
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_631
-    x: 0.440862
-    y: 0.406949
-    yaw: -2.396173
+    x: 0.404686
+    y: 0.432992
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_632
-    x: 0.426166
-    y: 0.393384
-    yaw: -2.396173
+    x: 0.389698
+    y: 0.419733
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_633
-    x: 0.411471
-    y: 0.379819
-    yaw: -2.396173
+    x: 0.37471
+    y: 0.406474
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_634
-    x: 0.396775
-    y: 0.366254
-    yaw: -2.396173
+    x: 0.359721
+    y: 0.393215
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_635
-    x: 0.38208
-    y: 0.352689
-    yaw: -2.396173
+    x: 0.344733
+    y: 0.379956
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_636
-    x: 0.367385
-    y: 0.339124
-    yaw: -2.396173
+    x: 0.329745
+    y: 0.366697
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_637
-    x: 0.352689
-    y: 0.325559
-    yaw: -2.396173
+    x: 0.314756
+    y: 0.353438
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_638
-    x: 0.337994
-    y: 0.311994
-    yaw: -2.396173
+    x: 0.299768
+    y: 0.340179
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_639
-    x: 0.323298
-    y: 0.298429
-    yaw: -2.396173
+    x: 0.284779
+    y: 0.32692
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_640
-    x: 0.308603
-    y: 0.284864
-    yaw: -2.396173
+    x: 0.269791
+    y: 0.313661
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_641
-    x: 0.293908
-    y: 0.271299
-    yaw: -2.396173
+    x: 0.254803
+    y: 0.300402
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_642
-    x: 0.279212
-    y: 0.257734
-    yaw: -2.396173
+    x: 0.239814
+    y: 0.287143
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_643
-    x: 0.264517
-    y: 0.244169
-    yaw: -2.396173
+    x: 0.224826
+    y: 0.273884
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_644
-    x: 0.249822
-    y: 0.230605
-    yaw: -2.396173
+    x: 0.209837
+    y: 0.260625
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_645
-    x: 0.235126
-    y: 0.21704
-    yaw: -2.396173
+    x: 0.194849
+    y: 0.247366
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_646
-    x: 0.220431
-    y: 0.203475
-    yaw: -2.396173
+    x: 0.179861
+    y: 0.234108
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_647
-    x: 0.205735
-    y: 0.18991
-    yaw: -2.396173
+    x: 0.164872
+    y: 0.220849
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_648
-    x: 0.19104
-    y: 0.176345
-    yaw: -2.396173
+    x: 0.149884
+    y: 0.20759
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_649
-    x: 0.176345
-    y: 0.16278
-    yaw: -2.396173
+    x: 0.134895
+    y: 0.194331
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_650
-    x: 0.161649
-    y: 0.149215
-    yaw: -2.396173
+    x: 0.119907
+    y: 0.181072
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_651
-    x: 0.146954
-    y: 0.13565
-    yaw: -2.396173
+    x: 0.104919
+    y: 0.167813
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_652
-    x: 0.132258
-    y: 0.122085
-    yaw: -2.396173
+    x: 0.08993
+    y: 0.154554
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_653
-    x: 0.117563
-    y: 0.10852
-    yaw: -2.396173
+    x: 0.074942
+    y: 0.141295
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_654
-    x: 0.102868
-    y: 0.094955
-    yaw: -2.396173
+    x: 0.059954
+    y: 0.128036
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_655
-    x: 0.088172
-    y: 0.08139
-    yaw: -2.396173
+    x: 0.044965
+    y: 0.114777
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_656
-    x: 0.073477
-    y: 0.067825
-    yaw: -2.396173
+    x: 0.029977
+    y: 0.101518
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_657
-    x: 0.058782
-    y: 0.05426
-    yaw: -2.396173
+    x: 0.014988
+    y: 0.088259
+    yaw: -2.417343
     pass_radius: 0.6
   - name: point_658
-    x: 0.044086
-    y: 0.040695
-    yaw: -2.396173
-    pass_radius: 0.6
-  - name: point_659
-    x: 0.029391
-    y: 0.02713
-    yaw: -2.396173
-    pass_radius: 0.6
-  - name: point_660
-    x: 0.014695
-    y: 0.013565
-    yaw: -2.396173
-    pass_radius: 0.6
-  - name: point_661
     x: 0
-    y: 0
-    yaw: -2.396173
+    y: 0.075
+    yaw: -2.417343
     pass_radius: 0.6

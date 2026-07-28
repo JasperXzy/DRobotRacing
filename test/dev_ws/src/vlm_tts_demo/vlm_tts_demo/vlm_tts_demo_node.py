@@ -39,9 +39,13 @@ class VlmTtsDemoNode(Node):
         self.declare_parameter('source_capture_file', '')
         self.declare_parameter('tts_topic', '/tts_text')
         self.declare_parameter('result_topic', '/vlm_api_text')
-        self.declare_parameter('ding_enable', True)
+        self.declare_parameter('ding_enable', False)
         self.declare_parameter('start_notice', '开始识别')
         self.declare_parameter('error_notice', '识别失败，请检查网络或接口配置')
+        self.declare_parameter(
+            'last_success_text_file',
+            '/root/D_Robot/test/dev_ws/captures/last_successful_vlm_text.txt')
+        self.declare_parameter('failure_prefix', '一')
         self.declare_parameter('user_prompt', DEFAULT_PROMPT)
         self.declare_parameter('env_file', '')
         self.declare_parameter('api_endpoint', '')
@@ -67,6 +71,9 @@ class VlmTtsDemoNode(Node):
         self.ding_enable = self.get_parameter('ding_enable').value
         self.start_notice = self.get_parameter('start_notice').value
         self.error_notice = self.get_parameter('error_notice').value
+        self.last_success_text_file = (
+            self.get_parameter('last_success_text_file').value)
+        self.failure_prefix = self.get_parameter('failure_prefix').value
         self.user_prompt = self.get_parameter('user_prompt').value or DEFAULT_PROMPT
 
         self.env_file = self.get_parameter('env_file').value
@@ -101,6 +108,7 @@ class VlmTtsDemoNode(Node):
         self._waiting_for_image = False
         self._api_busy = False
         self._api_thread = None
+        self._last_success_text = self._load_last_success_text()
 
         self.tts_pub = self.create_publisher(String, self.tts_topic, 10)
         self.result_pub = self.create_publisher(String, self.result_topic, 10)
@@ -142,6 +150,49 @@ class VlmTtsDemoNode(Node):
             if key and key not in os.environ:
                 os.environ[key] = value
         self.get_logger().info('Loaded API env file: %s' % path)
+
+    def _load_last_success_text(self):
+        path = Path(self.last_success_text_file).expanduser()
+        try:
+            if not path.exists():
+                return ''
+            text = path.read_text(encoding='utf-8').strip()
+            if text:
+                self.get_logger().info(
+                    'Loaded last successful VLM text from %s.' % path)
+            return text
+        except OSError as exc:
+            self.get_logger().warn(
+                'Could not load last successful VLM text from %s: %s'
+                % (path, exc))
+            return ''
+
+    def _store_last_success_text(self, text):
+        text = (text or '').strip()
+        if not text:
+            return
+        with self._lock:
+            self._last_success_text = text
+        path = Path(self.last_success_text_file).expanduser()
+        temporary_path = path.with_name(path.name + '.tmp')
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            temporary_path.write_text(text + '\n', encoding='utf-8')
+            temporary_path.replace(path)
+        except OSError as exc:
+            self.get_logger().error(
+                'Could not persist successful VLM text to %s: %s'
+                % (path, exc))
+
+    def _publish_failure_fallback(self):
+        with self._lock:
+            previous_text = self._last_success_text
+        fallback = '%s%s' % (self.failure_prefix, previous_text)
+        if not fallback:
+            return
+        self.get_logger().warn(
+            'Publishing VLM failure fallback using last successful text.')
+        self._publish_tts(fallback)
 
     def _on_trigger(self, msg):
         if msg.data == self.trigger_value:
@@ -209,7 +260,7 @@ class VlmTtsDemoNode(Node):
             with self._lock:
                 self._api_busy = False
             self.get_logger().warn('No captured image available for API inference.')
-            self._publish_tts('还没有可识别的图像')
+            self._publish_failure_fallback()
             return
 
         self._api_thread = threading.Thread(
@@ -229,12 +280,12 @@ class VlmTtsDemoNode(Node):
 
             elapsed = time.monotonic() - started
             self.get_logger().info('API VLM result in %.2fs: %s' % (elapsed, text))
+            self._store_last_success_text(text)
             self._publish_result(text)
             self._publish_tts(text)
         except Exception as exc:
             self.get_logger().error('API VLM inference failed: %s' % exc)
-            if self.error_notice:
-                self._publish_tts(self.error_notice)
+            self._publish_failure_fallback()
         finally:
             with self._lock:
                 self._api_busy = False

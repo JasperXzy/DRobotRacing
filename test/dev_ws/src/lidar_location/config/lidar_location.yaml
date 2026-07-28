@@ -22,7 +22,7 @@ lidar_location:
     initial_pose:
       x: 0.0
       y: 0.0
-      yaw: 0.0
+      yaw: 0.7853981634
 
     occupied_threshold: 65
     likelihood_field_radius: 1.25

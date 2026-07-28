@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Render logic-3 channel planning snapshots received as compact JSON events."""
+"""Render the four-stage route snapshots received as compact JSON events."""
 
 import json
 import math
 import re
-import shutil
 from pathlib import Path
 
 import rclpy
@@ -39,15 +38,17 @@ class RouteSnapshotRenderer(Node):
             self.get_logger().error(f'路线快照绘图失败: {exc}')
 
     def _render(self, data):
-        logic = int(data.get('logic', 3))
         event = str(data.get('event', ''))
         session = str(data.get('session', ''))
         valid_session = (
             re.fullmatch(r'\d{4}\.\d{2}\.\d{2}_\d{2}:\d{2}:\d{2}', session) or
             re.fullmatch(r'\d{8}_\d{6}', session)
         )
-        valid_events = {'selected', 'final'}
-        if not valid_session or logic != 3 or event not in valid_events:
+        valid_events = {
+            'task1_frozen', 'task1_dynamic',
+            'final_frozen', 'final_dynamic',
+        }
+        if not valid_session or event not in valid_events:
             raise ValueError('invalid snapshot event/session')
 
         output_root = Path(str(data['output_root'])).expanduser()
@@ -55,55 +56,63 @@ class RouteSnapshotRenderer(Node):
         output_dir.mkdir(parents=True, exist_ok=True)
 
         base, world_to_pixel, pixels_per_meter = self._load_map(
-            Path(str(data['map_yaml'])), data.get('parking_zone', {}),
+            Path(str(data['map_yaml'])), data.get('base_zone', {}),
+            data.get('parking_zone', {}),
             data.get('final_pose'))
         original = data.get('original', [])
         baseline = data.get('baseline', [])
         red = data.get('red', [])
         red_identity_radius = float(data.get('red_identity_radius', 0.5))
 
-        self._render_logic3(
+        self._render_route_snapshot(
             data, event, output_dir, base, world_to_pixel, pixels_per_meter,
             original, baseline, red, red_identity_radius)
 
-    def _render_logic3(
+    def _render_route_snapshot(
             self, data, event, output_dir, base, world_to_pixel, pixels_per_meter,
             original, frozen, red, red_identity_radius):
         green = data.get('green', [])
         green_radius = float(data.get('green_radius', 0.5))
         frozen_revision = max(0, int(data.get('frozen_revision', 0)))
-        original_path = output_dir / '01_original_route.png'
-        initial_frozen_path = output_dir / '02_frozen_route.png'
-        frozen_path = (
-            initial_frozen_path if frozen_revision == 0 else
-            output_dir / f'02_frozen_route（{frozen_revision}）.png'
-        )
-        final_path = output_dir / '03_final_route.png'
-
-        if event == 'selected':
-            # 第0版是二维码后的首次规划，固定写01/02。每次实际倒车完全
-            # 结束后的重规划只追加02（n），保留最初的01/02作为对照。
-            if frozen_revision == 0 or not original_path.exists():
-                image = base.copy()
-                self._draw_route(image, original, world_to_pixel, (25, 93, 190, 255), 5)
-                self._draw_parking_zone(image, data, world_to_pixel)
-                self._draw_title(image, '01 Original unshifted channel route')
-                self._save_png(image, original_path)
-
+        if event == 'task1_frozen':
             image = base.copy()
             self._draw_route(image, original, world_to_pixel, (75, 75, 75, 105), 3)
             self._draw_route(image, frozen, world_to_pixel, (15, 90, 215, 255), 6)
             self._draw_clusters(
                 image, green, world_to_pixel, pixels_per_meter,
                 green_radius, (20, 180, 65), True)
+            self._draw_base_zone(image, data, world_to_pixel)
             self._draw_parking_zone(image, data, world_to_pixel)
             self._draw_title(
                 image,
-                f'02 Frozen route revision {frozen_revision} / green clusters '
+                f'Task1 frozen route / green clusters '
                 f'(identity R={green_radius:.2f}m)')
-            self._save_png(image, frozen_path)
-            shutil.copyfile(frozen_path, final_path)
-            self.get_logger().info(f'已生成逻辑3冻结路线图: {frozen_path}')
+            output_path = output_dir / '01_Task1_frozen_route.png'
+            self._save_png(image, output_path)
+            self.get_logger().debug(f'已生成Task1冻结路线图: {output_path}')
+            return
+
+        if event == 'final_frozen':
+            image = base.copy()
+            self._draw_route(image, original, world_to_pixel, (75, 75, 75, 105), 3)
+            self._draw_route(image, frozen, world_to_pixel, (15, 90, 215, 255), 6)
+            self._draw_clusters(
+                image, green, world_to_pixel, pixels_per_meter,
+                green_radius, (20, 180, 65), True)
+            self._draw_base_zone(image, data, world_to_pixel)
+            self._draw_parking_zone(image, data, world_to_pixel)
+            self._draw_snapshot_markers(image, data, world_to_pixel)
+            self._draw_title(
+                image,
+                f'Final frozen route revision {frozen_revision} / green clusters '
+                f'(identity R={green_radius:.2f}m)')
+            output_path = (
+                output_dir / '03_Final_frozen_route.png'
+                if frozen_revision == 0 else
+                output_dir / f'03_Final_frozen_route({frozen_revision}).png'
+            )
+            self._save_png(image, output_path)
+            self.get_logger().debug(f'已生成Final冻结路线图: {output_path}')
             return
 
         image = base.copy()
@@ -116,16 +125,23 @@ class RouteSnapshotRenderer(Node):
             self._draw_clusters(
                 image, red, world_to_pixel, pixels_per_meter,
                 red_identity_radius, (225, 35, 35), True)
+        self._draw_base_zone(image, data, world_to_pixel)
         self._draw_parking_zone(image, data, world_to_pixel)
+        self._draw_snapshot_markers(image, data, world_to_pixel)
         self._draw_final_pose(image, data, world_to_pixel, pixels_per_meter)
+        task1_dynamic = event == 'task1_dynamic'
         self._draw_title(
             image,
-            f'03 Final route / red records (history R={red_identity_radius:.2f}m)')
-        self._save_png(image, final_path)
-        self.get_logger().info(f'已生成逻辑3任务结束路线图: {final_path}')
+            f'{"Task1" if task1_dynamic else "Final"} dynamic route / '
+            f'red records (history R={red_identity_radius:.2f}m)')
+        output_path = output_dir / (
+            '02_Task1_dynamic_route.png'
+            if task1_dynamic else '04_Final_dynamic_route.png')
+        self._save_png(image, output_path)
+        self.get_logger().debug(f'已生成动态路线图: {output_path}')
 
     @staticmethod
-    def _load_map(map_yaml_path, parking_zone, final_pose):
+    def _load_map(map_yaml_path, base_zone, parking_zone, final_pose):
         with map_yaml_path.open('r', encoding='utf-8') as stream:
             metadata = yaml.safe_load(stream)
         image_path = Path(str(metadata['image']))
@@ -161,23 +177,15 @@ class RouteSnapshotRenderer(Node):
         padding_right = 0
         padding_bottom = 0
         boundary_pixels = []
-        center = parking_zone.get('center', [])
-        if isinstance(center, list) and len(center) >= 2:
-            center_x = float(center[0])
-            center_y = float(center[1])
-            length_x = max(0.0, float(parking_zone.get('length_x', 0.0)))
-            upper_y = max(0.0, float(parking_zone.get('upper_y', 0.0)))
-            lower_y = max(0.0, float(parking_zone.get('lower_y', 0.0)))
-            values = (center_x, center_y, length_x, upper_y, lower_y)
-            if all(math.isfinite(value) for value in values) and length_x > 0.0:
-                half_length = 0.5 * length_x
-                corners = [
-                    (center_x - half_length, center_y - lower_y),
-                    (center_x + half_length, center_y - lower_y),
-                    (center_x + half_length, center_y + upper_y),
-                    (center_x - half_length, center_y + upper_y),
-                ]
-                boundary_pixels.extend(raw_world_to_pixel(point) for point in corners)
+        for zone in (base_zone, parking_zone):
+            bounds = RouteSnapshotRenderer._zone_bounds(zone)
+            if bounds is None:
+                continue
+            min_x, max_x, min_y, max_y = bounds
+            boundary_pixels.extend(
+                raw_world_to_pixel(point) for point in (
+                    (min_x, min_y), (max_x, min_y),
+                    (max_x, max_y), (min_x, max_y)))
 
         if isinstance(final_pose, list) and len(final_pose) >= 3:
             pose_x = float(final_pose[0])
@@ -248,49 +256,37 @@ class RouteSnapshotRenderer(Node):
         image.alpha_composite(overlay)
 
     @staticmethod
-    def _draw_parking_zone(image, data, transform):
-        zone = data.get('parking_zone', {})
-        center = zone.get('center', [])
-        if not isinstance(center, list) or len(center) < 2:
-            return
+    def _zone_bounds(zone):
+        if not isinstance(zone, dict):
+            return None
+        try:
+            min_x = float(zone['min_x'])
+            max_x = float(zone['max_x'])
+            min_y = float(zone['min_y'])
+            max_y = float(zone['max_y'])
+        except (KeyError, TypeError, ValueError):
+            return None
+        values = (min_x, max_x, min_y, max_y)
+        if not all(math.isfinite(value) for value in values):
+            return None
+        if min_x > max_x or min_y > max_y:
+            return None
+        return values
 
-        center_x = float(center[0])
-        center_y = float(center[1])
-        length_x = max(0.0, float(zone.get('length_x', 0.0)))
-        upper_y = max(0.0, float(zone.get('upper_y', 0.0)))
-        lower_y = max(0.0, float(zone.get('lower_y', 0.0)))
-        values = (center_x, center_y, length_x, upper_y, lower_y)
-        if not all(math.isfinite(value) for value in values) or length_x <= 0.0:
+    @staticmethod
+    def _draw_zone(image, transform, bounds, outline, fill, label):
+        if bounds is None:
             return
-
-        half_length = 0.5 * length_x
+        min_x, max_x, min_y, max_y = bounds
         corners = [
-            (center_x - half_length, center_y - lower_y),
-            (center_x + half_length, center_y - lower_y),
-            (center_x + half_length, center_y + upper_y),
-            (center_x - half_length, center_y + upper_y),
+            (min_x, min_y), (max_x, min_y),
+            (max_x, max_y), (min_x, max_y),
         ]
         pixels = [transform(point) for point in corners]
         overlay = Image.new('RGBA', image.size, (0, 0, 0, 0))
         draw = ImageDraw.Draw(overlay)
-        outline = (135, 35, 190, 245)
-        draw.polygon(pixels, fill=(170, 75, 215, 42))
+        draw.polygon(pixels, fill=fill)
         draw.line(pixels + [pixels[0]], fill=outline, width=5, joint='curve')
-
-        center_pixel_x, center_pixel_y = transform((center_x, center_y))
-        cross_radius = 8
-        draw.line(
-            (center_pixel_x - cross_radius, center_pixel_y,
-             center_pixel_x + cross_radius, center_pixel_y),
-            fill=outline, width=3)
-        draw.line(
-            (center_pixel_x, center_pixel_y - cross_radius,
-             center_pixel_x, center_pixel_y + cross_radius),
-            fill=outline, width=3)
-
-        label = (
-            f'PARKING x={center_x:.2f}±{half_length:.2f}, '
-            f'y=[{center_y - lower_y:.2f},{center_y + upper_y:.2f}]')
         font = ImageFont.load_default()
         label_x, label_y = pixels[3]
         try:
@@ -305,6 +301,68 @@ class RouteSnapshotRenderer(Node):
             fill=(255, 255, 255, 220))
         draw.text((label_x + 7, label_y - 18), label, fill=outline, font=font)
         image.alpha_composite(overlay)
+
+    @staticmethod
+    def _draw_base_zone(image, data, transform):
+        bounds = RouteSnapshotRenderer._zone_bounds(data.get('base_zone', {}))
+        if bounds is None:
+            return
+        min_x, max_x, min_y, max_y = bounds
+        label = (
+            f'BASE x=[{min_x:.2f},{max_x:.2f}], '
+            f'y=[{min_y:.2f},{max_y:.2f}]')
+        RouteSnapshotRenderer._draw_zone(
+            image, transform, bounds,
+            (25, 105, 225, 245), (45, 125, 235, 28), label)
+
+    @staticmethod
+    def _draw_parking_zone(image, data, transform):
+        zone = data.get('parking_zone', {})
+        bounds = RouteSnapshotRenderer._zone_bounds(zone)
+        if bounds is None:
+            return
+        min_x, max_x, min_y, max_y = bounds
+        confirm_seconds = max(0.0, float(zone.get('confirm_seconds', 0.0)))
+        label = (
+            f'PARKING x=[{min_x:.2f},{max_x:.2f}], '
+            f'y=[{min_y:.2f},{max_y:.2f}], hold={confirm_seconds:.2f}s')
+        RouteSnapshotRenderer._draw_zone(
+            image, transform, bounds,
+            (135, 35, 190, 245), (170, 75, 215, 42), label)
+
+    @staticmethod
+    def _draw_marker(image, marker, transform, color, text_color):
+        if not isinstance(marker, dict):
+            return
+        point = marker.get('point')
+        if not isinstance(point, list) or len(point) < 2:
+            return
+        point_x = float(point[0])
+        point_y = float(point[1])
+        if not all(math.isfinite(value) for value in (point_x, point_y)):
+            return
+
+        x, y = transform((point_x, point_y))
+        overlay = Image.new('RGBA', image.size, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
+        radius = 9
+        draw.ellipse(
+            (x - radius, y - radius, x + radius, y + radius),
+            fill=color, outline=(255, 255, 255, 255), width=3)
+        label = str(marker.get('label', 'EVENT'))
+        text = f'{label} ({point_x:.2f},{point_y:.2f})'
+        font = ImageFont.load_default()
+        draw.text((x + 12, y - 15), text, fill=text_color, font=font)
+        image.alpha_composite(overlay)
+
+    @staticmethod
+    def _draw_snapshot_markers(image, data, transform):
+        RouteSnapshotRenderer._draw_marker(
+            image, data.get('qr_marker'), transform,
+            (245, 135, 25, 255), (120, 60, 0, 255))
+        RouteSnapshotRenderer._draw_marker(
+            image, data.get('route_start_marker'), transform,
+            (20, 100, 235, 255), (0, 45, 130, 255))
 
     @staticmethod
     def _draw_final_pose(image, data, transform, pixels_per_meter):

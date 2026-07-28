@@ -24,6 +24,7 @@ public:
         this->declare_parameter("small_roi_upscale", true);
         this->declare_parameter("small_roi_min_size", 120);
         this->declare_parameter("small_roi_upscale_factor", 2.0);
+        this->declare_parameter("speak_on_detect", false);
         this->declare_parameter("suspend_visual_control_on_detect", true);
         this->declare_parameter("visual_control_suspend_topic", "/sign4return");
         this->declare_parameter("visual_control_suspend_value", 5);
@@ -31,6 +32,7 @@ public:
         image_topic_ = this->get_parameter("image_topic").as_string();
         process_interval_ = std::max(0.0, this->get_parameter("process_interval").as_double());
         stop_on_detect_ = this->get_parameter("stop_on_detect").as_bool();
+        speak_on_detect_ = this->get_parameter("speak_on_detect").as_bool();
         suspend_visual_control_on_detect_ =
             this->get_parameter("suspend_visual_control_on_detect").as_bool();
         visual_control_suspend_topic_ =
@@ -196,7 +198,7 @@ private:
             sign_msg.sign_data, barcode_data.c_str(),
             is_odd ? "clockwise" : "counterclockwise");
 
-        if (!tts_spoken_)
+        if (speak_on_detect_ && !tts_spoken_)
         {
             auto tts_msg = std::make_unique<std_msgs::msg::String>();
             tts_msg->data = "数字：" + barcode_data + "，为" + parity_text +
@@ -245,6 +247,7 @@ private:
 
     bool activated_ = true;
     bool tts_spoken_ = false;
+    bool speak_on_detect_ = false;
     bool stop_on_detect_ = true;
     bool suspend_visual_control_on_detect_ = true;
     bool small_roi_upscale_ = true;
