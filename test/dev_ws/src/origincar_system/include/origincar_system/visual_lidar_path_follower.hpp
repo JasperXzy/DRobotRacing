@@ -69,13 +69,6 @@ private:
     FINISHED
   };
 
-  enum class ReturnLidarState
-  {
-    FOLLOWING_ROUTE,
-    AVOIDING,
-    REJOINING
-  };
-
   struct RobotPose
   {
     double x{0.0};
@@ -220,6 +213,7 @@ private:
   int perception_full_resume_value_{9};
   int perception_pause_value_{10};
 
+  double control_frequency_{40.0};
   double linear_speed_{1.5};
   double lookahead_distance_{0.55};
   double pass_radius_{0.35};
@@ -243,8 +237,10 @@ private:
   int waypoint_shift_occupied_threshold_{50};
   int waypoint_shift_check_count_{20};
   double waypoint_cloud_check_radius_{0.25};
-  double waypoint_shift_target_clearance_{0.15};
   double task1_waypoint_shift_target_clearance_{0.45};
+  double transition_waypoint_shift_target_clearance_{0.40};
+  double task2_waypoint_shift_target_clearance_{0.40};
+  double task3_waypoint_shift_target_clearance_{0.40};
   double task1_waypoint_shift_min_y_{-0.10};
   bool waypoint_shift_enable_local_rebuild_{true};
   double waypoint_shift_rebuild_min_progress_ratio_{0.15};
@@ -377,13 +373,13 @@ private:
   double return_stop_zone_min_y_{-0.10};
   double return_stop_zone_max_y_{0.25};
   double return_stop_confirm_seconds_{0.0};
+  double return_brake_reverse_speed_{0.30};
+  int return_brake_reverse_cycles_{5};
+  int return_brake_zero_cycles_{15};
   // Task3路线走完后持续追踪的虚拟牵引点取紫色停车矩形中心。
   double return_target_x_{0.0};
   double return_target_y_{0.075};
   double return_obstacle_split_y_{-0.20};
-  int return_lidar_clear_cycles_{3};
-  double return_lidar_rejoin_lateral_tolerance_{0.12};
-  double return_lidar_rejoin_linear_speed_{0.45};
   std::string return_visual_detection_topic_{"/racing_obstacle_detection"};
   double return_visual_detection_timeout_{0.50};
   int return_visual_source_width_{1920};
@@ -444,8 +440,6 @@ private:
   bool task3_route_available_{false};
   bool task3_route_active_{false};
   std::size_t task3_start_index_{0};
-  ReturnLidarState return_lidar_state_{ReturnLidarState::FOLLOWING_ROUTE};
-  int return_lidar_clear_count_{0};
   // 旧版无task3_start标记的航点文件才会使用独立返程控制。
   bool return_to_start_active_{false};
   std::uint64_t scan_sequence_{0};
@@ -580,12 +574,10 @@ private:
   void control_once();
   bool stop_if_route_finished(const RobotPose & pose);
   bool handle_task3_start(const RobotPose & pose);
-  void update_return_lidar_state(
-    const RobotPose & pose, bool observation_valid, bool obstacle_found);
-  double distance_to_return_route(const RobotPose & pose) const;
   void start_return_to_start();
   void control_return_to_start(const RobotPose & pose);
   void finish_return_to_start(const RobotPose & pose, const char * reason);
+  void perform_return_brake_sequence();
   bool return_stop_zone_contains(const RobotPose & pose) const;
   bool return_stop_zone_confirmed(const RobotPose & pose);
   bool return_visual_detection_is_fresh() const;

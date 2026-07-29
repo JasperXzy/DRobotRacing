@@ -31,7 +31,7 @@ source /root/D_Robot/test/dev_ws/install/setup.bash
 fastdds shm clean
 export FASTDDS_BUILTIN_TRANSPORTS=UDPv4
 ros2 launch origincar_system test_bringup_lidar_location.launch.py \
-  start_foxglove:=false
+  start_foxglove:=true
 ```
 
 `lidar_location` 默认从
@@ -51,7 +51,7 @@ ros2 topic echo /lidar_location/match_score
 
 #### （1）稳 1.05 linear_speed
 ```bash
-tmux new -s drobot
+tmux new -s drobot2
 unset AMENT_PREFIX_PATH COLCON_PREFIX_PATH CMAKE_PREFIX_PATH LD_LIBRARY_PATH PYTHONPATH
 source /opt/tros/humble/setup.bash
 source /root/D_Robot/test/dev_ws/install/setup.bash
@@ -62,7 +62,7 @@ ros2 launch origincar_system visual_lidar_path_follower.launch.xml
 
 #### (2) 快1.50（简单摆法）
 ```bash
-tmux new -s drobot
+tmux new -s drobot2
 unset AMENT_PREFIX_PATH COLCON_PREFIX_PATH CMAKE_PREFIX_PATH LD_LIBRARY_PATH PYTHONPATH
 source /opt/tros/humble/setup.bash
 source /root/D_Robot/test/dev_ws/install/setup.bash
@@ -96,4 +96,33 @@ ros2 launch origincar_system odom_test_lidar_location.launch.py \
 ```bash
 pkill -INT -f lidar_driver_node
 sleep 2
+```
+
+
+## 6. 调整音量
+```bash
+amixer -c 0 sset PCM 50% unmute
+```
+
+#### 终端1
+```bash 
+source /opt/tros/humble/setup.bash
+source /root/D_Robot/test/dev_ws/install/setup.bash
+
+export XDG_RUNTIME_DIR=/run/user/1000
+export PULSE_SERVER=unix:/run/user/1000/pulse/native
+export PULSE_COOKIE=/home/sunrise/.config/pulse/cookie
+
+ros2 run hobot_tts hobot_tts --ros-args \
+  -p topic_sub:=/tts_text \
+  -p playback_device:=pulse
+```
+
+#### 终端2
+```bash 
+source /opt/tros/humble/setup.bash
+source /root/D_Robot/test/dev_ws/install/setup.bash
+
+ros2 topic pub --once /tts_text std_msgs/msg/String \
+  "{data: '测试'}"
 ```

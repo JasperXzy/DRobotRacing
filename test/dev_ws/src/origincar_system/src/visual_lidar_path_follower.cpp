@@ -11,6 +11,7 @@
 #include <limits>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -121,8 +122,6 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   tf_buffer_(this->get_clock()),
   tf_listener_(tf_buffer_)
 {
-  double control_frequency = 40.0;
-
   // 坐标系与话题
   declare_parameter<std::string>("task1_waypoints_file", task1_waypoints_file_);
   get_parameter("task1_waypoints_file", task1_waypoints_file_);
@@ -163,8 +162,8 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   get_parameter("enable_debug_visualization", enable_debug_visualization_);
 
   // 全阶段公共控制
-  declare_parameter<double>("control_frequency", control_frequency);
-  get_parameter("control_frequency", control_frequency);
+  declare_parameter<double>("control_frequency", control_frequency_);
+  get_parameter("control_frequency", control_frequency_);
   declare_parameter<double>(
     "turn_speed_full_steering_angle", turn_speed_full_steering_angle_);
   get_parameter(
@@ -199,12 +198,23 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   declare_parameter<double>("waypoint_cloud_check_radius", waypoint_cloud_check_radius_);
   get_parameter("waypoint_cloud_check_radius", waypoint_cloud_check_radius_);
   declare_parameter<double>(
-    "waypoint_shift_target_clearance", waypoint_shift_target_clearance_);
-  get_parameter("waypoint_shift_target_clearance", waypoint_shift_target_clearance_);
-  declare_parameter<double>(
     "task1_waypoint_shift_target_clearance", task1_waypoint_shift_target_clearance_);
   get_parameter(
     "task1_waypoint_shift_target_clearance", task1_waypoint_shift_target_clearance_);
+  declare_parameter<double>(
+    "transition_waypoint_shift_target_clearance",
+    transition_waypoint_shift_target_clearance_);
+  get_parameter(
+    "transition_waypoint_shift_target_clearance",
+    transition_waypoint_shift_target_clearance_);
+  declare_parameter<double>(
+    "task2_waypoint_shift_target_clearance", task2_waypoint_shift_target_clearance_);
+  get_parameter(
+    "task2_waypoint_shift_target_clearance", task2_waypoint_shift_target_clearance_);
+  declare_parameter<double>(
+    "task3_waypoint_shift_target_clearance", task3_waypoint_shift_target_clearance_);
+  get_parameter(
+    "task3_waypoint_shift_target_clearance", task3_waypoint_shift_target_clearance_);
   declare_parameter<double>(
     "task1_waypoint_shift_min_y", task1_waypoint_shift_min_y_);
   get_parameter("task1_waypoint_shift_min_y", task1_waypoint_shift_min_y_);
@@ -604,20 +614,16 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   declare_parameter<double>(
     "return_stop_confirm_seconds", return_stop_confirm_seconds_);
   get_parameter("return_stop_confirm_seconds", return_stop_confirm_seconds_);
+  declare_parameter<double>(
+    "return_brake_reverse_speed", return_brake_reverse_speed_);
+  get_parameter("return_brake_reverse_speed", return_brake_reverse_speed_);
+  declare_parameter<int>(
+    "return_brake_reverse_cycles", return_brake_reverse_cycles_);
+  get_parameter("return_brake_reverse_cycles", return_brake_reverse_cycles_);
+  declare_parameter<int>("return_brake_zero_cycles", return_brake_zero_cycles_);
+  get_parameter("return_brake_zero_cycles", return_brake_zero_cycles_);
   declare_parameter<double>("return_obstacle_split_y", return_obstacle_split_y_);
   get_parameter("return_obstacle_split_y", return_obstacle_split_y_);
-  declare_parameter<int>("return_lidar_clear_cycles", return_lidar_clear_cycles_);
-  get_parameter("return_lidar_clear_cycles", return_lidar_clear_cycles_);
-  declare_parameter<double>(
-    "return_lidar_rejoin_lateral_tolerance",
-    return_lidar_rejoin_lateral_tolerance_);
-  get_parameter(
-    "return_lidar_rejoin_lateral_tolerance",
-    return_lidar_rejoin_lateral_tolerance_);
-  declare_parameter<double>(
-    "return_lidar_rejoin_linear_speed", return_lidar_rejoin_linear_speed_);
-  get_parameter(
-    "return_lidar_rejoin_linear_speed", return_lidar_rejoin_linear_speed_);
   declare_parameter<std::string>(
     "return_visual_detection_topic", return_visual_detection_topic_);
   get_parameter("return_visual_detection_topic", return_visual_detection_topic_);
@@ -739,9 +745,14 @@ VisualLidarPathFollower::VisualLidarPathFollower()
     1, std::min(100, waypoint_shift_occupied_threshold_));
   waypoint_shift_check_count_ = std::max(1, waypoint_shift_check_count_);
   waypoint_cloud_check_radius_ = std::max(0.01, waypoint_cloud_check_radius_);
-  waypoint_shift_target_clearance_ = std::max(0.0, waypoint_shift_target_clearance_);
   task1_waypoint_shift_target_clearance_ = std::max(
     0.0, task1_waypoint_shift_target_clearance_);
+  transition_waypoint_shift_target_clearance_ = std::max(
+    0.0, transition_waypoint_shift_target_clearance_);
+  task2_waypoint_shift_target_clearance_ = std::max(
+    0.0, task2_waypoint_shift_target_clearance_);
+  task3_waypoint_shift_target_clearance_ = std::max(
+    0.0, task3_waypoint_shift_target_clearance_);
   if (!std::isfinite(task1_waypoint_shift_min_y_)) {
     task1_waypoint_shift_min_y_ = -0.10;
   }
@@ -983,14 +994,12 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   return_target_x_ = 0.5 * (return_stop_zone_min_x_ + return_stop_zone_max_x_);
   return_target_y_ = 0.5 * (return_stop_zone_min_y_ + return_stop_zone_max_y_);
   return_stop_confirm_seconds_ = std::max(0.0, return_stop_confirm_seconds_);
+  return_brake_reverse_speed_ = std::max(0.0, return_brake_reverse_speed_);
+  return_brake_reverse_cycles_ = std::max(0, return_brake_reverse_cycles_);
+  return_brake_zero_cycles_ = std::max(0, return_brake_zero_cycles_);
   if (!std::isfinite(return_obstacle_split_y_)) {
     return_obstacle_split_y_ = -0.20;
   }
-  return_lidar_clear_cycles_ = std::max(1, return_lidar_clear_cycles_);
-  return_lidar_rejoin_lateral_tolerance_ = std::max(
-    0.01, return_lidar_rejoin_lateral_tolerance_);
-  return_lidar_rejoin_linear_speed_ = std::max(
-    0.0, return_lidar_rejoin_linear_speed_);
   return_visual_detection_timeout_ = std::max(
     0.05, return_visual_detection_timeout_);
   return_visual_source_width_ = std::max(1, return_visual_source_width_);
@@ -1118,7 +1127,7 @@ VisualLidarPathFollower::VisualLidarPathFollower()
 
   // 定时控制循环：每次读取 TF、更新路线进度并计算离散前瞻 waypoint 速度。
   timer_ = create_wall_timer(
-    std::chrono::duration<double>(1.0 / std::max(control_frequency, 1.0)),
+    std::chrono::duration<double>(1.0 / std::max(control_frequency_, 1.0)),
     std::bind(&VisualLidarPathFollower::control_once, this));
 }
 
@@ -1460,21 +1469,7 @@ void VisualLidarPathFollower::control_once()
   const bool runtime_lidar_active = logic3_planning_pose_anchored_ &&
     task_phase_ != TaskPhase::FINISHED;
   if (runtime_lidar_active && !target.reverse) {
-    bool lidar_observation_valid = false;
-    bool lidar_obstacle_found = false;
-    const bool lidar_command_overridden = apply_channel_lidar_obstacle_avoidance(
-      cmd, &lidar_observation_valid, &lidar_obstacle_found);
-    if (task3_route_active_) {
-      update_return_lidar_state(
-        pose, lidar_observation_valid, lidar_obstacle_found);
-      if (!lidar_command_overridden &&
-        return_lidar_state_ != ReturnLidarState::FOLLOWING_ROUTE)
-      {
-        cmd.linear.x = std::copysign(
-          std::min(std::abs(cmd.linear.x), return_lidar_rejoin_linear_speed_),
-          cmd.linear.x);
-      }
-    }
+    apply_channel_lidar_obstacle_avoidance(cmd);
   }
 
   publish_debug_visualization(pose);
@@ -1696,8 +1691,6 @@ bool VisualLidarPathFollower::handle_task3_start(
     }
 
     task3_route_active_ = true;
-    return_lidar_state_ = ReturnLidarState::FOLLOWING_ROUTE;
-    return_lidar_clear_count_ = 0;
     return_stop_zone_entry_active_ = false;
     set_task_phase(TaskPhase::TASK3);
     RCLCPP_INFO(
@@ -1712,97 +1705,13 @@ bool VisualLidarPathFollower::handle_task3_start(
     return false;
   }
 
-  // Task3停车只看map定位；无论当前是跟线、绕障还是回线，都独立检查
+  // Task3停车只看map定位；无论当前是跟线还是实时绕障，都独立检查
   // 有限紫色矩形，base_link一进入便在当前控制周期停车。
   if (return_stop_zone_confirmed(pose)) {
     finish_return_to_start(pose, "base_link中心进入有限紫色停车矩形");
     return true;
   }
   return false;
-}
-
-double VisualLidarPathFollower::distance_to_return_route(
-  const VisualLidarPathFollower::RobotPose & pose) const
-{
-  if (!task3_route_available_ || waypoints_.size() < 2 ||
-    task3_start_index_ >= waypoints_.size() - 1)
-  {
-    return std::numeric_limits<double>::infinity();
-  }
-
-  double minimum_distance = std::numeric_limits<double>::infinity();
-  for (std::size_t index = task3_start_index_;
-    index + 1 < waypoints_.size(); ++index)
-  {
-    const auto & start = waypoints_[index];
-    const auto & finish = waypoints_[index + 1];
-    const double segment_x = finish.x - start.x;
-    const double segment_y = finish.y - start.y;
-    const double length_squared = segment_x * segment_x + segment_y * segment_y;
-    if (length_squared < 1.0e-10) {
-      continue;
-    }
-    const double raw_t =
-      ((pose.x - start.x) * segment_x + (pose.y - start.y) * segment_y) /
-      length_squared;
-    const double t = std::clamp(raw_t, 0.0, 1.0);
-    const double projection_x = start.x + t * segment_x;
-    const double projection_y = start.y + t * segment_y;
-    minimum_distance = std::min(
-      minimum_distance,
-      std::hypot(pose.x - projection_x, pose.y - projection_y));
-  }
-  return minimum_distance;
-}
-
-void VisualLidarPathFollower::update_return_lidar_state(
-  const VisualLidarPathFollower::RobotPose & pose,
-  bool observation_valid, bool obstacle_found)
-{
-  if (!task3_route_active_ || !observation_valid) {
-    return;
-  }
-
-  if (obstacle_found) {
-    if (return_lidar_state_ != ReturnLidarState::AVOIDING) {
-      RCLCPP_WARN(
-        get_logger(),
-        "返程分界线下方雷达障碍命中：进入主动绕障；map左下停车区域判定"
-        "仍保持最高优先级。");
-    }
-    return_lidar_state_ = ReturnLidarState::AVOIDING;
-    return_lidar_clear_count_ = 0;
-    return;
-  }
-
-  if (return_lidar_state_ == ReturnLidarState::AVOIDING) {
-    ++return_lidar_clear_count_;
-    if (return_lidar_clear_count_ < return_lidar_clear_cycles_) {
-      return;
-    }
-    return_lidar_state_ = ReturnLidarState::REJOINING;
-    RCLCPP_INFO(
-      get_logger(),
-      "返程雷达障碍连续清空%d个有效周期：恢复追踪当前已偏移规划路线。",
-      return_lidar_clear_cycles_);
-  }
-
-  if (return_lidar_state_ != ReturnLidarState::REJOINING) {
-    return;
-  }
-
-  const double route_distance = distance_to_return_route(pose);
-  if (route_distance > return_lidar_rejoin_lateral_tolerance_) {
-    return;
-  }
-
-  return_lidar_state_ = ReturnLidarState::FOLLOWING_ROUTE;
-  return_lidar_clear_count_ = 0;
-  channel_lidar_avoid_direction_ = 0;
-  RCLCPP_INFO(
-    get_logger(),
-    "返程主动绕障已回线：距当前规划路线%.3fm。",
-    route_distance);
 }
 
 void VisualLidarPathFollower::start_return_to_start()
@@ -1890,8 +1799,6 @@ void VisualLidarPathFollower::finish_return_to_start(
   const VisualLidarPathFollower::RobotPose & pose, const char * reason)
 {
   task3_route_active_ = false;
-  return_lidar_state_ = ReturnLidarState::FOLLOWING_ROUTE;
-  return_lidar_clear_count_ = 0;
   return_to_start_active_ = false;
   return_stop_zone_entry_active_ = false;
   set_control_state(ControlState::FINISHED);
@@ -1907,10 +1814,43 @@ void VisualLidarPathFollower::finish_return_to_start(
   set_task_phase(TaskPhase::FINISHED);
   RCLCPP_INFO(
     get_logger(),
-    "到达map起终点：%s；最终base_link map坐标=(%.3f, %.3f)，yaw=%.3frad，停车。",
+    "到达map起终点：%s；最终base_link map坐标=(%.3f, %.3f)，yaw=%.3frad，执行反向制动。",
     reason, pose.x, pose.y, pose.yaw);
-  publish_stop();
+  perform_return_brake_sequence();
   rclcpp::shutdown();
+}
+
+void VisualLidarPathFollower::perform_return_brake_sequence()
+{
+  if (!cmd_pub_) {
+    return;
+  }
+
+  const auto command_period = std::chrono::duration<double>(
+    1.0 / std::max(control_frequency_, 1.0));
+
+  if (return_brake_reverse_speed_ > 0.0 && return_brake_reverse_cycles_ > 0) {
+    geometry_msgs::msg::Twist reverse_cmd;
+    reverse_cmd.linear.x = -return_brake_reverse_speed_;
+    for (int cycle = 0; cycle < return_brake_reverse_cycles_; ++cycle) {
+      cmd_pub_->publish(reverse_cmd);
+      std::this_thread::sleep_for(command_period);
+    }
+  }
+
+  const geometry_msgs::msg::Twist stop_cmd;
+  for (int cycle = 0; cycle < return_brake_zero_cycles_; ++cycle) {
+    cmd_pub_->publish(stop_cmd);
+    std::this_thread::sleep_for(command_period);
+  }
+  // 即使把零速保持周期设为0，也保证反向制动后至少发送一次停止命令。
+  cmd_pub_->publish(stop_cmd);
+
+  RCLCPP_INFO(
+    get_logger(),
+    "Task3停车制动完成：反向速度=-%.2fm/s，反向=%d周期，零速保持=%d周期，控制频率=%.1fHz。",
+    return_brake_reverse_speed_, return_brake_reverse_cycles_,
+    return_brake_zero_cycles_, control_frequency_);
 }
 
 bool VisualLidarPathFollower::return_stop_zone_contains(
@@ -4079,8 +4019,6 @@ void VisualLidarPathFollower::reset_waypoint_shift_state()
   task3_route_available_ = false;
   task3_route_active_ = false;
   return_stop_zone_entry_active_ = false;
-  return_lidar_state_ = ReturnLidarState::FOLLOWING_ROUTE;
-  return_lidar_clear_count_ = 0;
   task3_start_index_ = waypoints_.size();
   for (std::size_t index = 0; index < waypoints_.size(); ++index) {
     if (waypoints_[index].task3_start) {
@@ -5352,9 +5290,22 @@ void VisualLidarPathFollower::update_waypoint_shifts(
       }
       const Point2D left_normal{-route_match.tangent.y, route_match.tangent.x};
       const Point2D right_normal{-left_normal.x, -left_normal.y};
-      const double target_clearance =
-        (following_qr_path_ || task_phase_ == TaskPhase::TASK1) ?
-        task1_waypoint_shift_target_clearance_ : waypoint_shift_target_clearance_;
+      double target_clearance = task1_waypoint_shift_target_clearance_;
+      switch (task_phase_) {
+        case TaskPhase::TRANSITION:
+          target_clearance = transition_waypoint_shift_target_clearance_;
+          break;
+        case TaskPhase::TASK2:
+          target_clearance = task2_waypoint_shift_target_clearance_;
+          break;
+        case TaskPhase::TASK3:
+          target_clearance = task3_waypoint_shift_target_clearance_;
+          break;
+        case TaskPhase::TASK1:
+        case TaskPhase::UNKNOWN:
+        case TaskPhase::FINISHED:
+          break;
+      }
 
       auto required_offset_along = [&](const Point2D & shift_normal) {
           double cloud_edge_along_shift = -std::numeric_limits<double>::infinity();

@@ -13,6 +13,7 @@
     min_range: 0.1                                          # 雷达接收距离最小值
     max_range: 5.0                                          # 雷达接收距离最大值
     use_gps_ts: false                                       # 雷达是否使用GPS授时
+    scan_frequency: 12                                      # N10扫描频率，启动时主动配置，范围6~12Hz
     scan_topic: /scan                                       # 设置激光数据topic名称
     interface_selection: serial                             # 接口选择:net 为网口,serial 为串口
     serial_port_: /dev/lidar                                # 串口连接时的串口号

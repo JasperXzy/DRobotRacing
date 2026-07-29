@@ -111,8 +111,10 @@ visual_lidar_path_follower:
     waypoint_shift_occupied_threshold: 50   # [全阶段静态偏移] race_keepout软禁行区的点云过滤占据阈值
     waypoint_shift_check_count: 100          # [全阶段静态偏移] waypoint_shift模式每帧从当前追踪点开始检查的航点数量
     waypoint_cloud_check_radius: 0.5       # [全阶段静态偏移] 点云距未来路线小于该距离才触发平移，单位 m；提前距离由check_count决定
-    waypoint_shift_target_clearance: 0.40  # [Task1以外静态偏移] Task1→Task2、Task2、Task3偏移路线越过点云最外沿的目标净距，单位m
     task1_waypoint_shift_target_clearance: 0.45  # [Task1静态偏移] Task1偏移路线越过点云最外沿的目标净距，单位m（45cm）
+    transition_waypoint_shift_target_clearance: 0.40  # [Task1→Task2静态偏移] 过渡路线越过点云最外沿的目标净距，单位m
+    task2_waypoint_shift_target_clearance: 0.40  # [Task2静态偏移] Task2偏移路线越过点云最外沿的目标净距，单位m
+    task3_waypoint_shift_target_clearance: 0.40  # [Task3静态偏移] Task3偏移路线越过点云最外沿的目标净距，单位m
     task1_waypoint_shift_min_y: -0.10  # [Task1静态偏移] Task1偏移及局部重建后的所有路径点不得低于该map.y，单位m
     waypoint_shift_enable_local_rebuild: true  # [全阶段静态偏移] 圆弧内侧偏移反相时只重建最小连续危险点段；其余点保持直接偏移，B前基准圆滑区禁止偏移后重构
     waypoint_shift_rebuild_min_progress_ratio: 0.15  # [全阶段静态偏移] 1-kappa*d或离散前进比例不高于该值时提前触发重建
@@ -242,11 +244,11 @@ visual_lidar_path_follower:
     return_stop_zone_min_y: -0.10  # [Task3返航停车] Task3紫色停车触发矩形最小map.y，单位m
     return_stop_zone_max_y: 0.25  # [Task3返航停车] Task3紫色停车触发矩形最大map.y，单位m
     return_stop_confirm_seconds: 0.0  # [Task3返航停车] base_link进入紫色停车矩形的当前控制周期立即停车
+    return_brake_reverse_speed: 0.30  # [Task3返航停车] 进入紫色停车矩形后主动制动的反向速度绝对值，单位m/s
+    return_brake_reverse_cycles: 5  # [Task3返航停车] 按control_frequency连续发送反向速度的周期数；50Hz下5周期约0.10s
+    return_brake_zero_cycles: 15  # [Task3返航停车] 反向制动后连续发送零速度的周期数；50Hz下15周期约0.30s
     # 返程障碍按“障碍簇中心Y”分类；该高度只分类障碍，绝不裁剪上方障碍的偏移航点窗口
     return_obstacle_split_y: -0.20  # [Task3返航停车] 中心Y严格大于此值走静态偏移；小于等于此值走实时channel雷达避障
-    return_lidar_clear_cycles: 3  # [Task3返航停车] 下方障碍连续清空这么多个有效控制周期后进入回线状态
-    return_lidar_rejoin_lateral_tolerance: 0.12  # [Task3返航停车] 回到当前已偏移规划路线此横向距离内结束回线限速，单位m
-    return_lidar_rejoin_linear_speed: 0.45  # [Task3返航停车] 下方障碍清空后的回线最高线速度，单位m/s
     # QR 选路；Task1不再使用visual_control视觉巡线
     route_direction: auto  # [Task1→Task2二维码选路] 未通过二维码指定时的路线方向；auto 使用航点文件设置
     enable_qr_direction_select: true  # [Task1→Task2二维码选路] 是否根据二维码内容选择顺逆时针路线

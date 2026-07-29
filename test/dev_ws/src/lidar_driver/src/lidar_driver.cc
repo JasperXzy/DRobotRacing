@@ -77,6 +77,7 @@ namespace lidar_driver
 		pubPointCloud2 = true;
 		angle_disable_min = 0.0;
 		angle_disable_max = 0.0;
+		scan_frequency_ = 12;
 
 		this->declare_parameter<std::string>("frame_id", "laser_link");
 		this->declare_parameter<std::string>("scan_topic", "/scan");
@@ -88,6 +89,7 @@ namespace lidar_driver
 		this->declare_parameter<double>("angle_disable_min", 0.0);
 		this->declare_parameter<double>("angle_disable_max", 0.0);
 		this->declare_parameter<std::string>("interface_selection", "net");
+		this->declare_parameter<int>("scan_frequency", 12);
 
 		this->get_parameter("frame_id", frame_id);
 		this->get_parameter("scan_topic", scan_topic);
@@ -99,6 +101,15 @@ namespace lidar_driver
 		this->get_parameter("angle_disable_min", angle_disable_min);
 		this->get_parameter("angle_disable_max", angle_disable_max);
 		this->get_parameter("interface_selection", interface_selection);
+		this->get_parameter("scan_frequency", scan_frequency_);
+		if (scan_frequency_ < 6 || scan_frequency_ > 12)
+		{
+			RCLCPP_WARN(
+				this->get_logger(),
+				"scan_frequency %d is outside the N10 range [6, 12]; using 12 Hz",
+				scan_frequency_);
+			scan_frequency_ = 12;
+		}
 		while (angle_disable_min < 0)
 			angle_disable_min += 360;
 		while (angle_disable_max < 0)
@@ -146,7 +157,8 @@ namespace lidar_driver
 		RCLCPP_INFO(this->get_logger(), "Lidar is N10");
 
 		if (pubScan)
-			scan_pub = this->create_publisher<sensor_msgs::msg::LaserScan>(scan_topic, 10);
+			scan_pub = this->create_publisher<sensor_msgs::msg::LaserScan>(
+				scan_topic, rclcpp::SensorDataQoS().keep_last(1));
 		if (pubPointCloud2)
 			point_cloud_pub = this->create_publisher<sensor_msgs::msg::PointCloud2>(pointcloud_topic, 10);
 		difop_switch = this->create_subscription<std_msgs::msg::Int8>("/lidar/order", 1, std::bind(&LidarDriver::lidar_order, this, std::placeholders::_1)); // Becomes /lidar/order
@@ -240,7 +252,7 @@ namespace lidar_driver
 		// ROS diagnostics
 		diagnostics.setHardwareID("Lslidar");
 
-		const double diag_freq = 12 * 24;
+		const double diag_freq = scan_frequency_ * 24;
 		diag_max_freq = diag_freq;
 		diag_min_freq = diag_freq;
 		RCLCPP_INFO(this->get_logger(), "expected frequency: %.3f (Hz)", diag_freq);
@@ -251,7 +263,7 @@ namespace lidar_driver
 			FrequencyStatusParam(&diag_min_freq, &diag_max_freq, 0.1, 10),
 			TimeStampStatusParam()));
 
-		int hz = 12;
+		int hz = scan_frequency_;
 		// if (lidar_name == "M10_P") hz = 12; ... // removed for N10 fixed model
 		
 		double packet_rate = hz * 24;
@@ -286,6 +298,7 @@ namespace lidar_driver
 
 	bool LidarDriver::initialize()
 	{
+		bool live_input = false;
 		if (!loadParameters())
 		{
 			RCLCPP_ERROR(this->get_logger(), "Cannot load all required ROS parameters...");
@@ -298,6 +311,7 @@ namespace lidar_driver
 				RCLCPP_ERROR(this->get_logger(), "Cannot create all ROS IO...");
 				return false;
 			}
+			live_input = dump_file.empty();
 		}
 		else
 		{
@@ -305,7 +319,10 @@ namespace lidar_driver
 			this->declare_parameter<std::string>("in_file_name", "");
 			this->get_parameter("in_file_name", in_file_name);
 			if (in_file_name == "")
+			{
 				open_serial();
+				live_input = true;
+			}
 			else
 			{
 				RCLCPP_INFO_STREAM(this->get_logger(), "Opening txt file " << in_file_name.c_str());
@@ -316,6 +333,15 @@ namespace lidar_driver
 					return false;
 				}
 			}
+		}
+		if (live_input)
+		{
+			auto order = std::make_shared<std_msgs::msg::Int8>();
+			order->data = static_cast<int8_t>(scan_frequency_);
+			lidar_order(order);
+			RCLCPP_INFO(
+				this->get_logger(), "Requested N10 scan frequency: %d Hz",
+				scan_frequency_);
 		}
 		RCLCPP_INFO(this->get_logger(), "Initialised lslidar without error");
 		return true;
@@ -487,7 +513,11 @@ namespace lidar_driver
 						if (scan_points_[k].range < min_range || scan_points_[k].range > max_range)
 							scan_points_[k].range = 0;
 					}
+					const rclcpp::Time scan_end_time = get_clock()->now();
 					boost::unique_lock<boost::mutex> lock(mutex_);
+					// The first angle wrap after startup is usually a partial revolution.
+					// Use it only to establish the scan start time, then publish complete scans.
+					const bool has_complete_scan = time_.nanoseconds() != 0;
 					scan_points_bak_.resize(scan_points_.size());
 					scan_points_bak_.assign(scan_points_.begin(), scan_points_.end());
 					for (long unsigned int k = 0; k < scan_points_.size(); k++)
@@ -497,9 +527,10 @@ namespace lidar_driver
 						scan_points_[k].intensity = 0;
 					}
 					pre_time_ = time_;
-					time_ = get_clock()->now();
+					time_ = scan_end_time;
 					lock.unlock();
-					pubscan_cond_.notify_one();
+					if (has_complete_scan)
+						pubscan_cond_.notify_one();
 				}
 				else
 				{

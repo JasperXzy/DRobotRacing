@@ -93,6 +93,7 @@ private:
     int end_degree_bits_start;
 	int baud_rate_;
     int points_size_;
+    int scan_frequency_ = 12;
     int idx = 0;
     int link_time = 0;
 
