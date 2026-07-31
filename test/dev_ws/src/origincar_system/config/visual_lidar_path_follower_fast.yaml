@@ -19,7 +19,7 @@ visual_lidar_path_follower:
     # 四阶段独立追点与实时雷达参数；只调整对应前缀，不会影响其他阶段
     # ========================================================================
     # Task1：可信发车后沿预设路线寻找二维码
-    task1_linear_speed: 1.5  # [Task1] Task1正常追点线速度，单位m/s
+    task1_linear_speed: 1.00  # [Task1] Task1正常追点线速度，单位m/s
     task1_lookahead_distance: 0.65  # [Task1] Task1路径前瞻距离，单位m
     task1_turn_angular_gain: 2.00  # [Task1] Task1航向误差到前轮目标转角的比例增益
     task1_enable_turn_speed_slowdown: true  # [Task1] Task1转弯时是否按转角降低线速度
@@ -45,7 +45,7 @@ visual_lidar_path_follower:
     task1_static_avoid_max_y: 0.80  # [Task1静态/动态分区] 静态避障矩形最大map.y，边界本身归动态避障
 
     # Task1→Task2过渡：二维码选路、条件倒车和A→B进场
-    transition_linear_speed: 1.5  # [Task1→Task2过渡] Task1→Task2过渡阶段正常追点线速度，单位m/s
+    transition_linear_speed: 1.00  # [Task1→Task2过渡] Task1→Task2过渡阶段正常追点线速度，单位m/s
     transition_lookahead_distance: 0.65  # [Task1→Task2过渡] Task1→Task2过渡阶段路径前瞻距离，单位m
     transition_turn_angular_gain: 2.00  # [Task1→Task2过渡] Task1→Task2过渡阶段航向误差到前轮目标转角的比例增益
     transition_enable_turn_speed_slowdown: true  # [Task1→Task2过渡] Task1→Task2过渡阶段转弯时是否降低线速度
@@ -62,7 +62,7 @@ visual_lidar_path_follower:
     transition_lidar_direction_lower_angle_deg: -8.0  # [Task1→Task2过渡] Task1→Task2过渡障碍方向下阈值，单位degree
 
     # Task2：高速通道巡点与图生文
-    task2_linear_speed: 1.50  # [Task2] Task2通道巡点正常线速度，单位m/s；Fast配置专用值
+    task2_linear_speed: 1.00  # [Task2] Task2通道巡点正常线速度，单位m/s；Fast配置专用值
     task2_lookahead_distance: 0.65  # [Task2] Task2通道巡点路径前瞻距离，单位m
     task2_turn_angular_gain: 2.00  # [Task2] Task2航向误差到前轮目标转角的比例增益
     task2_enable_turn_speed_slowdown: true  # [Task2] Task2转弯时是否按转角降低线速度
@@ -79,7 +79,7 @@ visual_lidar_path_follower:
     task2_lidar_direction_lower_angle_deg: -8.0  # [Task2] Task2障碍方向下阈值，单位degree
 
     # Task3：定位返航并进入地图左下停车区域
-    task3_linear_speed: 1.25  # [Task3] Task3定位返航正常追点线速度，单位m/s
+    task3_linear_speed: 1.00  # [Task3] Task3定位返航正常追点线速度，单位m/s
     task3_lookahead_distance: 0.50  # [Task3] Task3返航路径前瞻距离，单位m
     task3_turn_angular_gain: 2.00  # [Task3] Task3航向误差到前轮目标转角的比例增益
     task3_enable_turn_speed_slowdown: true  # [Task3] Task3转弯时是否按转角降低线速度

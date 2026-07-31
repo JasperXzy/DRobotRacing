@@ -49,18 +49,7 @@ ros2 topic echo /lidar_location/match_score
 
 ## 3. 终端二：启动四阶段静态+动态追点
 
-#### （1）稳 1.05 linear_speed
-```bash
-tmux new -s drobot2
-unset AMENT_PREFIX_PATH COLCON_PREFIX_PATH CMAKE_PREFIX_PATH LD_LIBRARY_PATH PYTHONPATH
-source /opt/tros/humble/setup.bash
-source /root/D_Robot/test/dev_ws/install/setup.bash
-fastdds shm clean
-export FASTDDS_BUILTIN_TRANSPORTS=UDPv4
-ros2 launch origincar_system visual_lidar_path_follower.launch.xml
-```
-
-#### (2) 快1.50（简单摆法）
+#### 1.50（简单摆法）
 ```bash
 tmux new -s drobot2
 unset AMENT_PREFIX_PATH COLCON_PREFIX_PATH CMAKE_PREFIX_PATH LD_LIBRARY_PATH PYTHONPATH
