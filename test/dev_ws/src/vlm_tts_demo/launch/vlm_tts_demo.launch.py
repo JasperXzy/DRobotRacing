@@ -37,7 +37,7 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument(
             'playback_device',
-            default_value='plughw:0,0',
+            default_value='plughw:1,0',
             description='ALSA playback device used by hobot_tts.',
         ),
         DeclareLaunchArgument(
