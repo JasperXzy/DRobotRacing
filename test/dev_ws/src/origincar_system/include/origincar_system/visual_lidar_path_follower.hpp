@@ -257,6 +257,11 @@ private:
   int waypoint_shift_release_scans_{8};
   double waypoint_shift_min_change_{0.02};
   bool enable_static_map_filter_{true};
+  // 避障总开关：enable_static_avoidance_ 控制静态绿色快照收集与路径偏移
+  // （发车前冻结 + 运行中waypoint_shift）；enable_lidar_avoidance_ 控制
+  // 实时雷达扇形/走廊动态避障。两者可独立开关，便于分项测试。
+  bool enable_static_avoidance_{true};
+  bool enable_lidar_avoidance_{true};
   bool require_map_for_lidar_assist_{true};
   int static_map_occupied_threshold_{90};
   int static_map_inflation_cells_{4};
@@ -490,6 +495,11 @@ private:
   std::vector<Waypoint> task1_dynamic_route_;
   std::vector<Waypoint> final_original_route_;
   std::vector<Waypoint> final_frozen_route_;
+  // 实际运行轨迹（map系base_link，10Hz降采样）：task1_trajectory_供02图，
+  // full_trajectory_为全程供04图；发车前task1_frozen时清空重建。
+  std::vector<Point2D> task1_trajectory_;
+  std::vector<Point2D> full_trajectory_;
+  std::chrono::steady_clock::time_point last_trajectory_sample_at_;
   std::vector<Waypoint> logic3_baseline_original_route_;
   std::vector<Waypoint> logic3_baseline_route_;
   std::vector<Waypoint> logic3_visualization_route_;
@@ -668,6 +678,7 @@ private:
   void freeze_logic3_route();
   void apply_logic3_frozen_clusters_to_current_route(
     const std::string & snapshot_event);
+  void record_trajectory_sample(const RobotPose & pose);
   void publish_logic3_snapshot(const std::string & event);
   std::string make_logic3_session_id() const;
   bool lookup_logic3_planning_pose(RobotPose & pose);

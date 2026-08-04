@@ -118,6 +118,9 @@ class RouteSnapshotRenderer(Node):
         image = base.copy()
         self._draw_route(image, original, world_to_pixel, (75, 75, 75, 90), 3)
         self._draw_route(image, frozen, world_to_pixel, (15, 90, 215, 255), 6)
+        trajectory = data.get('trajectory', [])
+        if len(trajectory) >= 2:
+            self._draw_route(image, trajectory, world_to_pixel, (240, 130, 20, 255), 4)
         self._draw_clusters(
             image, green, world_to_pixel, pixels_per_meter,
             green_radius, (20, 180, 65), True)
@@ -133,7 +136,8 @@ class RouteSnapshotRenderer(Node):
         self._draw_title(
             image,
             f'{"Task1" if task1_dynamic else "Final"} dynamic route / '
-            f'red records (history R={red_identity_radius:.2f}m)')
+            f'red records (history R={red_identity_radius:.2f}m) / '
+            f'orange=actual trajectory')
         output_path = output_dir / (
             '02_Task1_dynamic_route.png'
             if task1_dynamic else '04_Final_dynamic_route.png')

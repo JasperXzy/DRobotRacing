@@ -35,6 +35,20 @@ DEFAULT_CONTROL_POINTS = [
     (4.30, 1.50),
 ]
 
+# 备用路线保留起点、倒数第二控制点和终点。第一段沿 map 坐标系 45°
+# 右上方向行驶到 (0.70, 0.70)，之后直连倒数第二控制点。
+BACKUP_45DEG_CONTROL_POINTS = [
+    (0.00, 0.00),
+    (0.70, 0.70),
+    (3.30, 0.60),
+    (4.30, 1.50),
+]
+
+CONTROL_POINT_VARIANTS = {
+    'default': DEFAULT_CONTROL_POINTS,
+    'backup_45deg': BACKUP_45DEG_CONTROL_POINTS,
+}
+
 
 def interpolate_polyline(control_points, spacing):
     points = [control_points[0]]
@@ -182,6 +196,9 @@ def render_schematic_preview(points, map_yaml, background, output):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        '--variant', choices=sorted(CONTROL_POINT_VARIANTS), default='default',
+        help='Task1 control-point variant to generate.')
+    parser.add_argument(
         '--output',
         default=str(
             Path(__file__).resolve().parents[1] /
@@ -209,14 +226,22 @@ def main():
     if not math.isfinite(args.spacing) or args.spacing <= 0.0:
         raise ValueError('--spacing must be a positive finite number')
 
-    points = interpolate_polyline(DEFAULT_CONTROL_POINTS, args.spacing)
+    control_points = CONTROL_POINT_VARIANTS[args.variant]
+    points = interpolate_polyline(control_points, args.spacing)
     output = Path(args.output).expanduser()
     output.parent.mkdir(parents=True, exist_ok=True)
+    waypoint_prefix = (
+        'task1' if args.variant == 'default' else f'task1_{args.variant}')
     payload = {
         'route_direction': 'task1',
-        'control_points': [list(point) for point in DEFAULT_CONTROL_POINTS],
+        'route_variant': args.variant,
+        'control_points': [list(point) for point in control_points],
         'waypoints': [
-            {'name': f'task1_{index:03d}', 'x': round(x, 6), 'y': round(y, 6)}
+            {
+                'name': f'{waypoint_prefix}_{index:03d}',
+                'x': round(x, 6),
+                'y': round(y, 6),
+            }
             for index, (x, y) in enumerate(points)
         ],
     }
@@ -231,7 +256,8 @@ def main():
         args.schematic_background.expanduser(),
         schematic_preview_output)
     print(
-        f'Generated {len(points)} Task1 waypoints at {output} '
+        f'Generated {len(points)} Task1 waypoints '
+        f'(variant={args.variant}) at {output} '
         f'(spacing <= {args.spacing:.3f} m)\n'
         f'Task1 map preview: {preview_output}\n'
         f'Task1 schematic preview: {schematic_preview_output}')
