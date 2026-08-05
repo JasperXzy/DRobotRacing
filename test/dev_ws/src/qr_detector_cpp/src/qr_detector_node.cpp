@@ -1,4 +1,5 @@
 #include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/compressed_image.hpp>
 #include <sensor_msgs/image_encodings.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <std_msgs/msg/int32.hpp>
@@ -9,6 +10,11 @@
 #include <origincar_msg/msg/sign.hpp>
 #include <algorithm>
 #include <cctype>
+#include <cstdint>
+#include <deque>
+#include <filesystem>
+#include <fstream>
+#include <limits>
 #include <memory>
 #include <string>
 
@@ -28,6 +34,13 @@ public:
         this->declare_parameter("suspend_visual_control_on_detect", true);
         this->declare_parameter("visual_control_suspend_topic", "/sign4return");
         this->declare_parameter("visual_control_suspend_value", 5);
+        this->declare_parameter("save_detected_camera_frame", true);
+        this->declare_parameter("camera_image_topic", "/camera/image");
+        this->declare_parameter(
+            "qr_frame_output_root",
+            "/root/D_Robot/test/dev_ws/src/origincar_system/path");
+        this->declare_parameter("qr_frame_cache_size", 60);
+        this->declare_parameter("qr_frame_match_tolerance", 0.20);
 
         image_topic_ = this->get_parameter("image_topic").as_string();
         process_interval_ = std::max(0.0, this->get_parameter("process_interval").as_double());
@@ -39,6 +52,16 @@ public:
             this->get_parameter("visual_control_suspend_topic").as_string();
         visual_control_suspend_value_ =
             static_cast<int>(this->get_parameter("visual_control_suspend_value").as_int());
+        save_detected_camera_frame_ =
+            this->get_parameter("save_detected_camera_frame").as_bool();
+        camera_image_topic_ = this->get_parameter("camera_image_topic").as_string();
+        qr_frame_output_root_ = this->get_parameter("qr_frame_output_root").as_string();
+        const int64_t requested_cache_size =
+            this->get_parameter("qr_frame_cache_size").as_int();
+        qr_frame_cache_size_ = static_cast<std::size_t>(
+            std::max<int64_t>(1, requested_cache_size));
+        qr_frame_match_tolerance_ = std::max(
+            0.0, this->get_parameter("qr_frame_match_tolerance").as_double());
         auto requested_density = static_cast<int>(this->get_parameter("zbar_density").as_int());
         zbar_density_ = std::clamp(requested_density, 1, 5);
         small_roi_upscale_ = this->get_parameter("small_roi_upscale").as_bool();
@@ -68,6 +91,15 @@ public:
         image_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
             image_topic_, image_qos,
             std::bind(&QRDetectorNode::image_callback, this, std::placeholders::_1));
+        if (save_detected_camera_frame_)
+        {
+            camera_image_sub_ = this->create_subscription<sensor_msgs::msg::CompressedImage>(
+                camera_image_topic_, image_qos,
+                std::bind(
+                    &QRDetectorNode::camera_image_callback,
+                    this,
+                    std::placeholders::_1));
+        }
 
         RCLCPP_INFO(this->get_logger(),
             "QR detector started (ROI mono8 mode, topic=%s, density=%d, interval=%.3fs)",
@@ -75,6 +107,132 @@ public:
     }
 
 private:
+    static int64_t stamp_to_nanoseconds(const builtin_interfaces::msg::Time& stamp)
+    {
+        return static_cast<int64_t>(stamp.sec) * 1000000000LL +
+            static_cast<int64_t>(stamp.nanosec);
+    }
+
+    static bool is_session_directory_name(const std::string& name)
+    {
+        if (name.size() != 19 || name[4] != '.' || name[7] != '.' ||
+            name[10] != '_' || name[13] != ':' || name[16] != ':') {
+            return false;
+        }
+        for (std::size_t index = 0; index < name.size(); ++index) {
+            if (index == 4 || index == 7 || index == 10 || index == 13 || index == 16) {
+                continue;
+            }
+            if (!std::isdigit(static_cast<unsigned char>(name[index]))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    void camera_image_callback(const sensor_msgs::msg::CompressedImage::ConstSharedPtr msg)
+    {
+        camera_frames_.push_back(msg);
+        while (camera_frames_.size() > qr_frame_cache_size_) {
+            camera_frames_.pop_front();
+        }
+    }
+
+    std::filesystem::path current_output_directory() const
+    {
+        const std::filesystem::path output_root(qr_frame_output_root_);
+        std::error_code error;
+        std::filesystem::create_directories(output_root, error);
+        if (error) {
+            return {};
+        }
+
+        std::string latest_session;
+        for (const auto& entry : std::filesystem::directory_iterator(output_root, error)) {
+            if (error) {
+                return {};
+            }
+            if (!entry.is_directory(error) || error) {
+                error.clear();
+                continue;
+            }
+            const std::string name = entry.path().filename().string();
+            if (is_session_directory_name(name) && name > latest_session) {
+                latest_session = name;
+            }
+        }
+        return latest_session.empty() ? output_root : output_root / latest_session;
+    }
+
+    void save_detected_camera_frame(
+        const builtin_interfaces::msg::Time& detection_stamp)
+    {
+        if (!save_detected_camera_frame_) {
+            return;
+        }
+        if (camera_frames_.empty()) {
+            RCLCPP_ERROR(this->get_logger(),
+                "Cannot save QR camera frame: no frame received from %s",
+                camera_image_topic_.c_str());
+            return;
+        }
+
+        const int64_t target_nanoseconds = stamp_to_nanoseconds(detection_stamp);
+        sensor_msgs::msg::CompressedImage::ConstSharedPtr matched_frame = camera_frames_.back();
+        int64_t best_difference = std::numeric_limits<int64_t>::max();
+        if (target_nanoseconds > 0) {
+            for (const auto& frame : camera_frames_) {
+                const int64_t frame_nanoseconds = stamp_to_nanoseconds(frame->header.stamp);
+                if (frame_nanoseconds <= 0) {
+                    continue;
+                }
+                const int64_t difference = frame_nanoseconds >= target_nanoseconds ?
+                    frame_nanoseconds - target_nanoseconds : target_nanoseconds - frame_nanoseconds;
+                if (difference < best_difference) {
+                    best_difference = difference;
+                    matched_frame = frame;
+                }
+            }
+            const int64_t tolerance_nanoseconds = static_cast<int64_t>(
+                qr_frame_match_tolerance_ * 1000000000.0);
+            if (best_difference == std::numeric_limits<int64_t>::max() ||
+                best_difference > tolerance_nanoseconds) {
+                RCLCPP_ERROR(this->get_logger(),
+                    "Cannot save QR camera frame: nearest full frame differs by %.3fs (limit %.3fs)",
+                    best_difference == std::numeric_limits<int64_t>::max() ?
+                    -1.0 : static_cast<double>(best_difference) / 1000000000.0,
+                    qr_frame_match_tolerance_);
+                return;
+            }
+        }
+
+        const auto output_directory = current_output_directory();
+        if (output_directory.empty()) {
+            RCLCPP_ERROR(this->get_logger(),
+                "Cannot create QR camera frame output directory: %s",
+                qr_frame_output_root_.c_str());
+            return;
+        }
+
+        std::string format = matched_frame->format;
+        std::transform(format.begin(), format.end(), format.begin(), [](unsigned char character) {
+            return static_cast<char>(std::tolower(character));
+        });
+        const std::string extension = format.find("png") != std::string::npos ? ".png" : ".jpg";
+        const std::filesystem::path output_path =
+            output_directory / ("05_QR_camera" + extension);
+
+        std::ofstream output(output_path, std::ios::binary | std::ios::trunc);
+        output.write(
+            reinterpret_cast<const char*>(matched_frame->data.data()),
+            static_cast<std::streamsize>(matched_frame->data.size()));
+        output.close();
+        if (!output) {
+            RCLCPP_ERROR(this->get_logger(),
+                "Failed to save QR camera frame: %s", output_path.c_str());
+        }
+    }
+
     void image_callback(const sensor_msgs::msg::Image::SharedPtr msg)
     {
         if (!activated_) return;
@@ -158,6 +316,7 @@ private:
 
                 std::string barcode_data = symbol->get_data();
                 RCLCPP_INFO(this->get_logger(), "QR code detected: %s", barcode_data.c_str());
+                save_detected_camera_frame(msg->header.stamp);
                 publish_qr_result(barcode_data, current_time);
                 last_process_time_ = current_time;
                 return;
@@ -232,6 +391,8 @@ private:
     }
 
     std::string image_topic_;
+    std::string camera_image_topic_;
+    std::string qr_frame_output_root_;
     std::string visual_control_suspend_topic_;
     size_t frame_count_ = 0;
     rclcpp::Time last_fps_time_;
@@ -239,6 +400,7 @@ private:
     rclcpp::Time cooldown_until_;
 
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_sub_;
+    rclcpp::Subscription<sensor_msgs::msg::CompressedImage>::SharedPtr camera_image_sub_;
     rclcpp::Publisher<origincar_msg::msg::Sign>::SharedPtr sign_switch_pub_;
     rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr visual_control_suspend_pub_;
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr publisher_;
@@ -246,6 +408,7 @@ private:
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr tts_pub_;
 
     bool activated_ = true;
+    bool save_detected_camera_frame_ = true;
     bool tts_spoken_ = false;
     bool speak_on_detect_ = false;
     bool stop_on_detect_ = true;
@@ -254,8 +417,11 @@ private:
     int zbar_density_ = 3;
     int small_roi_min_size_ = 120;
     int visual_control_suspend_value_ = 5;
+    std::size_t qr_frame_cache_size_ = 60;
     double process_interval_ = 0.0;
+    double qr_frame_match_tolerance_ = 0.20;
     double small_roi_upscale_factor_ = 2.0;
+    std::deque<sensor_msgs::msg::CompressedImage::ConstSharedPtr> camera_frames_;
     zbar::ImageScanner scanner_;
 };
 

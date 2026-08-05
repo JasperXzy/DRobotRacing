@@ -318,8 +318,6 @@ def generate_launch_description():
             'camera_topic': vlm_camera_topic,
             'trigger_value': vlm_trigger_value,
             'infer_on_capture': 'true',
-            'captured_image_file':
-                '/root/D_Robot/test/dev_ws/captures/vlm_tts_demo_capture.jpg',
         }.items(),
     )
 

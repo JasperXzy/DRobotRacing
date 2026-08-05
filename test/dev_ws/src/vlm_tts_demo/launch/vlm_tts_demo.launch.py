@@ -16,12 +16,6 @@ def generate_launch_description():
         'config',
         'vlm_api.env',
     ])
-    default_captured_image_file = PathJoinSubstitution([
-        pkg_share,
-        'captures',
-        'vlm_tts_demo_capture.jpg',
-    ])
-
     playback_device = LaunchConfiguration('playback_device')
     trigger_value = LaunchConfiguration('trigger_value')
     infer_trigger_value = LaunchConfiguration('infer_trigger_value')
@@ -31,6 +25,7 @@ def generate_launch_description():
     launch_tts = LaunchConfiguration('launch_tts')
     captured_image_file = LaunchConfiguration('captured_image_file')
     source_capture_file = LaunchConfiguration('source_capture_file')
+    task_output_root = LaunchConfiguration('task_output_root')
     ding_enable = LaunchConfiguration('ding_enable')
     no_auth = LaunchConfiguration('no_auth')
 
@@ -62,13 +57,18 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'captured_image_file',
-            default_value=default_captured_image_file,
-            description='Path used to save the captured camera frame.',
+            default_value='vlm_tts_demo_capture.jpg',
+            description='Filename used for the captured camera frame.',
         ),
         DeclareLaunchArgument(
             'source_capture_file',
             default_value='',
             description='Optional second copy of the captured image.',
+        ),
+        DeclareLaunchArgument(
+            'task_output_root',
+            default_value='/root/D_Robot/test/dev_ws/src/origincar_system/path',
+            description='Root containing timestamped task output directories.',
         ),
         DeclareLaunchArgument(
             'launch_camera',
@@ -97,7 +97,7 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'last_success_text_file',
-            default_value='/root/D_Robot/test/dev_ws/captures/last_successful_vlm_text.txt',
+            default_value='last_successful_vlm_text.txt',
             description='Persistent cache of the last successful VLM speech text.',
         ),
         DeclareLaunchArgument(
@@ -193,6 +193,7 @@ def generate_launch_description():
                 'camera_topic': camera_topic,
                 'captured_image_file': captured_image_file,
                 'source_capture_file': source_capture_file,
+                'task_output_root': task_output_root,
                 'ding_enable': ParameterValue(ding_enable, value_type=bool),
                 'start_notice': LaunchConfiguration('start_notice'),
                 'error_notice': LaunchConfiguration('error_notice'),

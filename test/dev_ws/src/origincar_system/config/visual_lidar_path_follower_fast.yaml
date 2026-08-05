@@ -9,6 +9,7 @@ visual_lidar_path_follower:
     base_frame_id: base_link  # [全阶段共享] 车辆本体坐标系
     cmd_vel_topic: /cmd_vel  # [全阶段共享] 速度指令发布话题
     debug_control_logs: false  # [全阶段共享] 是否输出详细控制日志
+    quiet_logs_after_static_freeze: true  # [终端输出] 静态冻结完成后本节点仅保留错误；倒车退出原因另行单行输出
     enable_debug_visualization: true  # [全阶段共享] 是否发布 Foxglove 中的 waypoints、圆锥圆心和拟合圆
 
     # 全阶段公共控制
@@ -19,7 +20,7 @@ visual_lidar_path_follower:
     # 四阶段独立追点与实时雷达参数；只调整对应前缀，不会影响其他阶段
     # ========================================================================
     # Task1：可信发车后沿预设路线寻找二维码
-    task1_linear_speed: 1.00  # [Task1] Task1正常追点线速度，单位m/s
+    task1_linear_speed: 1.10  # [Task1] Task1正常追点线速度，单位m/s
     task1_lookahead_distance: 0.65  # [Task1] Task1路径前瞻距离，单位m
     task1_turn_angular_gain: 2.00  # [Task1] Task1航向误差到前轮目标转角的比例增益
     task1_enable_turn_speed_slowdown: true  # [Task1] Task1转弯时是否按转角降低线速度
@@ -30,7 +31,7 @@ visual_lidar_path_follower:
     task1_lidar_avoid_distance: 0.65  # [Task1] Task1实时雷达避障触发距离，单位m
     task1_lidar_avoid_fov_deg: 120.0  # [Task1] Task1实时雷达避障扇形总视场角，单位degree
     task1_lidar_corridor_half_width: 0.45  # [Task1] Task1实时雷达避障矩形走廊半宽，单位m
-    task1_lidar_avoid_linear_speed: 0.40  # [Task1] Task1实时雷达避障期间线速度，单位m/s
+    task1_lidar_avoid_linear_speed: 0.80  # [Task1] Task1实时雷达避障期间线速度，单位m/s
     task1_lidar_avoid_angular_gain: 2.0  # [Task1] Task1实时雷达避障转向增益
     task1_lidar_direction_upper_angle_deg: 8.0  # [Task1] Task1障碍方向角高于该值时采用一侧避让，单位degree
     task1_lidar_direction_lower_angle_deg: -8.0  # [Task1] Task1障碍方向角低于该值时采用另一侧避让，单位degree
@@ -42,7 +43,7 @@ visual_lidar_path_follower:
     task1_static_avoid_min_x: 0.00  # [Task1静态/动态分区] 静态避障矩形最小map.x，边界本身归动态避障
     task1_static_avoid_max_x: 3.30  # [Task1静态/动态分区] 静态避障矩形最大map.x，边界本身归动态避障
     task1_static_avoid_min_y: 0.00  # [Task1静态/动态分区] 静态避障矩形最小map.y，边界本身归动态避障
-    task1_static_avoid_max_y: 0.80  # [Task1静态/动态分区] 静态避障矩形最大map.y，边界本身归动态避障
+    task1_static_avoid_max_y: 1.00  # [Task1静态/动态分区] 静态避障矩形最大map.y，边界本身归动态避障
 
     # Task1→Task2过渡：二维码选路、条件倒车和A→B进场
     transition_linear_speed: 1.00  # [Task1→Task2过渡] Task1→Task2过渡阶段正常追点线速度，单位m/s
@@ -54,15 +55,15 @@ visual_lidar_path_follower:
     transition_route_projection_max_distance: 0.60  # [Task1→Task2过渡] Task1→Task2过渡阶段路线投影最大横向距离，单位m
     transition_segment_advance_t: 0.60  # [Task1→Task2过渡] Task1→Task2过渡阶段线段投影推进阈值
     transition_lidar_avoid_distance: 0.65  # [Task1→Task2过渡] Task1→Task2过渡阶段实时雷达避障触发距离，单位m
-    transition_lidar_avoid_fov_deg: 120.0  # [Task1→Task2过渡] Task1→Task2过渡阶段实时雷达避障扇形总视场角，单位degree
+    transition_lidar_avoid_fov_deg: 145.0  # [Task1→Task2过渡] Task1→Task2过渡阶段实时雷达避障扇形总视场角，单位degree
     transition_lidar_corridor_half_width: 0.45  # [Task1→Task2过渡] Task1→Task2过渡阶段实时雷达走廊半宽，单位m
-    transition_lidar_avoid_linear_speed: 0.40  # [Task1→Task2过渡] Task1→Task2过渡阶段实时雷达避障线速度，单位m/s
+    transition_lidar_avoid_linear_speed: 0.80  # [Task1→Task2过渡] Task1→Task2过渡阶段实时雷达避障线速度，单位m/s
     transition_lidar_avoid_angular_gain: 2.0  # [Task1→Task2过渡] Task1→Task2过渡阶段实时雷达避障转向增益
     transition_lidar_direction_upper_angle_deg: 8.0  # [Task1→Task2过渡] Task1→Task2过渡障碍方向上阈值，单位degree
     transition_lidar_direction_lower_angle_deg: -8.0  # [Task1→Task2过渡] Task1→Task2过渡障碍方向下阈值，单位degree
 
     # Task2：高速通道巡点与图生文
-    task2_linear_speed: 1.00  # [Task2] Task2通道巡点正常线速度，单位m/s；Fast配置专用值
+    task2_linear_speed: 1.30  # [Task2] Task2通道巡点正常线速度，单位m/s；Fast配置专用值
     task2_lookahead_distance: 0.65  # [Task2] Task2通道巡点路径前瞻距离，单位m
     task2_turn_angular_gain: 2.00  # [Task2] Task2航向误差到前轮目标转角的比例增益
     task2_enable_turn_speed_slowdown: true  # [Task2] Task2转弯时是否按转角降低线速度
@@ -73,13 +74,13 @@ visual_lidar_path_follower:
     task2_lidar_avoid_distance: 0.65  # [Task2] Task2实时雷达避障触发距离，单位m
     task2_lidar_avoid_fov_deg: 120.0  # [Task2] Task2实时雷达避障扇形总视场角，单位degree
     task2_lidar_corridor_half_width: 0.45  # [Task2] Task2实时雷达走廊半宽，单位m
-    task2_lidar_avoid_linear_speed: 0.40  # [Task2] Task2实时雷达避障线速度，单位m/s
+    task2_lidar_avoid_linear_speed: 0.80  # [Task2] Task2实时雷达避障线速度，单位m/s
     task2_lidar_avoid_angular_gain: 2.0  # [Task2] Task2实时雷达避障转向增益
     task2_lidar_direction_upper_angle_deg: 8.0  # [Task2] Task2障碍方向上阈值，单位degree
     task2_lidar_direction_lower_angle_deg: -8.0  # [Task2] Task2障碍方向下阈值，单位degree
 
     # Task3：定位返航并进入地图左下停车区域
-    task3_linear_speed: 1.00  # [Task3] Task3定位返航正常追点线速度，单位m/s
+    task3_linear_speed: 1.30  # [Task3] Task3定位返航正常追点线速度，单位m/s
     task3_lookahead_distance: 0.50  # [Task3] Task3返航路径前瞻距离，单位m
     task3_turn_angular_gain: 2.00  # [Task3] Task3航向误差到前轮目标转角的比例增益
     task3_enable_turn_speed_slowdown: true  # [Task3] Task3转弯时是否按转角降低线速度
@@ -90,7 +91,7 @@ visual_lidar_path_follower:
     task3_lidar_avoid_distance: 0.65  # [Task3] Task3实时雷达避障触发距离，单位m
     task3_lidar_avoid_fov_deg: 120.0  # [Task3] Task3实时雷达避障扇形总视场角，单位degree
     task3_lidar_corridor_half_width: 0.45  # [Task3] Task3实时雷达走廊半宽，单位m
-    task3_lidar_avoid_linear_speed: 0.40  # [Task3] Task3实时雷达避障线速度，单位m/s
+    task3_lidar_avoid_linear_speed: 0.80  # [Task3] Task3实时雷达避障线速度，单位m/s
     task3_lidar_avoid_angular_gain: 2.0  # [Task3] Task3实时雷达避障转向增益
     task3_lidar_direction_upper_angle_deg: 8.0  # [Task3] Task3障碍方向上阈值，单位degree
     task3_lidar_direction_lower_angle_deg: -8.0  # [Task3] Task3障碍方向下阈值，单位degree
@@ -115,10 +116,11 @@ visual_lidar_path_follower:
     waypoint_shift_occupied_threshold: 50  # [全阶段静态偏移] race_keepout软禁行区的点云过滤占据阈值
     waypoint_shift_check_count: 100  # [全阶段静态偏移] waypoint_shift模式每帧从当前追踪点开始检查的航点数量
     waypoint_cloud_check_radius: 0.5  # [全阶段静态偏移] 点云距未来路线小于该距离才触发平移，单位 m；提前距离由check_count决定
-    task1_waypoint_shift_target_clearance: 0.35  # [Task1静态偏移] Task1偏移路线越过点云最外沿的目标净距，单位m（45cm）
-    transition_waypoint_shift_target_clearance: 0.35  # [Task1→Task2静态偏移] 过渡路线越过点云最外沿的目标净距，单位m
-    task2_waypoint_shift_target_clearance: 0.35  # [Task2静态偏移] Task2偏移路线越过点云最外沿的目标净距，单位m
-    task3_waypoint_shift_target_clearance: 0.35  # [Task3静态偏移] Task3偏移路线越过点云最外沿的目标净距，单位m
+    task1_waypoint_shift_target_clearance: 0.45  # [Task1静态偏移] Task1偏移路线越过点云最外沿的目标净距，单位m（45cm）
+    transition_waypoint_shift_target_clearance: 0.45  # [Final预规划] 预计算Task2冻结路线时越过点云最外沿的目标净距，单位m；A→B不执行该静态偏移
+    transition_dynamic_avoid_only: true  # [Task1→Task2过渡] true=A→B（含B）静态偏移清零，冻结绿点也交给实时雷达；到B后仅恢复绿圈掩码，不切换路线
+    task2_waypoint_shift_target_clearance: 0.45  # [Task2静态偏移] Task2偏移路线越过点云最外沿的目标净距，单位m
+    task3_waypoint_shift_target_clearance: 0.45  # [Task3静态偏移] Task3偏移路线越过点云最外沿的目标净距，单位m
     task1_waypoint_shift_min_y: -0.10  # [Task1静态偏移] Task1偏移及局部重建后的所有路径点不得低于该map.y，单位m
     waypoint_shift_enable_local_rebuild: true  # [全阶段静态偏移] 圆弧内侧偏移反相时只重建最小连续危险点段；其余点保持直接偏移，B前基准圆滑区禁止偏移后重构
     waypoint_shift_rebuild_min_progress_ratio: 0.15  # [全阶段静态偏移] 1-kappa*d或离散前进比例不高于该值时提前触发重建
@@ -212,8 +214,10 @@ visual_lidar_path_follower:
     logic3_restriction_map_yaml: /root/D_Robot/test/dev_ws/src/origincar_system/map/race_keepout.yaml  # [路线图输出] 图2背景地图YAML，用于偏移方向判断和路线图绘制
 
     # 扫到二维码后持续武装到waypoint_channel的雷达条件倒车；数值来自雷达实跑的 1.15 profile
-    qr_reverse_y_threshold: 0.10  # [Task1→Task2条件倒车] 不再参与触发；仅在倒车中map.y<=该值时作为或关系退出保护，单位m
-    qr_reverse_x_limit: 4.30  # [Task1→Task2条件倒车] 倒车中map.x达到或超过该上限即退出；与前方清空、y阈值均为或关系，单位m
+    qr_reverse_y_threshold: 0.10  # [Task1→Task2条件倒车] map.y达到该后退硬边界时优先退出，不受最小倒车距离锁定，单位m
+    qr_reverse_force_qr_y_threshold: 0.90  # [二维码坐标强制倒车] 首次真实QR识别时base_link的map.y严格大于该值则强制倒车一轮，并占用总倒车次数
+    qr_reverse_x_limit: 4.30  # [Task1→Task2条件倒车] map.x达到该后退硬边界时优先退出，不受最小倒车距离锁定，单位m
+    qr_reverse_min_distance: 0.30  # [Task1→Task2条件倒车] 前方清空后仍需达到的最小倒车净位移；x/y硬边界可优先截断，单位m
     qr_reverse_front_obstacle_distance: 0.7  # [Task1→Task2条件倒车] 前方触发/退出判断的最大距离，单位m
     qr_reverse_front_fov_deg: 160.0  # [Task1→Task2条件倒车] 前方扇形总视野角，可手动设置，单位degree
     qr_reverse_front_corridor_half_width: 0.4  # [Task1→Task2条件倒车] 前方矩形走廊半宽，可手动设置，单位m
@@ -229,7 +233,7 @@ visual_lidar_path_follower:
     channel_entry_corner_smoothing_length: 0.20  # [Task1→Task2进场] 仅圆滑偏移前基准路线的B前末段；waypoint_shift后不再拟合B
 
     # ----------------------- 雷达公共过滤 ------------------------------
-    # 条件倒车及四阶段避障共用物理地图墙体过滤；另叠加冻结绿圈点云掩码
+    # 条件倒车及四阶段避障共用物理地图墙体过滤；仅channel按阶段叠加运行限制图/冻结绿圈，条件倒车不叠加
     lidar_scan_timeout: 0.25  # [全阶段实时雷达] 雷达接收超过该时间未更新即停车，单位s
     lidar_enable_static_map_filter: true  # [全阶段实时雷达] 是否过滤物理地图上的墙体点
     lidar_static_map_occupied_threshold: 50  # [全阶段实时雷达] 占用值达到该值视为墙体

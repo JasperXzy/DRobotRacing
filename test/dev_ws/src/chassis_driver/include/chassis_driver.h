@@ -147,6 +147,8 @@ private:
 
 	void Publish_ImuSensor();
 	void Publish_Voltage();
+	bool IsChassisStationary() const;
+	void UpdateGyroBiasCalibration();
 	auto createQuaternionMsgFromYaw(double yaw);
 
 	bool Get_Sensor_Data();
@@ -189,6 +191,16 @@ private:
 	double lateral_position_scale_ = 1.0;
 	double positive_angular_scale_ = 1.1958;
 	double negative_angular_scale_ = 1.1578;
+	bool gyro_bias_compensation_enabled_ = true;
+	int gyro_bias_calibration_samples_ = 150;
+	double gyro_bias_sample_limit_ = 0.02;
+	double gyro_stationary_linear_threshold_ = 0.005;
+	double gyro_stationary_angular_threshold_ = 0.005;
+	double gyro_bias_update_alpha_ = 0.002;
+	double gyro_z_bias_ = 0.0;
+	double gyro_z_bias_sum_ = 0.0;
+	int gyro_z_bias_sample_count_ = 0;
+	bool gyro_z_bias_calibrated_ = false;
 	std::mutex serial_write_mutex_;
 	std::atomic<bool> control_suspended_{false};
 	std::atomic<bool> command_active_{false};

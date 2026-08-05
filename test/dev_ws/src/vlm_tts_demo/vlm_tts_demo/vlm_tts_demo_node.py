@@ -3,8 +3,8 @@ import base64
 import json
 import mimetypes
 import os
+import re
 import threading
-import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -22,6 +22,7 @@ DEFAULT_PROMPT = (
     "必须包含可见细节，不要回答“无法识别”或“看不清”等模糊词语。"
     "字数控制在25字以内。"
 )
+TASK_SESSION_PATTERN = re.compile(r'^\d{4}\.\d{2}\.\d{2}_\d{2}:\d{2}:\d{2}$')
 
 
 class VlmTtsDemoNode(Node):
@@ -35,16 +36,18 @@ class VlmTtsDemoNode(Node):
         self.declare_parameter('infer_trigger_value', 0)
         self.declare_parameter('infer_on_capture', False)
         self.declare_parameter('camera_topic', '/camera/image')
-        self.declare_parameter('captured_image_file', '/tmp/vlm_tts_demo_capture.jpg')
+        self.declare_parameter('captured_image_file', 'vlm_tts_demo_capture.jpg')
         self.declare_parameter('source_capture_file', '')
+        self.declare_parameter(
+            'task_output_root',
+            '/root/D_Robot/test/dev_ws/src/origincar_system/path')
         self.declare_parameter('tts_topic', '/tts_text')
         self.declare_parameter('result_topic', '/vlm_api_text')
         self.declare_parameter('ding_enable', False)
         self.declare_parameter('start_notice', '开始识别')
         self.declare_parameter('error_notice', '识别失败，请检查网络或接口配置')
         self.declare_parameter(
-            'last_success_text_file',
-            '/root/D_Robot/test/dev_ws/captures/last_successful_vlm_text.txt')
+            'last_success_text_file', 'last_successful_vlm_text.txt')
         self.declare_parameter('failure_prefix', '一')
         self.declare_parameter('user_prompt', DEFAULT_PROMPT)
         self.declare_parameter('env_file', '')
@@ -66,6 +69,7 @@ class VlmTtsDemoNode(Node):
         self.camera_topic = self.get_parameter('camera_topic').value
         self.captured_image_file = self.get_parameter('captured_image_file').value
         self.source_capture_file = self.get_parameter('source_capture_file').value
+        self.task_output_root = self.get_parameter('task_output_root').value
         self.tts_topic = self.get_parameter('tts_topic').value
         self.result_topic = self.get_parameter('result_topic').value
         self.ding_enable = self.get_parameter('ding_enable').value
@@ -108,6 +112,7 @@ class VlmTtsDemoNode(Node):
         self._waiting_for_image = False
         self._api_busy = False
         self._api_thread = None
+        self._active_task_output_directory = None
         self._last_success_text = self._load_last_success_text()
 
         self.tts_pub = self.create_publisher(String, self.tts_topic, 10)
@@ -151,21 +156,66 @@ class VlmTtsDemoNode(Node):
                 os.environ[key] = value
         self.get_logger().info('Loaded API env file: %s' % path)
 
-    def _load_last_success_text(self):
-        path = Path(self.last_success_text_file).expanduser()
+    def _task_session_directories(self):
+        if not self.task_output_root:
+            return []
+        root = Path(self.task_output_root).expanduser()
         try:
-            if not path.exists():
-                return ''
-            text = path.read_text(encoding='utf-8').strip()
-            if text:
-                self.get_logger().info(
-                    'Loaded last successful VLM text from %s.' % path)
-            return text
+            root.mkdir(parents=True, exist_ok=True)
+            return sorted(
+                (
+                    path for path in root.iterdir()
+                    if path.is_dir() and TASK_SESSION_PATTERN.fullmatch(path.name)
+                ),
+                key=lambda path: path.name,
+                reverse=True,
+            )
         except OSError as exc:
             self.get_logger().warn(
-                'Could not load last successful VLM text from %s: %s'
-                % (path, exc))
-            return ''
+                'Could not inspect task output root %s: %s' % (root, exc))
+            return []
+
+    def _current_task_output_directory(self):
+        if not self.task_output_root:
+            return None
+        directories = self._task_session_directories()
+        if directories:
+            return directories[0]
+        return Path(self.task_output_root).expanduser()
+
+    def _output_path(self, configured_path, output_directory=None):
+        path = Path(configured_path).expanduser()
+        if not self.task_output_root:
+            return path
+        directory = output_directory or self._current_task_output_directory()
+        return directory / path.name
+
+    def _load_last_success_text(self):
+        configured_path = Path(self.last_success_text_file).expanduser()
+        if self.task_output_root:
+            candidates = [
+                directory / configured_path.name
+                for directory in self._task_session_directories()
+            ]
+            candidates.append(
+                Path(self.task_output_root).expanduser() / configured_path.name)
+        else:
+            candidates = [configured_path]
+
+        for path in candidates:
+            try:
+                if not path.exists():
+                    continue
+                text = path.read_text(encoding='utf-8').strip()
+                if text:
+                    self.get_logger().info(
+                        'Loaded last successful VLM text from %s.' % path)
+                    return text
+            except OSError as exc:
+                self.get_logger().warn(
+                    'Could not load last successful VLM text from %s: %s'
+                    % (path, exc))
+        return ''
 
     def _store_last_success_text(self, text):
         text = (text or '').strip()
@@ -173,7 +223,9 @@ class VlmTtsDemoNode(Node):
             return
         with self._lock:
             self._last_success_text = text
-        path = Path(self.last_success_text_file).expanduser()
+        with self._lock:
+            output_directory = self._active_task_output_directory
+        path = self._output_path(self.last_success_text_file, output_directory)
         temporary_path = path.with_name(path.name + '.tmp')
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -196,7 +248,7 @@ class VlmTtsDemoNode(Node):
 
     def _on_trigger(self, msg):
         if msg.data == self.trigger_value:
-            self.get_logger().info('Capture trigger received.')
+            self.get_logger().debug('Capture trigger received.')
             if self._save_latest_image():
                 if self.infer_on_capture:
                     self._start_api_inference()
@@ -204,11 +256,11 @@ class VlmTtsDemoNode(Node):
 
             with self._lock:
                 self._waiting_for_image = True
-            self.get_logger().info('Waiting for one camera frame to capture.')
+            self.get_logger().debug('Waiting for one camera frame to capture.')
             return
 
         if msg.data == self.infer_trigger_value:
-            self.get_logger().info('Infer trigger received.')
+            self.get_logger().debug('Infer trigger received.')
             self._publish_start_notice()
             self._start_api_inference()
             return
@@ -233,14 +285,18 @@ class VlmTtsDemoNode(Node):
             self.get_logger().warn('No camera frame available yet.')
             return False
 
-        self._write_image_file(self.captured_image_file, image_data)
+        output_directory = self._current_task_output_directory()
+        captured_image_path = self._output_path(
+            self.captured_image_file, output_directory)
+        self._write_image_file(captured_image_path, image_data)
         if self.source_capture_file:
             self._write_image_file(self.source_capture_file, image_data)
 
         with self._lock:
             self._captured_image_data = image_data
+            self._active_task_output_directory = output_directory
 
-        self.get_logger().info('Saved camera frame to %s.' % self.captured_image_file)
+        self.get_logger().debug('Saved camera frame to %s.' % captured_image_path)
         return True
 
     def _write_image_file(self, path, image_data):
@@ -271,15 +327,13 @@ class VlmTtsDemoNode(Node):
         self._api_thread.start()
 
     def _run_api_inference(self, image_data):
-        started = time.monotonic()
         try:
             text = self._call_vision_api(image_data)
             text = self._clean_for_speech(text)
             if not text:
                 raise RuntimeError('API response has no text content.')
 
-            elapsed = time.monotonic() - started
-            self.get_logger().info('API VLM result in %.2fs: %s' % (elapsed, text))
+            self.get_logger().info('图生文内容：%s' % text)
             self._store_last_success_text(text)
             self._publish_result(text)
             self._publish_tts(text)

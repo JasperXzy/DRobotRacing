@@ -8,6 +8,7 @@
 #include <exception>
 #include <functional>
 #include <iomanip>
+#include <iostream>
 #include <limits>
 #include <sstream>
 #include <string>
@@ -17,6 +18,8 @@
 
 #include <yaml-cpp/yaml.h>
 
+#include "rcutils/error_handling.h"
+#include "rcutils/logging.h"
 #include "tf2/exceptions.h"
 #include "tf2/time.h"
 
@@ -158,6 +161,10 @@ VisualLidarPathFollower::VisualLidarPathFollower()
     logic3_runtime_restriction_map_topic_);
   declare_parameter<bool>("debug_control_logs", debug_control_logs_);
   get_parameter("debug_control_logs", debug_control_logs_);
+  declare_parameter<bool>(
+    "quiet_logs_after_static_freeze", quiet_logs_after_static_freeze_);
+  get_parameter(
+    "quiet_logs_after_static_freeze", quiet_logs_after_static_freeze_);
   declare_parameter<bool>("enable_debug_visualization", enable_debug_visualization_);
   get_parameter("enable_debug_visualization", enable_debug_visualization_);
 
@@ -207,6 +214,10 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   get_parameter(
     "transition_waypoint_shift_target_clearance",
     transition_waypoint_shift_target_clearance_);
+  declare_parameter<bool>(
+    "transition_dynamic_avoid_only", transition_dynamic_avoid_only_);
+  get_parameter(
+    "transition_dynamic_avoid_only", transition_dynamic_avoid_only_);
   declare_parameter<double>(
     "task2_waypoint_shift_target_clearance", task2_waypoint_shift_target_clearance_);
   get_parameter(
@@ -480,8 +491,14 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   // 前后视野和走廊分别可调，检测区均为扇形与矩形的交集。
   declare_parameter<double>("qr_reverse_y_threshold", qr_reverse_y_threshold_);
   get_parameter("qr_reverse_y_threshold", qr_reverse_y_threshold_);
+  declare_parameter<double>(
+    "qr_reverse_force_qr_y_threshold", qr_reverse_force_qr_y_threshold_);
+  get_parameter(
+    "qr_reverse_force_qr_y_threshold", qr_reverse_force_qr_y_threshold_);
   declare_parameter<double>("qr_reverse_x_limit", qr_reverse_x_limit_);
   get_parameter("qr_reverse_x_limit", qr_reverse_x_limit_);
+  declare_parameter<double>("qr_reverse_min_distance", qr_reverse_min_distance_);
+  get_parameter("qr_reverse_min_distance", qr_reverse_min_distance_);
   declare_parameter<double>(
     "qr_reverse_front_obstacle_distance", qr_reverse_front_obstacle_distance_);
   get_parameter(
@@ -916,6 +933,11 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   if (!std::isfinite(qr_reverse_x_limit_)) {
     qr_reverse_x_limit_ = 4.30;
   }
+  if (!std::isfinite(qr_reverse_force_qr_y_threshold_)) {
+    qr_reverse_force_qr_y_threshold_ = 0.90;
+  }
+  qr_reverse_min_distance_ = std::max(
+    0.0, std::isfinite(qr_reverse_min_distance_) ? qr_reverse_min_distance_ : 0.30);
   qr_reverse_front_obstacle_distance_ = std::max(
     0.0, qr_reverse_front_obstacle_distance_);
   qr_reverse_front_fov_deg_ = std::clamp(qr_reverse_front_fov_deg_, 1.0, 360.0);
@@ -3368,7 +3390,8 @@ bool VisualLidarPathFollower::logic3_green_mask_contains(
     logic3_green_clusters_.begin(), logic3_green_clusters_.end(),
     [&](const ScanPointCluster & green_cluster) {
       // Task1静态矩形外的冻结绿色簇不做静态路线偏移，因此也不能被
-      // 绿圈掩码过滤；保留给实时雷达动态避障。进入过渡后恢复正常掩码。
+      // 绿圈掩码过滤；保留给实时雷达动态避障。A→B动态专用阶段由调用方
+      // 完全关闭本掩码，进入Task2后再恢复。
       if ((following_qr_path_ || task_phase_ == TaskPhase::TASK1) &&
         !task1_static_avoid_region_contains(green_cluster.center))
       {
@@ -3559,9 +3582,11 @@ VisualLidarPathFollower::find_lidar_obstacle(
 
 // 扫码后到进入waypoint_channel或达到配置轮数上限前，PENDING始终表示
 // “倒车机制已武装”。qr_reverse_max_count为0时不武装、完全禁用倒车。
-// 新一轮倒车只需前方命中即可触发；map.y和map.x仅作为倒车中的或关系
-// 退出保护。本轮结束后回到PENDING，不关闭机制。前后同时命中时仍倒车，
-// 并把右转量提升到配置的满舵角。
+// 新一轮倒车由前方命中或QR识别位置Y超限的一次性请求触发。触发后，
+// 前方清空只有在达到最小倒车净位移后才能结束本轮；map.y和map.x是
+// 更高优先级的硬边界，可在最小距离完成前强制结束。本轮结束后回到
+// PENDING，不关闭机制。
+// 前后同时命中时仍倒车，并把右转量提升到配置的满舵角。
 bool VisualLidarPathFollower::apply_qr_reverse_maneuver(
   const VisualLidarPathFollower::RobotPose & robot_pose,
   geometry_msgs::msg::Twist & cmd)
@@ -3577,7 +3602,7 @@ bool VisualLidarPathFollower::apply_qr_reverse_maneuver(
     if (!qr_reverse_waiting_for_inputs_) {
       RCLCPP_WARN(
         get_logger(),
-        "二维码倒车等待新鲜雷达、物理地图及采样时刻TF，当前停车。");
+        "过渡阶段条件倒车等待新鲜雷达、物理地图及采样时刻TF，当前停车。");
       qr_reverse_waiting_for_inputs_ = true;
     }
     return true;
@@ -3602,26 +3627,71 @@ bool VisualLidarPathFollower::apply_qr_reverse_maneuver(
       cmd.angular.z = full_right ?
         full_right_angular_speed : qr_reverse_angular_speed_;
     };
+  const bool y_limit_reached = robot_pose.y <= qr_reverse_y_threshold_;
+  const bool x_limit_reached = robot_pose.x >= qr_reverse_x_limit_;
 
   if (qr_escape_state_ == QrEscapeState::PENDING) {
-    const bool reverse_triggered = front_obstacle.found;
+    const bool qr_y_force_requested = qr_reverse_qr_y_force_pending_;
+    const bool reverse_triggered = front_obstacle.found || qr_y_force_requested;
+    std::ostringstream trigger_reason_stream;
+    trigger_reason_stream << std::fixed << std::setprecision(3);
+    if (qr_y_force_requested) {
+      trigger_reason_stream << "二维码识别位置map.y="
+                            << task1_transition_marker_.y << ">"
+                            << qr_reverse_force_qr_y_threshold_
+                            << "，强制触发";
+      if (front_obstacle.found) {
+        trigger_reason_stream << "，同时前方有障碍";
+      }
+    } else {
+      trigger_reason_stream << "前方有障碍";
+    }
+    const std::string trigger_reason = trigger_reason_stream.str();
+    if (reverse_triggered && (y_limit_reached || x_limit_reached)) {
+      // 安全硬边界不允许强制倒车；立即消费本次QR请求，防止车辆之后
+      // 离开边界时发生与扫码时刻无关的延迟倒车。
+      if (qr_y_force_requested) {
+        qr_reverse_qr_y_force_pending_ = false;
+      }
+      RCLCPP_WARN_THROTTLE(
+        get_logger(), *get_clock(), 1000,
+        "过渡阶段条件倒车未触发：请求=%s；已位于后退硬边界"
+        "[map.y=%.3f<=%.3f=%s，"
+        "map.x=%.3f>=%.3f=%s]，改由正常路线及实时雷达控制。",
+        trigger_reason.c_str(),
+        robot_pose.y, qr_reverse_y_threshold_, y_limit_reached ? "是" : "否",
+        robot_pose.x, qr_reverse_x_limit_, x_limit_reached ? "是" : "否");
+      return false;
+    }
     if (reverse_triggered) {
       qr_escape_state_ = QrEscapeState::BACKING_RIGHT;
+      qr_reverse_active_trigger_reason_ = trigger_reason;
+      if (qr_y_force_requested) {
+        qr_reverse_qr_y_force_pending_ = false;
+      }
+      qr_reverse_distance_uses_odom_ = latest_chassis_odom_position_valid_;
+      qr_reverse_start_position_ = qr_reverse_distance_uses_odom_ ?
+        latest_chassis_odom_position_ : Point2D{robot_pose.x, robot_pose.y};
+      qr_reverse_start_position_valid_ = true;
       const bool full_right = rear_obstacle.found;
       set_reverse_command(full_right);
       RCLCPP_WARN(
         get_logger(),
-        "开始二维码条件倒车：前方障碍=是，map.y=%.3f（仅作退出保护%.3f），"
-        "后方障碍=%s%s；输出 linear.x=%.2f, angular.z=%.2f。",
+        "开始过渡阶段条件倒车：触发原因=%s；前方障碍=%s，"
+        "map.y=%.3f（仅作退出保护%.3f），"
+        "后方障碍=%s%s；最小倒车净位移=%.2fm（%s计量）；"
+        "输出 linear.x=%.2f, angular.z=%.2f。",
+        trigger_reason.c_str(), front_obstacle.found ? "是" : "否",
         robot_pose.y, qr_reverse_y_threshold_, rear_obstacle.found ? "是" : "否",
         full_right ? "，执行右打满后倒" : "",
+        qr_reverse_min_distance_, qr_reverse_distance_uses_odom_ ? "chassis/odom" : "map",
         cmd.linear.x, cmd.angular.z);
       return true;
     }
     if (debug_control_logs_) {
       RCLCPP_INFO_THROTTLE(
         get_logger(), *get_clock(), 500,
-        "debug: 二维码倒车机制保持武装，前障碍=%s，后障碍=%s，"
+        "debug: 过渡阶段条件倒车机制保持武装，前障碍=%s，后障碍=%s，"
         "map.y=%.3f（仅作退出保护%.3f）。",
         front_obstacle.found ? "是" : "否",
         rear_obstacle.found ? "是" : "否",
@@ -3631,9 +3701,21 @@ bool VisualLidarPathFollower::apply_qr_reverse_maneuver(
   }
 
   const bool front_clear = !front_obstacle.found;
-  const bool y_limit_reached = robot_pose.y <= qr_reverse_y_threshold_;
-  const bool x_limit_reached = robot_pose.x >= qr_reverse_x_limit_;
-  if (front_clear || y_limit_reached || x_limit_reached) {
+  const Point2D reverse_current_position =
+    qr_reverse_distance_uses_odom_ && latest_chassis_odom_position_valid_ ?
+    latest_chassis_odom_position_ : Point2D{robot_pose.x, robot_pose.y};
+  const double reverse_distance = qr_reverse_start_position_valid_ ?
+    std::hypot(
+    reverse_current_position.x - qr_reverse_start_position_.x,
+    reverse_current_position.y - qr_reverse_start_position_.y) : 0.0;
+  const bool min_distance_reached =
+    reverse_distance + 1.0e-6 >= qr_reverse_min_distance_;
+  const bool hard_boundary_reached = y_limit_reached || x_limit_reached;
+  const bool normal_exit_reached = front_clear && min_distance_reached;
+  if (hard_boundary_reached || normal_exit_reached) {
+    const std::string completed_trigger_reason =
+      qr_reverse_active_trigger_reason_.empty() ?
+      "前方有障碍" : qr_reverse_active_trigger_reason_;
     // 只解除当前这一轮倒车；完成配置轮数后停止再次触发。
     ++channel_completed_reverse_count_;
     const bool reverse_count_limit_reached =
@@ -3642,29 +3724,65 @@ bool VisualLidarPathFollower::apply_qr_reverse_maneuver(
       static_cast<std::size_t>(qr_reverse_max_count_);
     qr_escape_state_ = reverse_count_limit_reached ?
       QrEscapeState::IDLE : QrEscapeState::PENDING;
+    qr_reverse_start_position_valid_ = false;
+    qr_reverse_distance_uses_odom_ = false;
     channel_entry_route_rebuild_pending_ = true;
     channel_entry_route_rebuild_after_reverse_ = true;
+    std::string exit_reason;
+    if (x_limit_reached && y_limit_reached) {
+      exit_reason = "同时触发map.x和map.y后退硬边界";
+    } else if (x_limit_reached) {
+      exit_reason = "触发map.x后退硬边界";
+    } else if (y_limit_reached) {
+      exit_reason = "触发map.y后退硬边界";
+    } else {
+      exit_reason = "前方清空且已达到最小倒车距离";
+    }
+    const std::string next_action = reverse_count_limit_reached ?
+      "本次过渡已完成允许的" + std::to_string(qr_reverse_max_count_) +
+      "轮条件倒车，继续按重规划路线行驶" :
+      "仍允许前方障碍再次触发条件倒车";
+    std::ostringstream terminal_message;
+    terminal_message << std::fixed << std::setprecision(3)
+                     << "触发原因=" << completed_trigger_reason
+                     << "；退出原因=" << exit_reason
+                     << "；倒车净位移=" << reverse_distance << "/"
+                     << qr_reverse_min_distance_ << "m；后续=" << next_action;
+    std::cout << "-------------------------------过渡阶段条件倒车退出"
+                 "-------------------------------" << std::endl;
+    std::cout << terminal_message.str() << std::endl;
     if (reverse_count_limit_reached) {
       RCLCPP_WARN(
         get_logger(),
-        "二维码倒车第%zu轮结束：或条件命中[前方清空=%s，"
+        "过渡阶段条件倒车第%zu轮结束：触发原因=%s；%s；"
+        "退出判定[倒车净位移=%.3f/%.3fm，前方清空=%s，"
         "map.y=%.3f<=%.3f=%s，map.x=%.3f>=%.3f=%s]；"
-        "立即以当前base_link重规划；已达到配置上限%d轮，本次扫码不再触发倒车。",
-        channel_completed_reverse_count_, front_clear ? "是" : "否",
+        "立即以当前base_link重规划；已达到配置上限%d轮，本次过渡不再触发条件倒车。",
+        channel_completed_reverse_count_,
+        completed_trigger_reason.c_str(),
+        hard_boundary_reached && !min_distance_reached ?
+        "硬边界优先，最小距离被安全截断" : "退出条件满足",
+        reverse_distance, qr_reverse_min_distance_, front_clear ? "是" : "否",
         robot_pose.y, qr_reverse_y_threshold_, y_limit_reached ? "是" : "否",
         robot_pose.x, qr_reverse_x_limit_, x_limit_reached ? "是" : "否",
         qr_reverse_max_count_);
     } else {
       RCLCPP_INFO(
         get_logger(),
-        "二维码倒车第%zu轮结束：或条件命中[前方清空=%s，"
+        "过渡阶段条件倒车第%zu轮结束：触发原因=%s；%s；"
+        "退出判定[倒车净位移=%.3f/%.3fm，前方清空=%s，"
         "map.y=%.3f<=%.3f=%s，map.x=%.3f>=%.3f=%s]；"
         "立即以当前base_link重规划；倒车机制继续保持武装%s。",
-        channel_completed_reverse_count_, front_clear ? "是" : "否",
+        channel_completed_reverse_count_,
+        completed_trigger_reason.c_str(),
+        hard_boundary_reached && !min_distance_reached ?
+        "硬边界优先，最小距离被安全截断" : "退出条件满足",
+        reverse_distance, qr_reverse_min_distance_, front_clear ? "是" : "否",
         robot_pose.y, qr_reverse_y_threshold_, y_limit_reached ? "是" : "否",
         robot_pose.x, qr_reverse_x_limit_, x_limit_reached ? "是" : "否",
         "");
     }
+    qr_reverse_active_trigger_reason_.clear();
     return false;
   }
 
@@ -3673,17 +3791,20 @@ bool VisualLidarPathFollower::apply_qr_reverse_maneuver(
   if (debug_control_logs_) {
     RCLCPP_INFO_THROTTLE(
       get_logger(), *get_clock(), 500,
-      "debug: 二维码条件倒车，map.y=%.3f，前障碍=%s，后障碍=%s%s，"
+      "debug: 过渡阶段条件倒车，净位移=%.3f/%.3fm，map.y=%.3f，"
+      "前障碍=%s，后障碍=%s%s，"
       "输出=%.2f/%.2f。",
-      robot_pose.y, front_obstacle.found ? "是" : "否",
+      reverse_distance, qr_reverse_min_distance_, robot_pose.y,
+      front_obstacle.found ? "是" : "否",
       rear_obstacle.found ? "是" : "否",
       full_right ? "，右打满后倒" : "", cmd.linear.x, cmd.angular.z);
   }
   return true;
 }
 
-// 进入 channel 航点邻域后结束进场速度覆盖；静态+动态方案继续沿用雷达避障，
-// 但正常速度恢复为 channel 路线跟踪速度。
+// 进入channel航点邻域后结束进场速度覆盖。A→B的基准路线在冻结规划时
+// 已被保护为零静态偏移；Task2参数可按原门限提前切换，但绿色掩码要等
+// 路线进度真正越过B后才恢复。
 void VisualLidarPathFollower::update_qr_channel_approach_phase(
   const VisualLidarPathFollower::RobotPose & robot_pose)
 {
@@ -3726,6 +3847,8 @@ void VisualLidarPathFollower::update_qr_channel_approach_phase(
   // 未提前达到配置轮数上限时，进入waypoint_channel永久关闭倒车机制。
   qr_channel_approach_active_ = false;
   qr_escape_state_ = QrEscapeState::IDLE;
+  qr_reverse_qr_y_force_pending_ = false;
+  qr_reverse_active_trigger_reason_.clear();
   set_task_phase(TaskPhase::TASK2);
   current_index_ = std::min(
     std::max(current_index_, entry_index), waypoints_.size() - 1);
@@ -3733,12 +3856,12 @@ void VisualLidarPathFollower::update_qr_channel_approach_phase(
   RCLCPP_INFO(
     get_logger(),
     "已进入 waypoint_channel：延长段=%zu点，入口首点距离=%.3fm，入口截面穿越=%s；"
-    "切换到Task2参数，继续使用运行限制图和绿圈掩码后的雷达避障。",
+    "切换到Task2参数，路线进度越过B后再恢复绿圈掩码。",
     entry_index, entry_waypoint_distance, crossed_entry_section ? "是" : "否");
 }
 
-// channel 雷达避障：逐点经过物理墙体、静态+动态方案运行限制图和冻结绿圈过滤后，
-// 取前方扇形走廊内最近的新障碍。障碍在左则右绕，障碍在右则左绕。
+// channel雷达避障：A→B动态专用阶段不使用冻结绿圈掩码，让全部真实障碍
+// 进入实时控制；路线进度越过B后恢复原有运行限制图和冻结绿圈过滤。
 bool VisualLidarPathFollower::apply_channel_lidar_obstacle_avoidance(
   geometry_msgs::msg::Twist & cmd, bool * observation_valid,
   bool * obstacle_found)
@@ -3750,8 +3873,15 @@ bool VisualLidarPathFollower::apply_channel_lidar_obstacle_avoidance(
     *obstacle_found = false;
   }
   const bool filter_logic3_runtime_map = logic3_planning_pose_anchored_;
+  const bool before_or_at_channel_entry = !waypoints_.empty() &&
+    channel_entry_waypoint_index_ < waypoints_.size() &&
+    current_index_ <= channel_entry_waypoint_index_;
+  const bool transition_dynamic_only = transition_dynamic_avoid_only_ &&
+    (task_phase_ == TaskPhase::TRANSITION ||
+    (task_phase_ == TaskPhase::TASK2 && before_or_at_channel_entry));
   const bool filter_logic3_green_mask =
-    logic3_planning_pose_anchored_ && !logic3_green_clusters_.empty();
+    logic3_planning_pose_anchored_ && !transition_dynamic_only &&
+    !logic3_green_clusters_.empty();
   RobotPose scan_to_base;
   RobotPose scan_to_map;
   if (!prepare_lidar_scan(
@@ -4565,12 +4695,16 @@ void VisualLidarPathFollower::update_logic3_runtime_red_tracks(
 void VisualLidarPathFollower::logic3_odom_callback(
   const nav_msgs::msg::Odometry::ConstSharedPtr msg)
 {
+  const double odom_x = msg->pose.pose.position.x;
+  const double odom_y = msg->pose.pose.position.y;
+  if (std::isfinite(odom_x) && std::isfinite(odom_y)) {
+    latest_chassis_odom_position_ = Point2D{odom_x, odom_y};
+    latest_chassis_odom_position_valid_ = true;
+  }
   if (logic3_planning_pose_anchored_) {
     return;
   }
 
-  const double odom_x = msg->pose.pose.position.x;
-  const double odom_y = msg->pose.pose.position.y;
   if (!logic3_odom_reference_valid_) {
     logic3_odom_reference_valid_ = true;
     logic3_odom_reference_x_ = odom_x;
@@ -4784,6 +4918,16 @@ void VisualLidarPathFollower::freeze_logic3_route()
     logic3_green_clusters_.size(),
     logic3_session_id_.c_str());
 
+  if (quiet_logs_after_static_freeze_) {
+    const rcutils_ret_t result = rcutils_logging_set_logger_level(
+      get_logger().get_name(), RCUTILS_LOG_SEVERITY_ERROR);
+    if (result != RCUTILS_RET_OK) {
+      RCLCPP_ERROR(
+        get_logger(), "静态冻结后切换终端静默模式失败，继续保留原日志级别。");
+      rcutils_reset_error();
+    }
+  }
+
   // 可信发车确认后，立即把最后一次READY绿色快照应用到Task1路径。
   if (task_phase_ == TaskPhase::TASK1 && !waypoints_.empty()) {
     apply_logic3_frozen_clusters_to_current_route("task1_frozen");
@@ -4804,6 +4948,21 @@ void VisualLidarPathFollower::apply_logic3_frozen_clusters_to_current_route(
   logic3_force_confirm_ = false;
   logic3_force_full_route_ = false;
   logic3_replay_frozen_clusters_ = false;
+
+  if (snapshot_event == "final_frozen" && transition_dynamic_avoid_only_ &&
+    original_waypoints_.size() == waypoints_.size() && !waypoints_.empty())
+  {
+    // 正常计算整条冻结路线，但A→B（包含B）始终保持偏移前基准坐标。
+    // B之后继续沿用原静态偏移，且整条路线从规划到执行不再中途替换。
+    const std::size_t protected_last = std::min(
+      channel_entry_waypoint_index_, waypoints_.size() - 1);
+    for (std::size_t index = 0; index <= protected_last; ++index) {
+      waypoints_[index] = original_waypoints_[index];
+      waypoint_shift_offsets_[index] = 0.0;
+      waypoint_shift_world_directions_[index] = Point2D();
+      waypoint_shift_source_indices_[index] = waypoints_.size();
+    }
+  }
 
   logic3_frozen_base_offsets_ = waypoint_shift_offsets_;
   logic3_frozen_base_shift_directions_ = waypoint_shift_world_directions_;
@@ -5722,6 +5881,21 @@ void VisualLidarPathFollower::qr_callback(const std_msgs::msg::String::ConstShar
   }
   const std::string direction = direction_from_qr(msg->data);
   if (!direction.empty()) {
+    // 强制倒车只允许使用真实QR消息到达当帧的base_link坐标。QR可能在
+    // x门槛前被缓存，不能等正式切换阶段时再用更晚的车辆位置补记。
+    if (!task1_transition_marker_valid_) {
+      RobotPose qr_pose;
+      const bool qr_pose_valid = logic3_planning_pose_anchored_ ?
+        lookup_logic3_planning_pose(qr_pose) :
+        lookup_robot_pose(qr_pose.x, qr_pose.y, qr_pose.yaw);
+      if (qr_pose_valid) {
+        task1_transition_marker_ = Point2D{qr_pose.x, qr_pose.y};
+        task1_transition_marker_label_ = "QR";
+        task1_transition_marker_valid_ = true;
+        qr_reverse_qr_y_force_pending_ =
+          qr_pose.y > qr_reverse_force_qr_y_threshold_;
+      }
+    }
     // 传感器节点只负责上报；大厅半场门槛前缓存原始内容但不播报，
     // 直到Final冻结路线已经以真正的过渡起点生成完成。
     if (task1_pending_qr_text_.empty() ||
@@ -5751,14 +5925,6 @@ bool VisualLidarPathFollower::complete_task1_and_select_route(
   const bool selection_pose_valid = logic3_planning_pose_anchored_ ?
     lookup_logic3_planning_pose(selection_pose) :
     lookup_robot_pose(selection_pose.x, selection_pose.y, selection_pose.yaw);
-
-  // 第一份有效二维码的实际识别位置单独保存。即使当时尚未可信发车或
-  // 尚未越过x门槛，也不把之后真正切换路线的位置冒充二维码位置。
-  if (from_qr && !task1_transition_marker_valid_ && selection_pose_valid) {
-    task1_transition_marker_ = Point2D{selection_pose.x, selection_pose.y};
-    task1_transition_marker_label_ = "QR";
-    task1_transition_marker_valid_ = true;
-  }
 
   // 已缓存真实二维码后，超时/末点的默认顺时针请求不得覆盖它。
   if (!from_qr && task1_pending_from_qr_ &&
@@ -5914,8 +6080,8 @@ double VisualLidarPathFollower::estimate_channel_waypoint_spacing(
 
 // 以当前map->base_link位置为A，以原始waypoint_channel首点为B，按channel
 // 中位点距在AB直线上插点。B处的轻微圆滑只修改这条“偏移前基准路线”；
-// 基准路线固化后才回放冻结绿色静态簇，完全交给原waypoint_shift算法偏移，
-// 偏移完成后不再针对B点做任何额外拟合或回拉。
+// 基准路线固化后正常回放冻结绿色静态簇，再把A→B（包含B）恢复为基准坐标；
+// B之后保留原waypoint_shift结果，整条组合路线直接执行，不在阶段边界替换。
 bool VisualLidarPathFollower::rebuild_channel_entry_route(
   const VisualLidarPathFollower::RobotPose & start_pose, const char * reason)
 {
@@ -6062,7 +6228,7 @@ bool VisualLidarPathFollower::rebuild_channel_entry_route(
         RCLCPP_INFO(
           get_logger(),
           "A→B偏移前圆滑：在B前%.3fm内使用%zu段等弧长Bezier，"
-          "转角=%.1f°；偏移后不再针对B拟合。",
+          "转角=%.1f°；冻结规划仍保护A→B不做静态偏移。",
           curve_length, blend_segments,
           std::acos(tangent_alignment) * 180.0 / M_PI);
       }
@@ -6161,6 +6327,10 @@ bool VisualLidarPathFollower::switch_route(const std::string & direction)
   channel_entry_waypoint_index_ = 0;
   channel_entry_smoothing_first_index_ = 0;
   channel_completed_reverse_count_ = 0;
+  qr_reverse_active_trigger_reason_.clear();
+  if (qr_reverse_max_count_ <= 0) {
+    qr_reverse_qr_y_force_pending_ = false;
+  }
   has_image_capture_waypoint_ = false;
   image_capture_stopping_ = false;
   reset_waypoint_shift_state();
@@ -6174,6 +6344,8 @@ bool VisualLidarPathFollower::switch_route(const std::string & direction)
     current_index_ = 0;
     first_waypoint_reached_ = false;
     qr_channel_approach_active_ = true;
+    qr_reverse_start_position_valid_ = false;
+    qr_reverse_distance_uses_odom_ = false;
     qr_escape_state_ = qr_reverse_max_count_ > 0 ?
       QrEscapeState::PENDING : QrEscapeState::IDLE;
   } else {
@@ -6185,7 +6357,7 @@ bool VisualLidarPathFollower::switch_route(const std::string & direction)
     get_logger(),
     "QR 选择%s路线；下一控制周期先从当前base_link直连waypoint_channel首点并等距插点，"
     "再按冻结静态坐标规划；每轮条件倒车结束后还会从新base_link重复一次；"
-    "静态+动态方案在 channel 全程使用运行限制图和绿圈掩码后的雷达避障。",
+    "A→B保护为零静态偏移并对全部障碍做动态避障，进入Task2后恢复绿圈掩码。",
     route_name.c_str());
   if (debug_control_logs_) {
     RCLCPP_INFO(

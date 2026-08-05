@@ -209,7 +209,12 @@ void chassis_driver::Publish_ImuSensor()
     Imu_Data_Pub.orientation_covariance[0] = -1.0;
     Imu_Data_Pub.angular_velocity.x = Mpu6050.angular_velocity.x;
     Imu_Data_Pub.angular_velocity.y = Mpu6050.angular_velocity.y;
-    Imu_Data_Pub.angular_velocity.z = Mpu6050.angular_velocity.z;
+    double corrected_gyro_z =
+      static_cast<double>(Mpu6050.angular_velocity.z) - gyro_z_bias_;
+    if (gyro_bias_compensation_enabled_ && IsChassisStationary()) {
+      corrected_gyro_z = 0.0;
+    }
+    Imu_Data_Pub.angular_velocity.z = corrected_gyro_z;
     Imu_Data_Pub.angular_velocity_covariance[0] = 0.20;
     Imu_Data_Pub.angular_velocity_covariance[4] = 0.20;
     Imu_Data_Pub.angular_velocity_covariance[8] = 0.05;
@@ -222,6 +227,53 @@ void chassis_driver::Publish_ImuSensor()
 
     imu_publisher->publish(Imu_Data_Pub);
 
+}
+
+bool chassis_driver::IsChassisStationary() const
+{
+    return std::abs(static_cast<double>(Robot_Vel.X)) <= gyro_stationary_linear_threshold_ &&
+           std::abs(static_cast<double>(Robot_Vel.Y)) <= gyro_stationary_linear_threshold_ &&
+           std::abs(static_cast<double>(Robot_Vel.Z)) <= gyro_stationary_angular_threshold_;
+}
+
+void chassis_driver::UpdateGyroBiasCalibration()
+{
+    if (!gyro_bias_compensation_enabled_) {
+      gyro_z_bias_ = 0.0;
+      gyro_z_bias_calibrated_ = true;
+      return;
+    }
+
+    const double raw_gyro_z = static_cast<double>(Mpu6050.angular_velocity.z);
+    if (!gyro_z_bias_calibrated_) {
+      if (!IsChassisStationary()) {
+        gyro_z_bias_sum_ = 0.0;
+        gyro_z_bias_sample_count_ = 0;
+        return;
+      }
+      if (std::abs(raw_gyro_z) > gyro_bias_sample_limit_) {
+        return;
+      }
+
+      gyro_z_bias_sum_ += raw_gyro_z;
+      ++gyro_z_bias_sample_count_;
+      if (gyro_z_bias_sample_count_ >= gyro_bias_calibration_samples_) {
+        gyro_z_bias_ = gyro_z_bias_sum_ /
+          static_cast<double>(gyro_z_bias_sample_count_);
+        gyro_z_bias_calibrated_ = true;
+        RCLCPP_INFO(
+          this->get_logger(),
+          "IMU Z gyro bias calibrated from %d stationary samples: %.9f rad/s (%.6f deg/s)",
+          gyro_z_bias_sample_count_, gyro_z_bias_, gyro_z_bias_ * 180.0 / M_PI);
+      }
+      return;
+    }
+
+    // Track slow temperature drift only while wheel odometry confirms the chassis is stationary.
+    const double residual = raw_gyro_z - gyro_z_bias_;
+    if (IsChassisStationary() && std::abs(residual) <= gyro_bias_sample_limit_) {
+      gyro_z_bias_ += gyro_bias_update_alpha_ * residual;
+    }
 }
 
 void chassis_driver::Publish_Odom()
@@ -417,7 +469,10 @@ void chassis_driver::Control()
               "Chassis calibration/stop flag cleared; resuming IMU angular velocity");
           }
           imu_suppressed_by_chassis_ = false;
-          Publish_ImuSensor();
+          UpdateGyroBiasCalibration();
+          if (gyro_z_bias_calibrated_) {
+            Publish_ImuSensor();
+          }
         } else {
           if (!imu_suppressed_by_chassis_) {
             RCLCPP_WARN(
@@ -472,6 +527,16 @@ chassis_driver::chassis_driver()
   this->declare_parameter<double>("lateral_position_scale", lateral_position_scale_);
   this->declare_parameter<double>("positive_angular_scale", positive_angular_scale_);
   this->declare_parameter<double>("negative_angular_scale", negative_angular_scale_);
+  this->declare_parameter<bool>(
+    "gyro_bias_compensation_enabled", gyro_bias_compensation_enabled_);
+  this->declare_parameter<int>(
+    "gyro_bias_calibration_samples", gyro_bias_calibration_samples_);
+  this->declare_parameter<double>("gyro_bias_sample_limit", gyro_bias_sample_limit_);
+  this->declare_parameter<double>(
+    "gyro_stationary_linear_threshold", gyro_stationary_linear_threshold_);
+  this->declare_parameter<double>(
+    "gyro_stationary_angular_threshold", gyro_stationary_angular_threshold_);
+  this->declare_parameter<double>("gyro_bias_update_alpha", gyro_bias_update_alpha_);
 
   this->get_parameter("serial_baud_rate", serial_baud_rate);
   this->get_parameter("usart_port_name", usart_port_name);
@@ -485,6 +550,34 @@ chassis_driver::chassis_driver()
   this->get_parameter("lateral_position_scale", lateral_position_scale_);
   this->get_parameter("positive_angular_scale", positive_angular_scale_);
   this->get_parameter("negative_angular_scale", negative_angular_scale_);
+  this->get_parameter(
+    "gyro_bias_compensation_enabled", gyro_bias_compensation_enabled_);
+  this->get_parameter("gyro_bias_calibration_samples", gyro_bias_calibration_samples_);
+  this->get_parameter("gyro_bias_sample_limit", gyro_bias_sample_limit_);
+  this->get_parameter(
+    "gyro_stationary_linear_threshold", gyro_stationary_linear_threshold_);
+  this->get_parameter(
+    "gyro_stationary_angular_threshold", gyro_stationary_angular_threshold_);
+  this->get_parameter("gyro_bias_update_alpha", gyro_bias_update_alpha_);
+
+  if (gyro_bias_calibration_samples_ < 1) {
+    gyro_bias_calibration_samples_ = 1;
+  }
+  if (gyro_bias_sample_limit_ <= 0.0) {
+    gyro_bias_sample_limit_ = 0.02;
+  }
+  if (gyro_stationary_linear_threshold_ < 0.0) {
+    gyro_stationary_linear_threshold_ = 0.0;
+  }
+  if (gyro_stationary_angular_threshold_ < 0.0) {
+    gyro_stationary_angular_threshold_ = 0.0;
+  }
+  if (gyro_bias_update_alpha_ < 0.0) {
+    gyro_bias_update_alpha_ = 0.0;
+  } else if (gyro_bias_update_alpha_ > 1.0) {
+    gyro_bias_update_alpha_ = 1.0;
+  }
+  gyro_z_bias_calibrated_ = !gyro_bias_compensation_enabled_;
   last_cmd_vel_time_ = this->now();
 
   odom_publisher = create_publisher<nav_msgs::msg::Odometry>("chassis/odom", 10);

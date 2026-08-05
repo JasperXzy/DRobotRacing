@@ -31,7 +31,7 @@ source /root/D_Robot/test/dev_ws/install/setup.bash
 fastdds shm clean
 export FASTDDS_BUILTIN_TRANSPORTS=UDPv4
 ros2 launch origincar_system test_bringup_lidar_location.launch.py \
-  start_foxglove:=true
+  start_foxglove:=false
 ```
 
 `lidar_location` 默认从
@@ -61,7 +61,6 @@ ros2 launch origincar_system visual_lidar_path_follower_fast.launch.xml
 ```
 
 Task1 当前 map 控制点为
-`(0,0) → (0.60,0.60) → (3.30,0.65) → (4.10,3.60)`。修改
 `src/origincar_system/scripts/generate_task1_waypoints.py` 后可重新生成：
 #### Task1任务路径生成脚本
 ```bash

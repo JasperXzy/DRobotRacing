@@ -18,6 +18,7 @@ find_package(origincar_msg REQUIRED)
 pkg_check_modules(ZBAR REQUIRED zbar)  # 使用pkg-config查找zbar
 
 add_executable(qr_detector_node src/qr_detector_node.cpp)
+target_compile_features(qr_detector_node PUBLIC cxx_std_17)
 target_include_directories(qr_detector_node PUBLIC
   ${ZBAR_INCLUDE_DIRS}  # 添加ZBar头文件目录
 )

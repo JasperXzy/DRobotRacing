@@ -10,6 +10,7 @@ find_package(ai_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rcutils REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(tf2 REQUIRED)
@@ -21,7 +22,7 @@ add_executable(visual_lidar_path_follower src/visual_lidar_path_follower.cpp)
 target_include_directories(visual_lidar_path_follower PRIVATE include)
 ament_target_dependencies(
   visual_lidar_path_follower
-  ai_msgs geometry_msgs nav_msgs rclcpp sensor_msgs std_msgs tf2 tf2_ros visualization_msgs)
+  ai_msgs geometry_msgs nav_msgs rclcpp rcutils sensor_msgs std_msgs tf2 tf2_ros visualization_msgs)
 target_link_libraries(visual_lidar_path_follower yaml-cpp)
 
 install(TARGETS

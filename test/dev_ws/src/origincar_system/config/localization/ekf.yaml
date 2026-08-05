@@ -69,13 +69,12 @@ ekf_filter_node:
     
     imu0: /chassis/imu/data_raw
     
-    # MPU6050 has no magnetometer, so its integrated yaw is not an absolute
-    # heading. Fuse only the measured Z angular velocity; wheel odometry still
-    # provides vx, vy and vyaw through odom0.
+    # The chassis driver calibrates and removes MPU6050 Z gyro bias before
+    # publishing. Wheel odometry also provides vyaw through odom0.
     imu0_config: [false, false, false,    # Position
                   false, false, false,    # Orientation: do not fuse integrated yaw
                   false, false, false,    # Linear velocity
-                  false, false, true,     # Angular velocity: use vyaw only
+                  false, false, true,     # Angular velocity: use corrected vyaw
                   false, false, false]    # Acceleration: do not integrate MPU6050 accel
     
     # IMU options

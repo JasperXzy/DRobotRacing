@@ -44,8 +44,11 @@ ros2 topic pub --once /sign4return std_msgs/msg/Int32 "{data: 0}"
 抓图会保存到：
 
 ```bash
-/root/D_Robot/test/dev_ws/install/vlm_tts_demo/share/vlm_tts_demo/captures/vlm_tts_demo_capture.jpg
+/root/D_Robot/test/dev_ws/src/origincar_system/path/<本次时间批次>/vlm_tts_demo_capture.jpg
 ```
+
+识别成功文本保存在同一目录的 `last_successful_vlm_text.txt`；同一批次再次
+触发时，图片和文本均覆盖原文件。
 
 ## 单次触发测试
 

@@ -29,8 +29,8 @@ DEFAULT_SCHEMATIC_PREVIEW_OUTPUT = (
 ## szc
 DEFAULT_CONTROL_POINTS = [
     (0.00, 0.00),
-    (0.70, 0.00),
-    (1.50, 0.30),
+    (0.50, 0.00),
+    (1.50, 0.50),
     (3.30, 0.60),
     (4.30, 1.50),
 ]

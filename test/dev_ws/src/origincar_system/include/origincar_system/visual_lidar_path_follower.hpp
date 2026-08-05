@@ -206,6 +206,7 @@ private:
   std::string selected_route_direction_;
   bool enable_debug_visualization_{true};
   bool debug_control_logs_{false};
+  bool quiet_logs_after_static_freeze_{true};
   int clockwise_qr_value_{1};
   int counterclockwise_qr_value_{2};
   int visual_control_suspend_value_{5};
@@ -239,6 +240,7 @@ private:
   double waypoint_cloud_check_radius_{0.25};
   double task1_waypoint_shift_target_clearance_{0.45};
   double transition_waypoint_shift_target_clearance_{0.40};
+  bool transition_dynamic_avoid_only_{true};
   double task2_waypoint_shift_target_clearance_{0.40};
   double task3_waypoint_shift_target_clearance_{0.40};
   double task1_waypoint_shift_min_y_{-0.10};
@@ -331,7 +333,9 @@ private:
   // 前后检测区均为“扇形与矩形走廊的交集”。PENDING表示机制仍武装，
   // BACKING_RIGHT只表示当前这一轮正在倒车。
   double qr_reverse_y_threshold_{0.10};
+  double qr_reverse_force_qr_y_threshold_{0.90};
   double qr_reverse_x_limit_{4.30};
+  double qr_reverse_min_distance_{0.30};
   double qr_reverse_front_obstacle_distance_{0.40};
   double qr_reverse_front_fov_deg_{120.0};
   double qr_reverse_front_corridor_half_width_{0.35};
@@ -502,6 +506,13 @@ private:
   bool return_stop_zone_entry_active_{false};
   std::chrono::steady_clock::time_point return_stop_zone_entered_at_;
   bool qr_reverse_waiting_for_inputs_{false};
+  bool qr_reverse_qr_y_force_pending_{false};
+  std::string qr_reverse_active_trigger_reason_;
+  Point2D latest_chassis_odom_position_;
+  Point2D qr_reverse_start_position_;
+  bool latest_chassis_odom_position_valid_{false};
+  bool qr_reverse_start_position_valid_{false};
+  bool qr_reverse_distance_uses_odom_{false};
   bool channel_lidar_waiting_for_inputs_{false};
   bool channel_lidar_obstacle_active_{false};
   int channel_lidar_logged_direction_{0};
