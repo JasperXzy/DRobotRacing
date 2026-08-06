@@ -51,6 +51,12 @@ rosbag2_*/
 *.bag
 *.mcap
 
+# 路线图输出目录（每次运行自动生成的复盘图与README）
+test/dev_ws/src/origincar_system/path/
+
+# 图生文捕获目录（拍照帧与上次成功识别文本）
+test/dev_ws/captures/
+
 # IDE / OS metadata
 .DS_Store
 Thumbs.db

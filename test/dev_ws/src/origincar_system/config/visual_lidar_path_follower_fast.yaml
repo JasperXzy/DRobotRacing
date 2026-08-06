@@ -30,7 +30,7 @@ visual_lidar_path_follower:
     # 四阶段独立追点与实时雷达参数；只调整对应前缀，不会影响其他阶段
     # ========================================================================
     # Task1：可信发车后沿预设路线寻找二维码
-    task1_linear_speed: 1.2  # [Task1] Task1正常追点线速度，单位m/s
+    task1_linear_speed: 1.0  # [Task1] Task1正常追点线速度，单位m/s
     task1_lookahead_distance: 0.65  # [Task1] Task1路径前瞻距离，单位m
     task1_turn_angular_gain: 2.00  # [Task1] Task1航向误差到前轮目标转角的比例增益
     task1_enable_turn_speed_slowdown: true  # [Task1] Task1转弯时是否按转角降低线速度
@@ -41,7 +41,7 @@ visual_lidar_path_follower:
     task1_lidar_avoid_distance: 0.65  # [Task1] Task1实时雷达避障触发距离，单位m
     task1_lidar_avoid_fov_deg: 120.0  # [Task1] Task1实时雷达避障扇形总视场角，单位degree
     task1_lidar_corridor_half_width: 0.45  # [Task1] Task1实时雷达避障矩形走廊半宽，单位m
-    task1_lidar_avoid_linear_speed: 0.45  # [Task1] Task1实时雷达避障期间线速度，单位m/s
+    task1_lidar_avoid_linear_speed: 0.4  # [Task1] Task1实时雷达避障期间线速度，单位m/s
     task1_lidar_avoid_angular_gain: 2.0  # [Task1] Task1实时雷达避障转向增益
     task1_lidar_direction_upper_angle_deg: 8.0  # [Task1] Task1障碍方向角高于该值时采用一侧避让，单位degree
     task1_lidar_direction_lower_angle_deg: -8.0  # [Task1] Task1障碍方向角低于该值时采用另一侧避让，单位degree
@@ -56,7 +56,7 @@ visual_lidar_path_follower:
     task1_static_avoid_max_y: 1.0  # [Task1静态/动态分区] 静态避障矩形最大map.y，边界本身归动态避障
 
     # Task1→Task2过渡：二维码选路、条件倒车和A→B进场
-    transition_linear_speed: 1.2  # [Task1→Task2过渡] Task1→Task2过渡阶段正常追点线速度，单位m/s
+    transition_linear_speed: 1.0  # [Task1→Task2过渡] Task1→Task2过渡阶段正常追点线速度，单位m/s
     transition_lookahead_distance: 0.65  # [Task1→Task2过渡] Task1→Task2过渡阶段路径前瞻距离，单位m
     transition_turn_angular_gain: 2.00  # [Task1→Task2过渡] Task1→Task2过渡阶段航向误差到前轮目标转角的比例增益
     transition_enable_turn_speed_slowdown: true  # [Task1→Task2过渡] Task1→Task2过渡阶段转弯时是否降低线速度
@@ -67,13 +67,13 @@ visual_lidar_path_follower:
     transition_lidar_avoid_distance: 0.65  # [Task1→Task2过渡] Task1→Task2过渡阶段实时雷达避障触发距离，单位m
     transition_lidar_avoid_fov_deg: 120.0  # [Task1→Task2过渡] Task1→Task2过渡阶段实时雷达避障扇形总视场角，单位degree
     transition_lidar_corridor_half_width: 0.45  # [Task1→Task2过渡] Task1→Task2过渡阶段实时雷达走廊半宽，单位m
-    transition_lidar_avoid_linear_speed: 0.45  # [Task1→Task2过渡] Task1→Task2过渡阶段实时雷达避障线速度，单位m/s
+    transition_lidar_avoid_linear_speed: 0.4  # [Task1→Task2过渡] Task1→Task2过渡阶段实时雷达避障线速度，单位m/s
     transition_lidar_avoid_angular_gain: 2.0  # [Task1→Task2过渡] Task1→Task2过渡阶段实时雷达避障转向增益
     transition_lidar_direction_upper_angle_deg: 8.0  # [Task1→Task2过渡] Task1→Task2过渡障碍方向上阈值，单位degree
     transition_lidar_direction_lower_angle_deg: -8.0  # [Task1→Task2过渡] Task1→Task2过渡障碍方向下阈值，单位degree
 
     # Task2：高速通道巡点与图生文
-    task2_linear_speed: 1.2  # [Task2] Task2通道巡点正常线速度，单位m/s；Fast配置专用值
+    task2_linear_speed: 1.0  # [Task2] Task2通道巡点正常线速度，单位m/s；Fast配置专用值
     task2_lookahead_distance: 0.65  # [Task2] Task2通道巡点路径前瞻距离，单位m
     task2_turn_angular_gain: 2.00  # [Task2] Task2航向误差到前轮目标转角的比例增益
     task2_enable_turn_speed_slowdown: true  # [Task2] Task2转弯时是否按转角降低线速度
@@ -84,13 +84,13 @@ visual_lidar_path_follower:
     task2_lidar_avoid_distance: 0.65  # [Task2] Task2实时雷达避障触发距离，单位m
     task2_lidar_avoid_fov_deg: 120.0  # [Task2] Task2实时雷达避障扇形总视场角，单位degree
     task2_lidar_corridor_half_width: 0.45  # [Task2] Task2实时雷达走廊半宽，单位m
-    task2_lidar_avoid_linear_speed: 0.45  # [Task2] Task2实时雷达避障线速度，单位m/s
+    task2_lidar_avoid_linear_speed: 0.4  # [Task2] Task2实时雷达避障线速度，单位m/s
     task2_lidar_avoid_angular_gain: 2.0  # [Task2] Task2实时雷达避障转向增益
     task2_lidar_direction_upper_angle_deg: 8.0  # [Task2] Task2障碍方向上阈值，单位degree
     task2_lidar_direction_lower_angle_deg: -8.0  # [Task2] Task2障碍方向下阈值，单位degree
 
     # Task3：定位返航并进入地图左下停车区域
-    task3_linear_speed: 1.2  # [Task3] Task3定位返航正常追点线速度，单位m/s
+    task3_linear_speed: 1.0  # [Task3] Task3定位返航正常追点线速度，单位m/s
     task3_lookahead_distance: 0.50  # [Task3] Task3返航路径前瞻距离，单位m
     task3_turn_angular_gain: 2.00  # [Task3] Task3航向误差到前轮目标转角的比例增益
     task3_enable_turn_speed_slowdown: true  # [Task3] Task3转弯时是否按转角降低线速度
@@ -101,7 +101,7 @@ visual_lidar_path_follower:
     task3_lidar_avoid_distance: 0.65  # [Task3] Task3实时雷达避障触发距离，单位m
     task3_lidar_avoid_fov_deg: 120.0  # [Task3] Task3实时雷达避障扇形总视场角，单位degree
     task3_lidar_corridor_half_width: 0.45  # [Task3] Task3实时雷达走廊半宽，单位m
-    task3_lidar_avoid_linear_speed: 0.45  # [Task3] Task3实时雷达避障线速度，单位m/s
+    task3_lidar_avoid_linear_speed: 0.4  # [Task3] Task3实时雷达避障线速度，单位m/s
     task3_lidar_avoid_angular_gain: 2.0  # [Task3] Task3实时雷达避障转向增益
     task3_lidar_direction_upper_angle_deg: 8.0  # [Task3] Task3障碍方向上阈值，单位degree
     task3_lidar_direction_lower_angle_deg: -8.0  # [Task3] Task3障碍方向下阈值，单位degree
@@ -273,17 +273,33 @@ visual_lidar_path_follower:
     clockwise_qr_value: 1  # [Task1→Task2二维码选路] 不使用奇偶规则时代表顺时针的二维码值
     counterclockwise_qr_value: 2  # [Task1→Task2二维码选路] 不使用奇偶规则时代表逆时针的二维码值
 
-    # 独立图生文拍照点；运行时插入到最近路线段，可随 waypoint_shift 避障平移
+    # 图生文：路线锚点只负责把车带到立牌附近；真正触发使用“固定立牌+指定一侧扇形区+朝向”判定。
+    # 扇形区内的所有航点及精确锚点均由程序强制禁止 waypoint_shift 平移。
     enable_image_analysis_trigger: true  # [全阶段共享] 是否在环线中到达所选拍照点后触发一次图生文
     image_capture_clockwise_x: 3.35  # [Task2图生文] 顺时针使用的右侧车辆拍照点map坐标x，单位m
     image_capture_clockwise_y: 4.10  # [Task2图生文] 顺时针使用的右侧车辆拍照点map坐标y，单位m
     image_capture_counterclockwise_x: 0.40  # [Task2图生文] 逆时针使用的左侧车辆拍照点map坐标x，单位m
     image_capture_counterclockwise_y: 4.10  # [Task2图生文] 逆时针使用的左侧车辆拍照点map坐标y，单位m
-    image_capture_radius: 0.2  # [Task2图生文] 必须真正进入此距离才算到达，且路线进度不能跳过该点，单位m
-    image_capture_slow_distance: 0.5  # [Task2图生文] 距拍照点小于此距离开始限速，单位m
-    image_capture_slow_speed: 0.4  # [Task2图生文] 接近拍照点时的最大线速度，单位m/s
+    image_sign_clockwise_x: 3.90  # [Task2固定立牌] 顺时针对应右侧图文立牌map.x，单位m
+    image_sign_clockwise_y: 4.10  # [Task2固定立牌] 顺时针对应右侧图文立牌map.y，单位m
+    image_sign_counterclockwise_x: -0.10  # [Task2固定立牌] 逆时针对应左侧图文立牌map.x，单位m
+    image_sign_counterclockwise_y: 4.10  # [Task2固定立牌] 逆时针对应左侧图文立牌map.y，单位m
+    image_capture_zone_min_distance: 0.35  # [Task2扇形拍照区] 车辆中心距立牌的最小可拍距离，单位m
+    image_capture_zone_max_distance: 0.75  # [Task2扇形拍照区] 车辆中心距立牌的最大可拍距离，单位m
+    image_capture_zone_half_angle_deg: 25.0  # [Task2扇形拍照区] 指定一侧扇形半角，单位degree
+    image_capture_heading_tolerance_deg: 15.0  # [Task2扇形拍照区] 车头相对“车辆→立牌”视线允许误差，单位degree
+    image_capture_approach_distance: 0.95  # [Task2图生文] 距固定立牌小于此距离进入低速精确接近，单位m
+    image_capture_slow_speed: 0.20  # [Task2图生文] 接近拍照点时的最大线速度，单位m/s
     image_capture_angular_gain: 1.6  # [Task2图生文] 追拍照点时航向误差到下位机前轮目标转角的专用比例增益
-    image_capture_stop_time: 0.2  # [Task2图生文] 到点后先停车稳定这么久再拍照，单位s
+    image_capture_stop_time: 0.40  # [Task2图生文] 到点后先停车稳定这么久再拍照，单位s
+    image_capture_recovery_enabled: true  # [Task2图生文复位] 首次以不合格航向进入扇形区时是否允许一次倒车复位
+    image_capture_recovery_reverse_distance: 0.35  # [Task2图生文复位] 唯一一次倒车的目标距离，单位m
+    image_capture_recovery_reverse_speed: 0.4  # [Task2图生文复位] 倒车线速度绝对值，单位m/s
+    image_capture_recovery_heading_gain: 2.0  # [Task2图生文复位] 倒车时向立牌朝向收敛的转向增益
+    image_capture_recovery_max_angular_speed: 0.55  # [Task2图生文复位] 倒车复位的最大转向输出，单位rad
+    image_capture_recovery_rear_obstacle_distance: 0.35  # [Task2图生文复位] 后方此距离内有障碍即禁止倒车，单位m
+    image_capture_recovery_rear_fov_deg: 100.0  # [Task2图生文复位] 后方检测扇形总视野角，单位degree
+    image_capture_recovery_rear_corridor_half_width: 0.30  # [Task2图生文复位] 后方检测走廊半宽，单位m
 
     image_capture_trigger_value: 8  # [Task2图生文] 发布到图生文触发话题的整数值
     image_analysis_trigger_topic: /sign4return  # [Task2图生文] 图像分析触发整数消息的发布话题

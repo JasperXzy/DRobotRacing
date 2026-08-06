@@ -752,16 +752,72 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   declare_parameter<double>(
     "image_capture_counterclockwise_y", image_capture_counterclockwise_y_);
   get_parameter("image_capture_counterclockwise_y", image_capture_counterclockwise_y_);
-  declare_parameter<double>("image_capture_radius", image_capture_radius_);
-  get_parameter("image_capture_radius", image_capture_radius_);
-  declare_parameter<double>("image_capture_slow_distance", image_capture_slow_distance_);
-  get_parameter("image_capture_slow_distance", image_capture_slow_distance_);
+  declare_parameter<double>("image_sign_clockwise_x", image_sign_clockwise_x_);
+  get_parameter("image_sign_clockwise_x", image_sign_clockwise_x_);
+  declare_parameter<double>("image_sign_clockwise_y", image_sign_clockwise_y_);
+  get_parameter("image_sign_clockwise_y", image_sign_clockwise_y_);
+  declare_parameter<double>(
+    "image_sign_counterclockwise_x", image_sign_counterclockwise_x_);
+  get_parameter("image_sign_counterclockwise_x", image_sign_counterclockwise_x_);
+  declare_parameter<double>(
+    "image_sign_counterclockwise_y", image_sign_counterclockwise_y_);
+  get_parameter("image_sign_counterclockwise_y", image_sign_counterclockwise_y_);
+  declare_parameter<double>(
+    "image_capture_zone_min_distance", image_capture_zone_min_distance_);
+  get_parameter("image_capture_zone_min_distance", image_capture_zone_min_distance_);
+  declare_parameter<double>(
+    "image_capture_zone_max_distance", image_capture_zone_max_distance_);
+  get_parameter("image_capture_zone_max_distance", image_capture_zone_max_distance_);
+  declare_parameter<double>(
+    "image_capture_zone_half_angle_deg", image_capture_zone_half_angle_deg_);
+  get_parameter("image_capture_zone_half_angle_deg", image_capture_zone_half_angle_deg_);
+  declare_parameter<double>(
+    "image_capture_heading_tolerance_deg", image_capture_heading_tolerance_deg_);
+  get_parameter(
+    "image_capture_heading_tolerance_deg", image_capture_heading_tolerance_deg_);
+  declare_parameter<double>(
+    "image_capture_approach_distance", image_capture_approach_distance_);
+  get_parameter("image_capture_approach_distance", image_capture_approach_distance_);
   declare_parameter<double>("image_capture_slow_speed", image_capture_slow_speed_);
   get_parameter("image_capture_slow_speed", image_capture_slow_speed_);
   declare_parameter<double>("image_capture_angular_gain", image_capture_angular_gain_);
   get_parameter("image_capture_angular_gain", image_capture_angular_gain_);
   declare_parameter<double>("image_capture_stop_time", image_capture_stop_time_);
   get_parameter("image_capture_stop_time", image_capture_stop_time_);
+  declare_parameter<bool>("image_capture_recovery_enabled", image_capture_recovery_enabled_);
+  get_parameter("image_capture_recovery_enabled", image_capture_recovery_enabled_);
+  declare_parameter<double>(
+    "image_capture_recovery_reverse_distance", image_capture_recovery_reverse_distance_);
+  get_parameter(
+    "image_capture_recovery_reverse_distance", image_capture_recovery_reverse_distance_);
+  declare_parameter<double>(
+    "image_capture_recovery_reverse_speed", image_capture_recovery_reverse_speed_);
+  get_parameter(
+    "image_capture_recovery_reverse_speed", image_capture_recovery_reverse_speed_);
+  declare_parameter<double>(
+    "image_capture_recovery_heading_gain", image_capture_recovery_heading_gain_);
+  get_parameter(
+    "image_capture_recovery_heading_gain", image_capture_recovery_heading_gain_);
+  declare_parameter<double>(
+    "image_capture_recovery_max_angular_speed", image_capture_recovery_max_angular_speed_);
+  get_parameter(
+    "image_capture_recovery_max_angular_speed", image_capture_recovery_max_angular_speed_);
+  declare_parameter<double>(
+    "image_capture_recovery_rear_obstacle_distance",
+    image_capture_recovery_rear_obstacle_distance_);
+  get_parameter(
+    "image_capture_recovery_rear_obstacle_distance",
+    image_capture_recovery_rear_obstacle_distance_);
+  declare_parameter<double>(
+    "image_capture_recovery_rear_fov_deg", image_capture_recovery_rear_fov_deg_);
+  get_parameter(
+    "image_capture_recovery_rear_fov_deg", image_capture_recovery_rear_fov_deg_);
+  declare_parameter<double>(
+    "image_capture_recovery_rear_corridor_half_width",
+    image_capture_recovery_rear_corridor_half_width_);
+  get_parameter(
+    "image_capture_recovery_rear_corridor_half_width",
+    image_capture_recovery_rear_corridor_half_width_);
   declare_parameter<int>("image_capture_trigger_value", image_capture_trigger_value_);
   get_parameter("image_capture_trigger_value", image_capture_trigger_value_);
   declare_parameter<std::string>("image_analysis_trigger_topic", image_analysis_trigger_topic_);
@@ -1054,11 +1110,32 @@ VisualLidarPathFollower::VisualLidarPathFollower()
     return_visual_parking_sign_confidence_threshold_, 0.0, 1.0);
   return_visual_parking_y_threshold_ = std::max(
     0, return_visual_parking_y_threshold_);
-  image_capture_radius_ = std::max(0.01, image_capture_radius_);
-  image_capture_slow_distance_ = std::max(image_capture_radius_, image_capture_slow_distance_);
   image_capture_slow_speed_ = std::max(0.0, image_capture_slow_speed_);
   image_capture_angular_gain_ = std::max(0.0, image_capture_angular_gain_);
   image_capture_stop_time_ = std::max(0.0, image_capture_stop_time_);
+  image_capture_zone_min_distance_ = std::max(0.01, image_capture_zone_min_distance_);
+  image_capture_zone_max_distance_ = std::max(
+    image_capture_zone_min_distance_, image_capture_zone_max_distance_);
+  image_capture_zone_half_angle_deg_ = std::clamp(
+    image_capture_zone_half_angle_deg_, 1.0, 89.0);
+  image_capture_heading_tolerance_deg_ = std::clamp(
+    image_capture_heading_tolerance_deg_, 1.0, 89.0);
+  image_capture_approach_distance_ = std::max(
+    image_capture_zone_max_distance_, image_capture_approach_distance_);
+  image_capture_recovery_reverse_distance_ = std::max(
+    0.01, image_capture_recovery_reverse_distance_);
+  image_capture_recovery_reverse_speed_ = std::max(
+    0.0, image_capture_recovery_reverse_speed_);
+  image_capture_recovery_heading_gain_ = std::max(
+    0.0, image_capture_recovery_heading_gain_);
+  image_capture_recovery_max_angular_speed_ = std::max(
+    0.01, std::abs(image_capture_recovery_max_angular_speed_));
+  image_capture_recovery_rear_obstacle_distance_ = std::max(
+    0.0, image_capture_recovery_rear_obstacle_distance_);
+  image_capture_recovery_rear_fov_deg_ = std::clamp(
+    image_capture_recovery_rear_fov_deg_, 1.0, 360.0);
+  image_capture_recovery_rear_corridor_half_width_ = std::max(
+    0.01, image_capture_recovery_rear_corridor_half_width_);
   if (!enable_qr_direction_select_) {
     RCLCPP_WARN(get_logger(), "四阶段流程需要 QR 选路，已自动打开 QR 订阅。");
     enable_qr_direction_select_ = true;
@@ -1129,6 +1206,11 @@ VisualLidarPathFollower::VisualLidarPathFollower()
     std::bind(
       &VisualLidarPathFollower::logic3_odom_callback, this,
       std::placeholders::_1));
+  manual_route_freeze_srv_ = create_service<std_srvs::srv::SetBool>(
+    "/visual_lidar_path_follower/manual_route_freeze",
+    std::bind(
+      &VisualLidarPathFollower::manual_route_freeze_callback, this,
+      std::placeholders::_1, std::placeholders::_2));
 
   // 只需要一个有效 QR；选定方向后会取消订阅，避免后续误切路线。
   if (enable_qr_direction_select_) {
@@ -1456,7 +1538,17 @@ void VisualLidarPathFollower::control_once()
     update_qr_channel_approach_phase(pose);
   }
 
-  // 独立拍照点是不可跳过的精确点。进入到达半径后先停车稳定，再触发一次图生文。
+  // 图生文拍照区首次以不理想朝向进入时，允许一次安全的低速倒车复位；
+  // 倒车过程优先于普通追点和前向雷达绕障，且会先检查后方雷达安全距离。
+  geometry_msgs::msg::Twist image_capture_recovery_cmd;
+  if (apply_image_capture_recovery(pose, image_capture_recovery_cmd)) {
+    publish_debug_visualization(pose);
+    set_control_state(next_control_state_);
+    cmd_pub_->publish(image_capture_recovery_cmd);
+    return;
+  }
+
+  // 独立拍照区是不可跳过的精确任务边界。进入扇形区后，只有朝向立牌且稳定才触发。
   if (handle_image_capture_stop(pose)) {
     publish_debug_visualization(pose);
     set_control_state(next_control_state_);
@@ -2326,6 +2418,8 @@ void VisualLidarPathFollower::insert_image_capture_waypoint(const std::string & 
 {
   has_image_capture_waypoint_ = false;
   image_capture_stopping_ = false;
+  image_capture_recovery_active_ = false;
+  image_capture_recovery_used_ = false;
   if (!enable_image_analysis_trigger_ || waypoints_.size() < 2) {
     return;
   }
@@ -2367,12 +2461,16 @@ void VisualLidarPathFollower::insert_image_capture_waypoint(const std::string & 
   const std::size_t capture_segment = nearest_segment(capture_point);
 
   Waypoint capture_waypoint;
+  // 这是路线进度的内部防跳过阈值，直接由拍照区最小距离派生，
+  // 不再单独暴露旧的“单点拍照半径”参数。
+  const double capture_anchor_pass_radius = std::clamp(
+    image_capture_zone_min_distance_ * 0.45, 0.05, 0.20);
   capture_waypoint.name = clockwise ? "image_capture_right" : "image_capture_left";
   capture_waypoint.x = capture_point.x;
   capture_waypoint.y = capture_point.y;
   capture_waypoint.image_capture = true;
-  capture_waypoint.pass_radius = image_capture_radius_;
-  capture_waypoint.reverse_pass_radius = image_capture_radius_;
+  capture_waypoint.pass_radius = capture_anchor_pass_radius;
+  capture_waypoint.reverse_pass_radius = capture_anchor_pass_radius;
 
   std::vector<Waypoint> route_with_capture;
   route_with_capture.reserve(waypoints_.size() + 1);
@@ -2392,39 +2490,183 @@ void VisualLidarPathFollower::insert_image_capture_waypoint(const std::string & 
   RCLCPP_INFO(
     get_logger(),
     "%s路线插入唯一%s拍照点：原始坐标=(%.3f, %.3f)，"
-    "插入位置=%zu/%zu，到达半径=%.2fm，允许 waypoint_shift 平移。",
+    "插入位置=%zu/%zu，路线防跳过半径=%.2fm；拍照扇形区禁止 waypoint_shift。",
     route_direction_name(direction).c_str(), clockwise ? "右侧" : "左侧",
     capture_point.x, capture_point.y, image_capture_waypoint_index_ + 1, waypoints_.size(),
-    image_capture_radius_);
+    capture_anchor_pass_radius);
 }
 
-// 返回 true 表示本周期保持停车。第一次进入到达半径后锁存停车状态；即使底盘惯性
-// 或定位抖动让位姿暂时离开到达半径，也不会重新追逐已经位于车后的拍照点。
-bool VisualLidarPathFollower::handle_image_capture_stop(
-  const VisualLidarPathFollower::RobotPose & pose)
+// 返回 true 表示本周期保持停车。进入扇形区且姿态合格后锁存停车状态；即使底盘惯性
+// 或定位抖动让位姿暂时离开扇形区，也不会重新追逐已经位于车后的拍照点。
+VisualLidarPathFollower::Point2D VisualLidarPathFollower::image_capture_sign_point() const
 {
-  if (!has_image_capture_waypoint_ || image_analysis_triggered_ ||
-    image_capture_waypoint_index_ >= waypoints_.size() ||
-    current_index_ >= image_capture_waypoint_index_)
+  const bool clockwise = to_lower(selected_route_direction_) == "clockwise";
+  return Point2D{
+    clockwise ? image_sign_clockwise_x_ : image_sign_counterclockwise_x_,
+    clockwise ? image_sign_clockwise_y_ : image_sign_counterclockwise_y_};
+}
+
+bool VisualLidarPathFollower::image_capture_zone_contains(const Point2D & point) const
+{
+  if (!has_image_capture_waypoint_ || following_qr_path_) {
+    return false;
+  }
+  const Point2D sign = image_capture_sign_point();
+  const double distance = std::hypot(point.x - sign.x, point.y - sign.y);
+  if (distance < image_capture_zone_min_distance_ ||
+    distance > image_capture_zone_max_distance_)
   {
     return false;
   }
-  if (current_index_ + 1 != image_capture_waypoint_index_) {
+
+  // 顺时针车辆从右侧立牌西侧驶来；逆时针车辆从左侧立牌东侧驶来。
+  const bool clockwise = to_lower(selected_route_direction_) == "clockwise";
+  const double expected_vehicle_bearing = clockwise ? M_PI : 0.0;
+  const double vehicle_bearing = std::atan2(point.y - sign.y, point.x - sign.x);
+  const double sector_error = std::abs(normalize_angle(
+    vehicle_bearing - expected_vehicle_bearing));
+  return sector_error <= image_capture_zone_half_angle_deg_ * M_PI / 180.0;
+}
+
+bool VisualLidarPathFollower::image_capture_pose_is_acceptable(
+  const VisualLidarPathFollower::RobotPose & pose, double * distance_to_sign,
+  double * heading_error) const
+{
+  const Point2D position{pose.x, pose.y};
+  if (!image_capture_zone_contains(position)) {
+    return false;
+  }
+  const Point2D sign = image_capture_sign_point();
+  const double distance = std::hypot(sign.x - pose.x, sign.y - pose.y);
+  const double target_yaw = std::atan2(sign.y - pose.y, sign.x - pose.x);
+  const double yaw_error = normalize_angle(pose.yaw - target_yaw);
+  if (distance_to_sign) {
+    *distance_to_sign = distance;
+  }
+  if (heading_error) {
+    *heading_error = yaw_error;
+  }
+  return std::abs(yaw_error) <= image_capture_heading_tolerance_deg_ * M_PI / 180.0;
+}
+
+bool VisualLidarPathFollower::is_image_capture_protected_waypoint(std::size_t index) const
+{
+  if (!has_image_capture_waypoint_ || index >= original_waypoints_.size()) {
+    return false;
+  }
+  if (index == image_capture_waypoint_index_) {
+    return true;
+  }
+  const auto & waypoint = original_waypoints_[index];
+  return image_capture_zone_contains(Point2D{waypoint.x, waypoint.y});
+}
+
+bool VisualLidarPathFollower::apply_image_capture_recovery(
+  const VisualLidarPathFollower::RobotPose & pose, geometry_msgs::msg::Twist & cmd)
+{
+  if (!image_capture_recovery_active_) {
+    return false;
+  }
+
+  const double backed_distance = std::hypot(
+    pose.x - image_capture_recovery_start_pose_.x,
+    pose.y - image_capture_recovery_start_pose_.y);
+  if (backed_distance >= image_capture_recovery_reverse_distance_) {
+    image_capture_recovery_active_ = false;
+    RCLCPP_INFO(
+      get_logger(),
+      "图生文拍照复位倒车完成：后退 %.3fm，恢复低速精确接近。",
+      backed_distance);
+    return false;
+  }
+
+  RobotPose scan_to_base;
+  RobotPose scan_to_map;
+  if (!prepare_lidar_scan(scan_to_base, scan_to_map)) {
+    cmd = geometry_msgs::msg::Twist();
+    RCLCPP_WARN_THROTTLE(
+      get_logger(), *get_clock(), 1000,
+      "图生文拍照复位等待新鲜雷达与TF，当前保持停车。");
+    return true;
+  }
+  const auto rear_obstacle = find_lidar_obstacle(
+    M_PI, image_capture_recovery_rear_obstacle_distance_,
+    image_capture_recovery_rear_fov_deg_,
+    image_capture_recovery_rear_corridor_half_width_, scan_to_base, scan_to_map);
+  if (rear_obstacle.found) {
+    cmd = geometry_msgs::msg::Twist();
+    RCLCPP_WARN_THROTTLE(
+      get_logger(), *get_clock(), 1000,
+      "图生文拍照复位后方有障碍：距离=%.3fm，停止倒车并等待后方清空。",
+      rear_obstacle.range);
+    return true;
+  }
+
+  const Point2D sign = image_capture_sign_point();
+  const double target_yaw = std::atan2(sign.y - pose.y, sign.x - pose.x);
+  const double yaw_error = normalize_angle(target_yaw - pose.yaw);
+  cmd.linear.x = -image_capture_recovery_reverse_speed_;
+  cmd.angular.z = std::clamp(
+    image_capture_recovery_heading_gain_ * yaw_error,
+    -image_capture_recovery_max_angular_speed_,
+    image_capture_recovery_max_angular_speed_);
+  return true;
+}
+
+bool VisualLidarPathFollower::handle_image_capture_stop(
+  const VisualLidarPathFollower::RobotPose & pose)
+{
+  // 拍照触发以固定立牌的物理扇形区为准，而不是以离散路线索引为准。
+  // 动态避障或曲线重建可能使 current_index_ 已经跨过插入锚点；继续以
+  // “必须在锚点前一位”为条件会导致车辆实际经过立牌却完全不触发。
+  if (!has_image_capture_waypoint_ || image_analysis_triggered_ ||
+    task_phase_ != TaskPhase::TASK2)
+  {
+    return false;
+  }
+
+  double distance_to_sign = 0.0;
+  double heading_error = 0.0;
+  const bool acceptable = image_capture_pose_is_acceptable(
+    pose, &distance_to_sign, &heading_error);
+  const Point2D position{pose.x, pose.y};
+  if (!acceptable) {
+    if (image_capture_zone_contains(position) && image_capture_recovery_enabled_ &&
+      !image_capture_recovery_used_)
+    {
+      image_capture_recovery_used_ = true;
+      image_capture_recovery_active_ = true;
+      image_capture_recovery_start_pose_ = pose;
+      image_capture_stopping_ = false;
+      RCLCPP_WARN(
+        get_logger(),
+        "图生文拍照区姿态不理想：距牌 %.3fm，航向误差 %.1fdeg；"
+        "执行唯一一次低速倒车复位 %.2fm。",
+        distance_to_sign, heading_error * 180.0 / M_PI,
+        image_capture_recovery_reverse_distance_);
+      return true;
+    }
+    const Point2D sign = image_capture_sign_point();
+    const double distance = std::hypot(sign.x - pose.x, sign.y - pose.y);
+    if (distance <= image_capture_approach_distance_) {
+      const double bearing = std::atan2(pose.y - sign.y, pose.x - sign.x);
+      RCLCPP_WARN_THROTTLE(
+        get_logger(), *get_clock(), 1000,
+        "图生文接近立牌但尚未进入可拍扇区：距牌 %.3fm，方位 %.1fdeg；"
+        "继续低速朝立牌收正。",
+        distance, bearing * 180.0 / M_PI);
+    }
     return false;
   }
 
   const auto now = std::chrono::steady_clock::now();
   if (!image_capture_stopping_) {
-    const auto & capture = waypoints_[image_capture_waypoint_index_];
-    const double distance = std::hypot(capture.x - pose.x, capture.y - pose.y);
-    if (distance > image_capture_radius_) {
-      return false;
-    }
-
     image_capture_stopping_ = true;
     image_capture_stop_started_at_ = now;
     RCLCPP_INFO(
-      get_logger(), "到达图生文拍照点，停车稳定 %.2fs。", image_capture_stop_time_);
+      get_logger(),
+      "到达图生文扇形拍照区：距牌 %.3fm，航向误差 %.1fdeg，停车稳定 %.2fs。",
+      distance_to_sign, heading_error * 180.0 / M_PI, image_capture_stop_time_);
   }
 
   const double stopped_seconds =
@@ -2434,8 +2676,7 @@ bool VisualLidarPathFollower::handle_image_capture_stop(
   }
 
   publish_image_analysis_trigger();
-  if (image_analysis_triggered_) {
-    // 拍照完成后显式消费精确航点，避免停车期间位姿滑出圆后再次回头追点。
+  if (image_analysis_triggered_ && current_index_ < image_capture_waypoint_index_) {
     advance_current_index_to(image_capture_waypoint_index_, "图生文拍照完成");
   }
   image_capture_stopping_ = false;
@@ -2447,14 +2688,13 @@ void VisualLidarPathFollower::apply_image_capture_speed_limit(
   geometry_msgs::msg::Twist & cmd) const
 {
   if (!has_image_capture_waypoint_ || image_analysis_triggered_ ||
-    image_capture_waypoint_index_ >= waypoints_.size() ||
-    current_index_ >= image_capture_waypoint_index_)
+    task_phase_ != TaskPhase::TASK2)
   {
     return;
   }
-  const auto & capture = waypoints_[image_capture_waypoint_index_];
-  const double distance = std::hypot(capture.x - pose.x, capture.y - pose.y);
-  if (distance > image_capture_slow_distance_) {
+  const Point2D sign = image_capture_sign_point();
+  const double distance = std::hypot(sign.x - pose.x, sign.y - pose.y);
+  if (distance > image_capture_approach_distance_) {
     return;
   }
   const double limited_speed = std::min(std::abs(cmd.linear.x), image_capture_slow_speed_);
@@ -2469,8 +2709,23 @@ void VisualLidarPathFollower::apply_image_capture_speed_limit(
 geometry_msgs::msg::Twist VisualLidarPathFollower::compute_tracking_command(
   const VisualLidarPathFollower::RobotPose & pose, const VisualLidarPathFollower::TargetPoint & target) const
 {
-  const double dx = target.point.x - pose.x;
-  const double dy = target.point.y - pose.y;
+  const bool tracking_image_capture =
+    enable_image_analysis_trigger_ && target.waypoint_index < waypoints_.size() &&
+    waypoints_[target.waypoint_index].image_capture;
+  const Point2D sign = image_capture_sign_point();
+  const bool image_approach_active =
+    enable_image_analysis_trigger_ && has_image_capture_waypoint_ &&
+    !image_analysis_triggered_ && !following_qr_path_ &&
+    task_phase_ == TaskPhase::TASK2 &&
+    std::hypot(sign.x - pose.x, sign.y - pose.y) <= image_capture_approach_distance_;
+  Point2D steering_point = target.point;
+  // 进入接近区后直接把车头收向固定立牌。这里不再依赖前瞻目标仍恰好是
+  // 插入锚点，避免路线进度跨过锚点后失去朝向控制。
+  if (!target.reverse && image_approach_active) {
+    steering_point = sign;
+  }
+  const double dx = steering_point.x - pose.x;
+  const double dy = steering_point.y - pose.y;
 
   // 将目标向量从 map 坐标系旋转到 base_link 坐标系。
   const double cos_yaw = std::cos(pose.yaw);
@@ -2488,11 +2743,9 @@ geometry_msgs::msg::Twist VisualLidarPathFollower::compute_tracking_command(
     cmd.linear.x = -linear_speed_;
     cmd.angular.z = reverse_angular_gain_ * heading_error;
   } else {
-    const bool tracking_image_capture =
-      enable_image_analysis_trigger_ && target.waypoint_index < waypoints_.size() &&
-      waypoints_[target.waypoint_index].image_capture;
     const double angular_gain =
-      tracking_image_capture ? image_capture_angular_gain_ : turn_angular_gain_;
+      (tracking_image_capture || image_approach_active) ?
+      image_capture_angular_gain_ : turn_angular_gain_;
     cmd.linear.x = linear_speed_;
     cmd.angular.z = angular_gain * heading_error;
   }
@@ -4603,6 +4856,15 @@ void VisualLidarPathFollower::logic3_odom_callback(
   const nav_msgs::msg::Odometry::ConstSharedPtr msg)
 {
   if (logic3_planning_pose_anchored_) {
+    // 人工冻结后，仍继续监测一次运动证据。这样发车后即便车又停住，
+    // 数字键2也不能解除已经用于比赛行驶的静态规划路线。
+    if (logic3_manual_freeze_active_) {
+      const double speed = std::hypot(
+        msg->twist.twist.linear.x, msg->twist.twist.linear.y);
+      if (speed >= logic3_motion_speed_threshold_) {
+        logic3_manual_unfreeze_locked_ = true;
+      }
+    }
     return;
   }
 
@@ -4755,6 +5017,108 @@ void VisualLidarPathFollower::logic3_odom_callback(
   if (logic3_motion_candidate_count_ >= logic3_motion_confirm_messages_) {
     freeze_logic3_route();
   }
+}
+
+void VisualLidarPathFollower::manual_route_freeze_callback(
+  const std::shared_ptr<std_srvs::srv::SetBool::Request> request,
+  std::shared_ptr<std_srvs::srv::SetBool::Response> response)
+{
+  if (request->data) {
+    if (logic3_planning_pose_anchored_) {
+      response->success = false;
+      response->message = "路线已经冻结；若是人工冻结且尚未发车，可按2解冻。";
+      return;
+    }
+
+    // 与自动发车保持相同的证据标准：只使用最近一份完整 READY 快照，
+    // 从未形成 READY 快照时按既有安全规则冻结空集，绝不取单帧原始雷达。
+    logic3_motion_pending_snapshot_ = logic3_last_complete_ready_snapshot_;
+    if (!logic3_motion_pending_snapshot_.valid) {
+      logic3_motion_pending_snapshot_.valid = true;
+      logic3_motion_pending_snapshot_.stamp_seconds = now().seconds();
+      RCLCPP_WARN(
+        get_logger(),
+        "人工冻结时尚未形成完整READY快照：按安全规则冻结空静态障碍集。\n"
+        "请按2解冻，等待静态探测稳定后再按1。");
+    }
+    logic3_motion_candidate_ = false;
+    logic3_motion_candidate_count_ = 0;
+    logic3_start_zone_motion_pending_ = false;
+    logic3_manual_freeze_active_ = true;
+    logic3_manual_unfreeze_locked_ = false;
+    freeze_logic3_route();
+    response->success = true;
+    response->message = "已人工冻结路线；发车将直接使用此静态避障路线。";
+    return;
+  }
+
+  std::string reason;
+  response->success = unfreeze_manual_logic3_route(reason);
+  response->message = reason;
+}
+
+bool VisualLidarPathFollower::unfreeze_manual_logic3_route(std::string & reason)
+{
+  if (!logic3_planning_pose_anchored_) {
+    reason = "路线当前未冻结，无需解冻。";
+    return true;
+  }
+  if (!logic3_manual_freeze_active_) {
+    reason = "当前路线由发车自动冻结，不能通过数字键2解除。";
+    return false;
+  }
+  if (logic3_manual_unfreeze_locked_) {
+    reason = "已检测到小车发车运动，为避免行驶中改变路线，拒绝解冻。";
+    return false;
+  }
+  if (task_phase_ != TaskPhase::TASK1 || current_index_ != 0) {
+    reason = "路线已进入任务流程，拒绝解冻。";
+    return false;
+  }
+  if (logic3_baseline_original_route_.empty()) {
+    reason = "缺少冻结前基线路线，拒绝解冻。";
+    return false;
+  }
+
+  // 还原未偏移的基线路线，清除冻结偏移及运行期绘图状态；随后就绪期会
+  // 继续用实时雷达更新 READY 静态快照，等待下一次人工或自动冻结。
+  original_waypoints_ = logic3_baseline_original_route_;
+  waypoints_ = logic3_baseline_original_route_;
+  current_index_ = 0;
+  reset_waypoint_shift_state();
+  logic3_green_clusters_.clear();
+  logic3_frozen_base_offsets_.clear();
+  logic3_frozen_base_shift_directions_.clear();
+  logic3_frozen_base_source_indices_.clear();
+  logic3_baseline_route_.clear();
+  logic3_visualization_route_.clear();
+  task1_frozen_route_.clear();
+  task1_dynamic_original_route_.clear();
+  task1_dynamic_route_.clear();
+  task1_trajectory_.clear();
+  full_trajectory_.clear();
+  logic3_runtime_cluster_tracks_.clear();
+  logic3_red_cluster_history_.clear();
+  logic3_final_red_history_begin_index_ = 0;
+  logic3_replay_frozen_clusters_ = false;
+  logic3_force_full_route_ = false;
+  logic3_force_confirm_ = false;
+  logic3_planning_pose_anchored_ = false;
+  logic3_manual_freeze_active_ = false;
+  logic3_manual_unfreeze_locked_ = false;
+  logic3_motion_candidate_ = false;
+  logic3_motion_candidate_count_ = 0;
+  logic3_start_zone_motion_pending_ = false;
+  logic3_motion_pending_snapshot_ = Logic3PlanningSnapshot();
+  logic3_odom_reference_valid_ = false;
+  logic3_map_odom_plan_valid_ = false;
+  logic3_session_id_.clear();
+  task1_departure_timer_started_ = false;
+  task1_endpoint_waiting_ = false;
+  publish_debug_route();
+  reason = "已解冻并恢复静态READY快照更新；可等待稳定后再次按1冻结。";
+  RCLCPP_WARN(get_logger(), "%s", reason.c_str());
+  return true;
 }
 
 std::string VisualLidarPathFollower::make_logic3_session_id() const
@@ -5669,6 +6033,22 @@ void VisualLidarPathFollower::update_waypoint_shifts(
   std::size_t confirmed_count = 0;
   std::size_t released_count = 0;
   for (std::size_t index = first_index; index <= managed_last_index; ++index) {
+    // 拍照扇形区域和插入的精确拍照锚点属于视觉任务的固定几何，禁止被
+    // 静态 waypoint_shift 或运行中同一套偏移状态横向移动。
+    if (is_image_capture_protected_waypoint(index)) {
+      waypoint_shift_pending_offsets_[index] = 0.0;
+      waypoint_shift_pending_counts_[index] = 0;
+      waypoint_shift_missing_counts_[index] = 0;
+      waypoint_shift_dynamic_directions_[index] = 0;
+      if (std::abs(waypoint_shift_offsets_[index]) > 1e-9) {
+        waypoint_shift_offsets_[index] = 0.0;
+        waypoint_shift_world_directions_[index] = Point2D();
+        waypoint_shift_source_indices_[index] = waypoints_.size();
+        route_changed = true;
+        ++released_count;
+      }
+      continue;
+    }
     if (observed_offsets_valid[index]) {
       const double candidate = observed_offsets[index];
       waypoint_shift_missing_counts_[index] = 0;
@@ -5761,6 +6141,13 @@ void VisualLidarPathFollower::update_waypoint_shifts(
       waypoints_[index].y += lateral_offset * normal.y;
     }
     rebuild_curvature_unsafe_shift_segments(waypoints_);
+    // 曲率不安全段的 Bezier 重建可能跨过已锁定的边界点；重建完成后再次
+    // 还原拍照扇形内的原始点，确保该区域的实际路径几何绝不参与平移。
+    for (std::size_t index = first_index; index <= managed_last_index; ++index) {
+      if (is_image_capture_protected_waypoint(index)) {
+        waypoints_[index] = original_waypoints_[index];
+      }
+    }
     if (following_qr_path_ || task_phase_ == TaskPhase::TASK1) {
       for (auto & waypoint : waypoints_) {
         waypoint.y = std::max(waypoint.y, task1_waypoint_shift_min_y_);
@@ -6235,6 +6622,8 @@ bool VisualLidarPathFollower::switch_route(const std::string & direction)
   channel_completed_reverse_count_ = 0;
   has_image_capture_waypoint_ = false;
   image_capture_stopping_ = false;
+  image_capture_recovery_active_ = false;
+  image_capture_recovery_used_ = false;
   reset_waypoint_shift_state();
   channel_entry_route_rebuild_pending_ = true;
   channel_entry_route_rebuild_after_reverse_ = false;

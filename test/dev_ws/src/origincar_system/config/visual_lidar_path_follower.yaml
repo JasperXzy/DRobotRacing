@@ -258,17 +258,33 @@ visual_lidar_path_follower:
     clockwise_qr_value: 1  # [Task1→Task2二维码选路] 不使用奇偶规则时代表顺时针的二维码值
     counterclockwise_qr_value: 2  # [Task1→Task2二维码选路] 不使用奇偶规则时代表逆时针的二维码值
 
-    # 独立图生文拍照点；运行时插入到最近路线段，可随 waypoint_shift 避障平移
-    enable_image_analysis_trigger: true  # [全阶段共享] 是否在环线中到达所选拍照点后触发一次图生文
-    image_capture_clockwise_x: 3.35  # [Task2图生文] 顺时针使用的右侧车辆拍照点map坐标x，单位m
-    image_capture_clockwise_y: 4.10  # [Task2图生文] 顺时针使用的右侧车辆拍照点map坐标y，单位m
-    image_capture_counterclockwise_x: 0.40  # [Task2图生文] 逆时针使用的左侧车辆拍照点map坐标x，单位m
-    image_capture_counterclockwise_y: 4.10  # [Task2图生文] 逆时针使用的左侧车辆拍照点map坐标y，单位m
-    image_capture_radius: 0.2  # [Task2图生文] 必须真正进入此距离才算到达，且路线进度不能跳过该点，单位m
-    image_capture_slow_distance: 0.5  # [Task2图生文] 距拍照点小于此距离开始限速，单位m
-    image_capture_slow_speed: 0.4  # [Task2图生文] 接近拍照点时的最大线速度，单位m/s
-    image_capture_angular_gain: 1.6  # [Task2图生文] 追拍照点时航向误差到下位机前轮目标转角的专用比例增益
-    image_capture_stop_time: 0.2  # [Task2图生文] 到点后先停车稳定这么久再拍照，单位s
+    # 图生文：路线锚点只负责把车带到立牌附近；真正触发使用“固定立牌+指定一侧扇形区+朝向”判定。
+    # 扇形区内的所有航点及精确锚点均由程序强制禁止 waypoint_shift 平移。
+    enable_image_analysis_trigger: true  # [全阶段共享] 是否在环线中到达合格扇形拍照区后触发一次图生文
+    image_capture_clockwise_x: 3.35  # [Task2图生文锚点] 顺时针车辆接近右侧立牌时的路线锚点map.x，单位m
+    image_capture_clockwise_y: 4.10  # [Task2图生文锚点] 顺时针车辆接近右侧立牌时的路线锚点map.y，单位m
+    image_capture_counterclockwise_x: 0.40  # [Task2图生文锚点] 逆时针车辆接近左侧立牌时的路线锚点map.x，单位m
+    image_capture_counterclockwise_y: 4.10  # [Task2图生文锚点] 逆时针车辆接近左侧立牌时的路线锚点map.y，单位m
+    image_sign_clockwise_x: 3.90  # [Task2固定立牌] 顺时针对应右侧图文立牌map.x，单位m
+    image_sign_clockwise_y: 4.10  # [Task2固定立牌] 顺时针对应右侧图文立牌map.y，单位m
+    image_sign_counterclockwise_x: -0.10  # [Task2固定立牌] 逆时针对应左侧图文立牌map.x，单位m
+    image_sign_counterclockwise_y: 4.10  # [Task2固定立牌] 逆时针对应左侧图文立牌map.y，单位m
+    image_capture_zone_min_distance: 0.45  # [Task2扇形拍照区] 车辆中心距立牌的最小可拍距离，单位m
+    image_capture_zone_max_distance: 0.75  # [Task2扇形拍照区] 车辆中心距立牌的最大可拍距离，单位m
+    image_capture_zone_half_angle_deg: 18.0  # [Task2扇形拍照区] 指定一侧扇形半角，单位degree
+    image_capture_heading_tolerance_deg: 12.0  # [Task2扇形拍照区] 车头相对“车辆→立牌”视线允许误差，单位degree
+    image_capture_approach_distance: 0.95  # [Task2图生文] 距固定立牌小于此距离进入低速精确接近，单位m
+    image_capture_slow_speed: 0.20  # [Task2图生文] 扇形拍照区接近阶段最大线速度，单位m/s
+    image_capture_angular_gain: 1.6  # [Task2图生文] 追图生文路线锚点时航向误差到前轮目标转角的专用比例增益
+    image_capture_stop_time: 0.40  # [Task2图生文] 姿态合格后停车稳定这么久再拍照，单位s
+    image_capture_recovery_enabled: true  # [Task2图生文复位] 首次以不合格航向进入扇形区时是否允许一次倒车复位
+    image_capture_recovery_reverse_distance: 0.20  # [Task2图生文复位] 唯一一次倒车的目标距离，单位m
+    image_capture_recovery_reverse_speed: 0.18  # [Task2图生文复位] 倒车线速度绝对值，单位m/s
+    image_capture_recovery_heading_gain: 0.80  # [Task2图生文复位] 倒车时向立牌朝向收敛的转向增益
+    image_capture_recovery_max_angular_speed: 0.45  # [Task2图生文复位] 倒车复位的最大转向输出，单位rad
+    image_capture_recovery_rear_obstacle_distance: 0.35  # [Task2图生文复位] 后方此距离内有障碍即禁止倒车，单位m
+    image_capture_recovery_rear_fov_deg: 100.0  # [Task2图生文复位] 后方检测扇形总视野角，单位degree
+    image_capture_recovery_rear_corridor_half_width: 0.30  # [Task2图生文复位] 后方检测走廊半宽，单位m
     
     image_capture_trigger_value: 8  # [Task2图生文] 发布到图生文触发话题的整数值
     image_analysis_trigger_topic: /sign4return  # [Task2图生文] 图像分析触发整数消息的发布话题

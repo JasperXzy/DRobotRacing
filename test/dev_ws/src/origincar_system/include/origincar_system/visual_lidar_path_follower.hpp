@@ -18,6 +18,7 @@
 #include "sensor_msgs/msg/laser_scan.hpp"
 #include "std_msgs/msg/int32.hpp"
 #include "std_msgs/msg/string.hpp"
+#include "std_srvs/srv/set_bool.hpp"
 #include "tf2_ros/buffer.h"
 #include "tf2_ros/transform_listener.h"
 #include "visualization_msgs/msg/marker_array.hpp"
@@ -409,11 +410,28 @@ private:
   double image_capture_clockwise_y_{4.05};
   double image_capture_counterclockwise_x_{0.25};
   double image_capture_counterclockwise_y_{4.05};
-  double image_capture_radius_{0.10};
-  double image_capture_slow_distance_{0.50};
+  // 图生文不再以单一航点触发：立牌是固定目标，车辆必须从指定一侧进入扇形拍照区，
+  // 且车头朝向立牌。clockwise 对应右侧立牌、counterclockwise 对应左侧立牌。
+  double image_sign_clockwise_x_{3.90};
+  double image_sign_clockwise_y_{4.10};
+  double image_sign_counterclockwise_x_{-0.10};
+  double image_sign_counterclockwise_y_{4.10};
+  double image_capture_zone_min_distance_{0.45};
+  double image_capture_zone_max_distance_{0.75};
+  double image_capture_zone_half_angle_deg_{18.0};
+  double image_capture_heading_tolerance_deg_{12.0};
+  double image_capture_approach_distance_{0.95};
   double image_capture_slow_speed_{0.40};
   double image_capture_angular_gain_{2.0};
   double image_capture_stop_time_{0.30};
+  bool image_capture_recovery_enabled_{true};
+  double image_capture_recovery_reverse_distance_{0.20};
+  double image_capture_recovery_reverse_speed_{0.18};
+  double image_capture_recovery_heading_gain_{0.80};
+  double image_capture_recovery_max_angular_speed_{0.45};
+  double image_capture_recovery_rear_obstacle_distance_{0.35};
+  double image_capture_recovery_rear_fov_deg_{100.0};
+  double image_capture_recovery_rear_corridor_half_width_{0.30};
   int image_capture_trigger_value_{8};
   std::string image_analysis_trigger_topic_{"/person_trigger"};
 
@@ -439,8 +457,11 @@ private:
   bool image_analysis_triggered_{false};
   bool has_image_capture_waypoint_{false};
   bool image_capture_stopping_{false};
+  bool image_capture_recovery_active_{false};
+  bool image_capture_recovery_used_{false};
   std::size_t image_capture_waypoint_index_{0};
   std::chrono::steady_clock::time_point image_capture_stop_started_at_;
+  RobotPose image_capture_recovery_start_pose_;
   bool publish_stop_on_exit_{true};
   bool task3_route_available_{false};
   bool task3_route_active_{false};
@@ -518,6 +539,10 @@ private:
   bool logic3_motion_candidate_{false};
   bool logic3_start_zone_motion_pending_{false};
   bool logic3_planning_pose_anchored_{false};
+  // 终端人工冻结只允许在发车前撤销；一旦观测到电机带动车体运动，
+  // 即锁住解冻，避免比赛行驶中误按数字键2破坏静态路线。
+  bool logic3_manual_freeze_active_{false};
+  bool logic3_manual_unfreeze_locked_{false};
   bool logic3_odom_reference_valid_{false};
   bool logic3_map_odom_plan_valid_{false};
   bool logic3_final_snapshot_published_{false};
@@ -573,6 +598,7 @@ private:
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr logic3_odom_sub_;
   rclcpp::Subscription<ai_msgs::msg::PerceptionTargets>::SharedPtr
     return_visual_detection_sub_;
+  rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr manual_route_freeze_srv_;
   rclcpp::TimerBase::SharedPtr timer_;
 
   const char * control_state_name(ControlState state) const;
@@ -614,6 +640,14 @@ private:
   bool is_segment_reverse(std::size_t segment_index) const;
   bool is_precision_waypoint(std::size_t index) const;
   void insert_image_capture_waypoint(const std::string & direction);
+  Point2D image_capture_sign_point() const;
+  bool image_capture_zone_contains(const Point2D & point) const;
+  bool image_capture_pose_is_acceptable(
+    const RobotPose & pose, double * distance_to_sign = nullptr,
+    double * heading_error = nullptr) const;
+  bool is_image_capture_protected_waypoint(std::size_t index) const;
+  bool apply_image_capture_recovery(
+    const RobotPose & pose, geometry_msgs::msg::Twist & cmd);
   bool handle_image_capture_stop(const RobotPose & pose);
   void apply_image_capture_speed_limit(
     const RobotPose & pose, geometry_msgs::msg::Twist & cmd) const;
@@ -675,6 +709,10 @@ private:
     std::size_t current_frame_cluster_count,
     const std::vector<Logic3StaticObstacle> & obstacles);
   void logic3_odom_callback(const nav_msgs::msg::Odometry::ConstSharedPtr msg);
+  void manual_route_freeze_callback(
+    const std::shared_ptr<std_srvs::srv::SetBool::Request> request,
+    std::shared_ptr<std_srvs::srv::SetBool::Response> response);
+  bool unfreeze_manual_logic3_route(std::string & reason);
   void freeze_logic3_route();
   void apply_logic3_frozen_clusters_to_current_route(
     const std::string & snapshot_event);

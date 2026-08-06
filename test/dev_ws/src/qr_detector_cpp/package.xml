@@ -14,7 +14,7 @@
   <depend>std_msgs</depend>
   <depend>cv_bridge</depend>
   <depend>OpenCV</depend>
-  <depend>zbar</depend>
+  <depend>ament_index_cpp</depend>
   <depend>origincar_msg</depend>
 
 

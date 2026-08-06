@@ -4,11 +4,13 @@
 #include <std_msgs/msg/int32.hpp>
 #include <std_msgs/msg/string.hpp>
 #include <opencv2/opencv.hpp>
+#include <opencv2/wechat_qrcode.hpp>
 #include <cv_bridge/cv_bridge.h>
-#include <zbar.h>
 #include <origincar_msg/msg/sign.hpp>
+#include <ament_index_cpp/get_package_share_directory.hpp>
 #include <algorithm>
 #include <cctype>
+#include <fstream>
 #include <memory>
 #include <string>
 
@@ -28,6 +30,8 @@ public:
         this->declare_parameter("suspend_visual_control_on_detect", true);
         this->declare_parameter("visual_control_suspend_topic", "/sign4return");
         this->declare_parameter("visual_control_suspend_value", 5);
+        // 微信二维码模型目录：留空时自动使用本包 share/qr_detector_cpp/model
+        this->declare_parameter("model_dir", "");
 
         image_topic_ = this->get_parameter("image_topic").as_string();
         process_interval_ = std::max(0.0, this->get_parameter("process_interval").as_double());
@@ -46,10 +50,7 @@ public:
         small_roi_upscale_factor_ = std::clamp(
             this->get_parameter("small_roi_upscale_factor").as_double(), 1.0, 4.0);
 
-        scanner_.set_config(zbar::ZBAR_NONE, zbar::ZBAR_CFG_ENABLE, 1);
-        scanner_.set_config(zbar::ZBAR_QRCODE, zbar::ZBAR_CFG_ENABLE, 1);
-        scanner_.set_config(zbar::ZBAR_QRCODE, zbar::ZBAR_CFG_X_DENSITY, zbar_density_);
-        scanner_.set_config(zbar::ZBAR_QRCODE, zbar::ZBAR_CFG_Y_DENSITY, zbar_density_);
+        init_wechat_detector();
 
         last_fps_time_ = this->now();
         last_process_time_ = this->now();
@@ -140,31 +141,80 @@ private:
             scan_image = gray;
         }
 
-        if (!scan_image.isContinuous()) {
-            scan_image = scan_image.clone();
+        // 微信二维码模型按 RGB 彩色图训练，mono8 ROI 先转回 BGR 再检测
+        cv::Mat detect_image;
+        if (scan_image.channels() == 1) {
+            cv::cvtColor(scan_image, detect_image, cv::COLOR_GRAY2BGR);
+        } else {
+            detect_image = scan_image;
         }
 
-        const int width = scan_image.cols;
-        const int height = scan_image.rows;
-        zbar::Image zbar_image(width, height, "Y800", scan_image.data, width * height);
-
-        int result = scanner_.scan(zbar_image);
-        if (result > 0)
-        {
-            for (zbar::Image::SymbolIterator symbol = zbar_image.symbol_begin();
-                 symbol != zbar_image.symbol_end(); ++symbol)
-            {
-                if (symbol->get_type() != zbar::ZBAR_QRCODE) continue;
-
-                std::string barcode_data = symbol->get_data();
-                RCLCPP_INFO(this->get_logger(), "QR code detected: %s", barcode_data.c_str());
-                publish_qr_result(barcode_data, current_time);
-                last_process_time_ = current_time;
-                return;
+        std::vector<std::string> detected_codes;
+        if (wechat_detector_) {
+            detected_codes = wechat_detector_->detectAndDecode(detect_image);
+        } else {
+            // 微信模型加载失败时的兜底：OpenCV 内置 QRCodeDetector
+            const std::string data = fallback_detector_.detectAndDecode(detect_image);
+            if (!data.empty()) {
+                detected_codes.push_back(data);
             }
         }
 
+        for (const auto & barcode_data : detected_codes)
+        {
+            if (barcode_data.empty()) continue;
+            RCLCPP_INFO(this->get_logger(), "QR code detected: %s", barcode_data.c_str());
+            publish_qr_result(barcode_data, current_time);
+            last_process_time_ = current_time;
+            return;
+        }
+
         last_process_time_ = current_time;
+    }
+
+    void init_wechat_detector()
+    {
+        std::string model_dir = this->get_parameter("model_dir").as_string();
+        if (model_dir.empty()) {
+            try {
+                model_dir = ament_index_cpp::get_package_share_directory(
+                    "qr_detector_cpp") + "/model";
+            } catch (const std::exception & e) {
+                RCLCPP_WARN(this->get_logger(),
+                    "无法自动定位模型目录: %s", e.what());
+            }
+        }
+
+        const std::string detect_prototxt = model_dir + "/detect.prototxt";
+        const std::string detect_caffemodel = model_dir + "/detect.caffemodel";
+        const std::string sr_prototxt = model_dir + "/sr.prototxt";
+        const std::string sr_caffemodel = model_dir + "/sr.caffemodel";
+
+        auto file_exists = [](const std::string & path) {
+            std::ifstream file(path.c_str(), std::ios::binary);
+            return file.good();
+        };
+
+        if (file_exists(detect_prototxt) && file_exists(detect_caffemodel) &&
+            file_exists(sr_prototxt) && file_exists(sr_caffemodel))
+        {
+            try {
+                wechat_detector_ = std::make_unique<cv::wechat_qrcode::WeChatQRCode>(
+                    detect_prototxt, detect_caffemodel, sr_prototxt, sr_caffemodel);
+                RCLCPP_INFO(this->get_logger(),
+                    "微信二维码检测器加载成功（model_dir=%s）", model_dir.c_str());
+                return;
+            } catch (const cv::Exception & e) {
+                RCLCPP_WARN(this->get_logger(),
+                    "微信二维码检测器加载失败: %s，使用 OpenCV 默认检测器兜底",
+                    e.what());
+            }
+        } else {
+            RCLCPP_WARN(this->get_logger(),
+                "模型文件缺失（model_dir=%s），使用 OpenCV 默认检测器兜底",
+                model_dir.c_str());
+        }
+        wechat_detector_.reset();
     }
 
     void publish_qr_result(const std::string& barcode_data, const rclcpp::Time& current_time)
@@ -256,7 +306,9 @@ private:
     int visual_control_suspend_value_ = 5;
     double process_interval_ = 0.0;
     double small_roi_upscale_factor_ = 2.0;
-    zbar::ImageScanner scanner_;
+    // 微信二维码检测器（模型加载失败时为空，回退 OpenCV 默认检测器）
+    std::unique_ptr<cv::wechat_qrcode::WeChatQRCode> wechat_detector_;
+    cv::QRCodeDetector fallback_detector_;
 };
 
 int main(int argc, char* argv[])

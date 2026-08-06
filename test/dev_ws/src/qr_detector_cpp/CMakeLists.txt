@@ -12,21 +12,20 @@ find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(OpenCV REQUIRED)
-find_package(PkgConfig REQUIRED)  # 添加pkg-config支持
+find_package(ament_index_cpp REQUIRED)
 find_package(origincar_msg REQUIRED)
 
-pkg_check_modules(ZBAR REQUIRED zbar)  # 使用pkg-config查找zbar
-
 add_executable(qr_detector_node src/qr_detector_node.cpp)
-target_include_directories(qr_detector_node PUBLIC
-  ${ZBAR_INCLUDE_DIRS}  # 添加ZBar头文件目录
-)
-ament_target_dependencies(qr_detector_node rclcpp sensor_msgs std_msgs cv_bridge OpenCV origincar_msg)
-target_link_libraries(qr_detector_node ${ZBAR_LIBRARIES})  # 链接ZBar库
+ament_target_dependencies(qr_detector_node rclcpp sensor_msgs std_msgs cv_bridge OpenCV ament_index_cpp origincar_msg)
+target_link_libraries(qr_detector_node ${OpenCV_LIBS})
 
 install(TARGETS
   qr_detector_node
   DESTINATION lib/${PROJECT_NAME})
+
+# 安装微信二维码检测模型（detect/sr 两组 caffemodel+prototxt）
+install(DIRECTORY model
+  DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

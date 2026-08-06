@@ -44,9 +44,16 @@ BACKUP_45DEG_CONTROL_POINTS = [
     (4.30, 1.50),
 ]
 
+# ZYR 自定义路线：起点直连终点的一条斜线。
+ZYR_CONTROL_POINTS = [
+    (0.00, 0.00),
+    (2.70, 0.90),
+]
+
 CONTROL_POINT_VARIANTS = {
     'default': DEFAULT_CONTROL_POINTS,
     'backup_45deg': BACKUP_45DEG_CONTROL_POINTS,
+    'zyr': ZYR_CONTROL_POINTS,
 }
 
 
