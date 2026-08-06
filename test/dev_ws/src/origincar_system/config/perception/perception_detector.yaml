@@ -37,8 +37,5 @@ perception_detector_node:
     log_fps: true
     debug_image: false
 
-    # /sign4return 感知模式：扫码后 7 仅输出障碍物，进入 channel 后 10 全停，结束后 9 恢复
-    pause_value: 10
-    obstacle_only_resume_value: 7
-    full_resume_value: 9
-    obstacle_class_name: construction_cone
+    # YOLO只用于Task1二维码ROI。收到10后释放模型/BPU内存并退出进程，后续阶段不再恢复。
+    shutdown_value: 10

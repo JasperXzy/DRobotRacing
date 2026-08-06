@@ -72,6 +72,13 @@ class RouteSnapshotRenderer(Node):
             self, data, event, output_dir, base, world_to_pixel, pixels_per_meter,
             original, frozen, red, red_identity_radius):
         green = data.get('green', [])
+        try:
+            orange_begin = int(data.get('orange_green_begin_index', len(green)))
+        except (TypeError, ValueError):
+            orange_begin = len(green)
+        orange_begin = max(0, min(orange_begin, len(green)))
+        task1_green = green[:orange_begin]
+        post_qr_orange = green[orange_begin:]
         green_radius = float(data.get('green_radius', 0.5))
         frozen_revision = max(0, int(data.get('frozen_revision', 0)))
         if event == 'task1_frozen':
@@ -79,13 +86,16 @@ class RouteSnapshotRenderer(Node):
             self._draw_route(image, original, world_to_pixel, (75, 75, 75, 105), 3)
             self._draw_route(image, frozen, world_to_pixel, (15, 90, 215, 255), 6)
             self._draw_clusters(
-                image, green, world_to_pixel, pixels_per_meter,
+                image, task1_green, world_to_pixel, pixels_per_meter,
                 green_radius, (20, 180, 65), True)
+            self._draw_clusters(
+                image, post_qr_orange, world_to_pixel, pixels_per_meter,
+                green_radius, (245, 140, 20), True)
             self._draw_base_zone(image, data, world_to_pixel)
             self._draw_parking_zone(image, data, world_to_pixel)
             self._draw_title(
                 image,
-                f'Task1 frozen route / green clusters '
+                f'Task1 frozen route / green pre-QR, orange post-QR '
                 f'(identity R={green_radius:.2f}m)')
             output_path = output_dir / '01_Task1_frozen_route.png'
             self._save_png(image, output_path)
@@ -97,14 +107,18 @@ class RouteSnapshotRenderer(Node):
             self._draw_route(image, original, world_to_pixel, (75, 75, 75, 105), 3)
             self._draw_route(image, frozen, world_to_pixel, (15, 90, 215, 255), 6)
             self._draw_clusters(
-                image, green, world_to_pixel, pixels_per_meter,
+                image, task1_green, world_to_pixel, pixels_per_meter,
                 green_radius, (20, 180, 65), True)
+            self._draw_clusters(
+                image, post_qr_orange, world_to_pixel, pixels_per_meter,
+                green_radius, (245, 140, 20), True)
             self._draw_base_zone(image, data, world_to_pixel)
             self._draw_parking_zone(image, data, world_to_pixel)
             self._draw_snapshot_markers(image, data, world_to_pixel)
             self._draw_title(
                 image,
-                f'Final frozen route revision {frozen_revision} / green clusters '
+                f'Final frozen route revision {frozen_revision} / '
+                f'green pre-QR, orange post-QR '
                 f'(identity R={green_radius:.2f}m)')
             output_path = (
                 output_dir / '03_Final_frozen_route.png'
@@ -119,8 +133,11 @@ class RouteSnapshotRenderer(Node):
         self._draw_route(image, original, world_to_pixel, (75, 75, 75, 90), 3)
         self._draw_route(image, frozen, world_to_pixel, (15, 90, 215, 255), 6)
         self._draw_clusters(
-            image, green, world_to_pixel, pixels_per_meter,
+            image, task1_green, world_to_pixel, pixels_per_meter,
             green_radius, (20, 180, 65), True)
+        self._draw_clusters(
+            image, post_qr_orange, world_to_pixel, pixels_per_meter,
+            green_radius, (245, 140, 20), True)
         if red:
             self._draw_clusters(
                 image, red, world_to_pixel, pixels_per_meter,
@@ -133,7 +150,8 @@ class RouteSnapshotRenderer(Node):
         self._draw_title(
             image,
             f'{"Task1" if task1_dynamic else "Final"} dynamic route / '
-            f'red records (history R={red_identity_radius:.2f}m)')
+            f'green pre-QR, orange post-QR, red records '
+            f'(history R={red_identity_radius:.2f}m)')
         output_path = output_dir / (
             '02_Task1_dynamic_route.png'
             if task1_dynamic else '04_Final_dynamic_route.png')

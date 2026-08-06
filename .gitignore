@@ -29,7 +29,7 @@ venv/
 # Local demo captures
 test/api_vlm_tts_demo/api_vlm_tts_capture.jpg
 dev_ws/src/drivers/vlm_tts_demo/captures/*.jpg
-
+test/dev_ws/src/origincar_system/path/
 # C / C++ build outputs
 *.o
 *.obj

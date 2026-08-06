@@ -11,6 +11,8 @@ qr_detector_node:
     suspend_visual_control_on_detect: true
     visual_control_suspend_topic: /sign4return
     visual_control_suspend_value: 5
+    # 主控在有效二维码或Task1默认选路结束时发布10；QR节点随即退出，停止图像缓存和解码。
+    task1_complete_value: 10
     # 保存二维码真正解码成功时对应的完整摄像机JPEG，而不是检测器裁剪的灰度ROI。
     save_detected_camera_frame: true
     camera_image_topic: /camera/image

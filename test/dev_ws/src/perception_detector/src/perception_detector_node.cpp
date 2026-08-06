@@ -95,36 +95,21 @@ public:
 private:
   void signCallback(const std_msgs::msg::Int32::SharedPtr msg)
   {
-    if (msg->data == pause_value_) {
-      if (inference_enabled_.exchange(false)) {
-        RCLCPP_INFO(
-          get_logger(), "YOLO inference paused by /sign4return=%d", pause_value_);
-      }
-    } else if (msg->data == obstacle_only_resume_value_) {
-      const bool mode_changed = !obstacle_only_mode_.exchange(true);
-      const bool was_enabled = inference_enabled_.exchange(true);
-      if (!was_enabled || mode_changed) {
-        processed_frames_ = 0;
-        roi_frames_ = 0;
-        fps_window_start_ = now();
-        RCLCPP_INFO(
-          get_logger(),
-          "YOLO inference active in obstacle-only mode by /sign4return=%d",
-          obstacle_only_resume_value_);
-      }
-    } else if (msg->data == full_resume_value_) {
-      const bool mode_changed = obstacle_only_mode_.exchange(false);
-      const bool was_enabled = inference_enabled_.exchange(true);
-      if (!was_enabled || mode_changed) {
-        processed_frames_ = 0;
-        roi_frames_ = 0;
-        fps_window_start_ = now();
-        RCLCPP_INFO(
-          get_logger(),
-          "YOLO inference active in full-detection mode by /sign4return=%d",
-          full_resume_value_);
-      }
+    if (msg->data != shutdown_value_ || shutdown_requested_.exchange(true)) {
+      return;
     }
+
+    // YOLO只服务于Task1二维码ROI。收到终止值后必须释放模型和张量，
+    // 不能只暂停逐帧推理，否则packed model仍会占用BPU资源。
+    inference_enabled_.store(false);
+    image_sub_.reset();
+    RCLCPP_WARN(
+      get_logger(),
+      "Task1 vision complete: releasing YOLO/BPU resources and exiting "
+      "(/sign4return=%d)",
+      shutdown_value_);
+    detector_.release();
+    rclcpp::shutdown();
   }
 
   void declareParameters()
@@ -165,10 +150,7 @@ private:
     declare_parameter<bool>("log_timing", true);
     declare_parameter<bool>("log_fps", true);
     declare_parameter<bool>("debug_image", false);
-    declare_parameter<int>("pause_value", 10);
-    declare_parameter<int>("obstacle_only_resume_value", 7);
-    declare_parameter<int>("full_resume_value", 9);
-    declare_parameter<std::string>("obstacle_class_name", "construction_cone");
+    declare_parameter<int>("shutdown_value", 10);
   }
 
   void loadParameters()
@@ -209,21 +191,7 @@ private:
     log_timing_ = get_parameter("log_timing").as_bool();
     log_fps_ = get_parameter("log_fps").as_bool();
     debug_image_ = get_parameter("debug_image").as_bool();
-    pause_value_ = static_cast<int>(get_parameter("pause_value").as_int());
-    obstacle_only_resume_value_ = static_cast<int>(
-      get_parameter("obstacle_only_resume_value").as_int());
-    full_resume_value_ = static_cast<int>(get_parameter("full_resume_value").as_int());
-    obstacle_class_name_ = get_parameter("obstacle_class_name").as_string();
-
-    if (obstacle_class_name_.empty()) {
-      throw std::runtime_error("obstacle_class_name must not be empty");
-    }
-    if (pause_value_ == obstacle_only_resume_value_ ||
-      pause_value_ == full_resume_value_ ||
-      obstacle_only_resume_value_ == full_resume_value_)
-    {
-      throw std::runtime_error("YOLO control values must be distinct");
-    }
+    shutdown_value_ = static_cast<int>(get_parameter("shutdown_value").as_int());
 
     if (debug_image_) {
       RCLCPP_WARN(
@@ -304,7 +272,7 @@ private:
 
     ++processed_frames_;
     publishDetections(detections, stamp);
-    if (!obstacle_only_mode_.load() && qr_roi_publisher_.publishBestRoi(
+    if (qr_roi_publisher_.publishBestRoi(
         nv12_data,
         src_width,
         src_height,
@@ -342,9 +310,6 @@ private:
 
     msg.targets.reserve(detections.size());
     for (const auto & detection : detections) {
-      if (obstacle_only_mode_.load() && detection.class_name != obstacle_class_name_) {
-        continue;
-      }
       ai_msgs::msg::Target target;
       target.type = detection.class_name;
       target.track_id = 0;
@@ -405,16 +370,13 @@ private:
   bool log_timing_ = true;
   bool log_fps_ = true;
   bool debug_image_ = false;
-  int pause_value_ = 10;
-  int obstacle_only_resume_value_ = 7;
-  int full_resume_value_ = 9;
-  std::string obstacle_class_name_{"construction_cone"};
+  int shutdown_value_ = 10;
   int16_t last_output_fps_ = -1;
   int processed_frames_ = 0;
   int roi_frames_ = 0;
   rclcpp::Time fps_window_start_;
   std::atomic<bool> inference_enabled_{true};
-  std::atomic<bool> obstacle_only_mode_{false};
+  std::atomic<bool> shutdown_requested_{false};
 
   DetectorConfig detector_config_;
   QrRoiConfig qr_config_;

@@ -17,6 +17,12 @@ lidar_location:
     transform_tolerance: 0.3
     tf_lookup_timeout: 0.2
 
+    deskew_enabled: true
+    deskew_min_translation: 0.002
+    deskew_min_rotation_deg: 0.05
+    deskew_max_scan_duration: 0.2
+    publish_deskewed_cloud: true
+
     set_initial_pose: true
     reset_pose_on_map: false
     initial_pose:
@@ -32,6 +38,7 @@ lidar_location:
     max_beams: 180
     min_valid_beams: 20
     min_match_score: 0.05
+    match_score_terminal_rate: 10.0  # 持续输出最新匹配度；设为0可关闭
     min_laser_range: 0.1
     max_laser_range: 5.0
 

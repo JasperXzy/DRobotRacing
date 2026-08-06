@@ -16,7 +16,10 @@ ekf_filter_node:
     # Transform settings
     publish_tf: true                    # Publish odom -> base_link TF
     publish_acceleration: false         # Don't need acceleration output
-    
+    # Deskew queries historical scan start/end transforms; do not extrapolate
+    # the filter output to wall-clock "now".
+    predict_to_current_time: false
+
     # Diagnostics
     print_diagnostics: false
     

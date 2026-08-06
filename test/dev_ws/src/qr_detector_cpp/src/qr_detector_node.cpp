@@ -34,6 +34,7 @@ public:
         this->declare_parameter("suspend_visual_control_on_detect", true);
         this->declare_parameter("visual_control_suspend_topic", "/sign4return");
         this->declare_parameter("visual_control_suspend_value", 5);
+        this->declare_parameter("task1_complete_value", 10);
         this->declare_parameter("save_detected_camera_frame", true);
         this->declare_parameter("camera_image_topic", "/camera/image");
         this->declare_parameter(
@@ -52,6 +53,8 @@ public:
             this->get_parameter("visual_control_suspend_topic").as_string();
         visual_control_suspend_value_ =
             static_cast<int>(this->get_parameter("visual_control_suspend_value").as_int());
+        task1_complete_value_ =
+            static_cast<int>(this->get_parameter("task1_complete_value").as_int());
         save_detected_camera_frame_ =
             this->get_parameter("save_detected_camera_frame").as_bool();
         camera_image_topic_ = this->get_parameter("camera_image_topic").as_string();
@@ -81,6 +84,11 @@ public:
         sign_switch_pub_ = this->create_publisher<origincar_msg::msg::Sign>("/sign_switch", 10);
         visual_control_suspend_pub_ =
             this->create_publisher<std_msgs::msg::Int32>(visual_control_suspend_topic_, 10);
+        task1_complete_sub_ = this->create_subscription<std_msgs::msg::Int32>(
+            visual_control_suspend_topic_, 10,
+            std::bind(
+                &QRDetectorNode::task1_complete_callback, this,
+                std::placeholders::_1));
         publisher_ = this->create_publisher<std_msgs::msg::String>("qr_code", 10);
         qr_info_pub_ = this->create_publisher<std_msgs::msg::String>("qr_info", 10);
         tts_pub_ = this->create_publisher<std_msgs::msg::String>("/tts_text", 10);
@@ -390,6 +398,23 @@ private:
             visual_control_suspend_topic_.c_str(), visual_control_suspend_value_);
     }
 
+    void task1_complete_callback(const std_msgs::msg::Int32::ConstSharedPtr msg)
+    {
+        if (msg->data != task1_complete_value_ || shutdown_requested_)
+        {
+            return;
+        }
+
+        shutdown_requested_ = true;
+        activated_ = false;
+        image_sub_.reset();
+        camera_image_sub_.reset();
+        RCLCPP_WARN(this->get_logger(),
+            "Task1 complete: stopping QR subscriptions and exiting "
+            "(/sign4return=%d)", task1_complete_value_);
+        rclcpp::shutdown();
+    }
+
     std::string image_topic_;
     std::string camera_image_topic_;
     std::string qr_frame_output_root_;
@@ -401,6 +426,7 @@ private:
 
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_sub_;
     rclcpp::Subscription<sensor_msgs::msg::CompressedImage>::SharedPtr camera_image_sub_;
+    rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr task1_complete_sub_;
     rclcpp::Publisher<origincar_msg::msg::Sign>::SharedPtr sign_switch_pub_;
     rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr visual_control_suspend_pub_;
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr publisher_;
@@ -417,6 +443,8 @@ private:
     int zbar_density_ = 3;
     int small_roi_min_size_ = 120;
     int visual_control_suspend_value_ = 5;
+    int task1_complete_value_ = 10;
+    bool shutdown_requested_ = false;
     std::size_t qr_frame_cache_size_ = 60;
     double process_interval_ = 0.0;
     double qr_frame_match_tolerance_ = 0.20;

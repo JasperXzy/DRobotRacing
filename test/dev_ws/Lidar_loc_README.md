@@ -31,7 +31,7 @@ source /root/D_Robot/test/dev_ws/install/setup.bash
 fastdds shm clean
 export FASTDDS_BUILTIN_TRANSPORTS=UDPv4
 ros2 launch origincar_system test_bringup_lidar_location.launch.py \
-  start_foxglove:=false
+  start_foxglove:=true
 ```
 
 `lidar_location` 默认从
