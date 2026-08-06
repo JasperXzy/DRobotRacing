@@ -642,6 +642,7 @@ private:
   void insert_image_capture_waypoint(const std::string & direction);
   Point2D image_capture_sign_point() const;
   bool image_capture_zone_contains(const Point2D & point) const;
+  bool image_capture_approach_contains(const Point2D & point) const;
   bool image_capture_pose_is_acceptable(
     const RobotPose & pose, double * distance_to_sign = nullptr,
     double * heading_error = nullptr) const;
@@ -694,7 +695,7 @@ private:
   void update_qr_channel_approach_phase(const RobotPose & robot_pose);
   bool apply_channel_lidar_obstacle_avoidance(
     geometry_msgs::msg::Twist & cmd, bool * observation_valid = nullptr,
-    bool * obstacle_found = nullptr);
+    bool * obstacle_found = nullptr, bool stop_instead_of_turn = false);
   void reset_waypoint_shift_state();
   void update_waypoint_shifts(
     const RobotPose & robot_pose, std::size_t target_waypoint_index);

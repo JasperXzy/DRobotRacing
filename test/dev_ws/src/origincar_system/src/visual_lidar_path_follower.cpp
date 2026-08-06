@@ -1595,10 +1595,16 @@ void VisualLidarPathFollower::control_once()
   auto cmd = compute_tracking_command(pose, target);
   apply_turn_speed_limit(cmd);
   apply_image_capture_speed_limit(pose, cmd);
+  const bool image_capture_precision_approach =
+    enable_image_analysis_trigger_ && has_image_capture_waypoint_ &&
+    !image_analysis_triggered_ && !following_qr_path_ &&
+    task_phase_ == TaskPhase::TASK2 &&
+    image_capture_approach_contains(Point2D{pose.x, pose.y});
   const bool runtime_lidar_active = logic3_planning_pose_anchored_ &&
     task_phase_ != TaskPhase::FINISHED;
   if (runtime_lidar_active && !target.reverse && enable_lidar_avoidance_) {
-    apply_channel_lidar_obstacle_avoidance(cmd);
+    apply_channel_lidar_obstacle_avoidance(
+      cmd, nullptr, nullptr, image_capture_precision_approach);
   }
 
   publish_debug_visualization(pose);
@@ -2528,6 +2534,30 @@ bool VisualLidarPathFollower::image_capture_zone_contains(const Point2D & point)
   return sector_error <= image_capture_zone_half_angle_deg_ * M_PI / 180.0;
 }
 
+bool VisualLidarPathFollower::image_capture_approach_contains(
+  const VisualLidarPathFollower::Point2D & point) const
+{
+  if (!has_image_capture_waypoint_) {
+    return false;
+  }
+  const Point2D sign = image_capture_sign_point();
+  const double distance = std::hypot(point.x - sign.x, point.y - sign.y);
+  if (distance < image_capture_zone_min_distance_ ||
+    distance > image_capture_approach_distance_)
+  {
+    return false;
+  }
+
+  // 精确接近只能从路线规定的立牌一侧进行；一旦越过立牌或偏到另一侧，
+  // 必须恢复路线追踪，不能继续正向追逐身后的立牌而形成绕圈。
+  const bool clockwise = to_lower(selected_route_direction_) == "clockwise";
+  const double expected_vehicle_bearing = clockwise ? M_PI : 0.0;
+  const double vehicle_bearing = std::atan2(point.y - sign.y, point.x - sign.x);
+  const double sector_error = std::abs(normalize_angle(
+    vehicle_bearing - expected_vehicle_bearing));
+  return sector_error <= image_capture_zone_half_angle_deg_ * M_PI / 180.0;
+}
+
 bool VisualLidarPathFollower::image_capture_pose_is_acceptable(
   const VisualLidarPathFollower::RobotPose & pose, double * distance_to_sign,
   double * heading_error) const
@@ -2625,6 +2655,23 @@ bool VisualLidarPathFollower::handle_image_capture_stop(
     return false;
   }
 
+  // 一旦已确认进入合格拍照姿态，整个稳定时间必须锁定零速。不能在下一帧
+  // 因制动惯性或定位微抖暂时离开扇区，就取消停车并重新落入路线/雷达控制。
+  if (image_capture_stopping_) {
+    const auto now = std::chrono::steady_clock::now();
+    const double stopped_seconds =
+      std::chrono::duration<double>(now - image_capture_stop_started_at_).count();
+    if (stopped_seconds < image_capture_stop_time_) {
+      return true;
+    }
+    publish_image_analysis_trigger();
+    if (image_analysis_triggered_ && current_index_ < image_capture_waypoint_index_) {
+      advance_current_index_to(image_capture_waypoint_index_, "image-capture-complete");
+    }
+    image_capture_stopping_ = false;
+    return false;
+  }
+
   double distance_to_sign = 0.0;
   double heading_error = 0.0;
   const bool acceptable = image_capture_pose_is_acceptable(
@@ -2692,9 +2739,7 @@ void VisualLidarPathFollower::apply_image_capture_speed_limit(
   {
     return;
   }
-  const Point2D sign = image_capture_sign_point();
-  const double distance = std::hypot(sign.x - pose.x, sign.y - pose.y);
-  if (distance > image_capture_approach_distance_) {
+  if (!image_capture_approach_contains(Point2D{pose.x, pose.y})) {
     return;
   }
   const double limited_speed = std::min(std::abs(cmd.linear.x), image_capture_slow_speed_);
@@ -2717,7 +2762,7 @@ geometry_msgs::msg::Twist VisualLidarPathFollower::compute_tracking_command(
     enable_image_analysis_trigger_ && has_image_capture_waypoint_ &&
     !image_analysis_triggered_ && !following_qr_path_ &&
     task_phase_ == TaskPhase::TASK2 &&
-    std::hypot(sign.x - pose.x, sign.y - pose.y) <= image_capture_approach_distance_;
+    image_capture_approach_contains(Point2D{pose.x, pose.y});
   Point2D steering_point = target.point;
   // 进入接近区后直接把车头收向固定立牌。这里不再依赖前瞻目标仍恰好是
   // 插入锚点，避免路线进度跨过锚点后失去朝向控制。
@@ -4032,7 +4077,7 @@ void VisualLidarPathFollower::update_qr_channel_approach_phase(
 // 否则静态路线偏移不足时会形成实时避障盲区。障碍在左则右绕，障碍在右则左绕。
 bool VisualLidarPathFollower::apply_channel_lidar_obstacle_avoidance(
   geometry_msgs::msg::Twist & cmd, bool * observation_valid,
-  bool * obstacle_found)
+  bool * obstacle_found, bool stop_instead_of_turn)
 {
   if (observation_valid) {
     *observation_valid = false;
@@ -4079,6 +4124,22 @@ bool VisualLidarPathFollower::apply_channel_lidar_obstacle_avoidance(
   }
   if (obstacle_found) {
     *obstacle_found = true;
+  }
+
+  // 图生文精确接近时，普通左右绕行会覆盖“朝立牌收正”并把车辆带出扇区。
+  // 这里保留前方雷达的安全判定，但发现障碍只停车等待，不改写为绕行转向。
+  if (stop_instead_of_turn) {
+    cmd = geometry_msgs::msg::Twist();
+    if (!channel_lidar_obstacle_active_) {
+      RCLCPP_WARN(
+        get_logger(),
+        "图生文精确接近前方有障碍：距离=%.3fm，相对角=%.1fdeg；"
+        "保持停车，等待前方清空后再继续收正。",
+        obstacle.range, obstacle.relative_angle * 180.0 / M_PI);
+    }
+    channel_lidar_obstacle_active_ = true;
+    channel_lidar_logged_direction_ = 0;
+    return true;
   }
 
   const double half_fov = std::max(

@@ -286,14 +286,14 @@ visual_lidar_path_follower:
     image_sign_counterclockwise_y: 4.10  # [Task2固定立牌] 逆时针对应左侧图文立牌map.y，单位m
     image_capture_zone_min_distance: 0.15  # [Task2扇形拍照区] 车辆中心距立牌的最小可拍距离，单位m
     image_capture_zone_max_distance: 0.55  # [Task2扇形拍照区] 车辆中心距立牌的最大可拍距离，单位m
-    image_capture_zone_half_angle_deg: 20.0  # [Task2扇形拍照区] 指定一侧扇形半角，单位degree
+    image_capture_zone_half_angle_deg: 25.0  # [Task2扇形拍照区] 指定一侧扇形半角，单位degree
     image_capture_heading_tolerance_deg: 10.0  # [Task2扇形拍照区] 车头相对“车辆→立牌”视线允许误差，单位degree
     image_capture_approach_distance: 0.75  # [Task2图生文] 距固定立牌小于此距离进入低速精确接近，单位m
     image_capture_slow_speed: 0.40  # [Task2图生文] 接近拍照点时的最大线速度，单位m/s
     image_capture_angular_gain: 2.0  # [Task2图生文] 追拍照点时航向误差到下位机前轮目标转角的专用比例增益
     image_capture_stop_time: 0.20  # [Task2图生文] 到点后先停车稳定这么久再拍照，单位s
     image_capture_recovery_enabled: true  # [Task2图生文复位] 首次以不合格航向进入扇形区时是否允许一次倒车复位
-    image_capture_recovery_reverse_distance: 0.35  # [Task2图生文复位] 唯一一次倒车的目标距离，单位m
+    image_capture_recovery_reverse_distance: 0.3  # [Task2图生文复位] 唯一一次倒车的目标距离，单位m
     image_capture_recovery_reverse_speed: 0.4  # [Task2图生文复位] 倒车线速度绝对值，单位m/s
     image_capture_recovery_heading_gain: 2.0  # [Task2图生文复位] 倒车时向立牌朝向收敛的转向增益
     image_capture_recovery_max_angular_speed: 0.55  # [Task2图生文复位] 倒车复位的最大转向输出，单位rad
