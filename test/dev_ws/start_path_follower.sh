@@ -23,6 +23,7 @@ STATIC=""
 LIDAR=""
 ZYR=""
 QR_NUMBER=""
+MONITOR=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -40,8 +41,11 @@ while [ $# -gt 0 ]; do
     --qr)
       [ $# -ge 2 ] || { echo "错误：--qr 需要一个数字参数"; exit 1; }
       QR_NUMBER="$2"; shift 2 ;;
+    --monitor)
+      MONITOR="true"; shift ;;
     -h|--help)
-      echo "用法：$0 [--variant default|backup_45deg] [--static on|off] [--lidar on|off] [--zyr] [--qr 数字]"
+      echo "用法：$0 [--variant default|backup_45deg] [--static on|off] [--lidar on|off] [--zyr] [--qr 数字] [--monitor]"
+      echo "  --monitor  启用 25Hz 运行资源与关键话题频率监控（默认关闭）"
       exit 0 ;;
     *)
       echo "未知参数：$1（可用 --help 查看用法）"; exit 1 ;;
@@ -113,6 +117,20 @@ if [ -n "$QR_NUMBER" ]; then
     > /tmp/manual_qr_pub.log 2>&1 &
 fi
 
+# 竞赛过程只在后台记录，不显示图形。结束后自动将25Hz节点CPU、内存、
+# 系统资源和关键话题频率写入本次 path 会话目录的05_Runtime_monitor.*。
+MONITOR_LOG="/tmp/competition_run_monitor_${$}.log"
+MONITOR_PID=""
+if [ -n "$MONITOR" ]; then
+  python3 /root/D_Robot/test/dev_ws/src/origincar_system/scripts/competition_run_monitor.py \
+    --workspace /root/D_Robot/test/dev_ws --interval 0.04 \
+    >"$MONITOR_LOG" 2>&1 &
+  MONITOR_PID=$!
+  echo "==> 已启动25Hz竞赛监控：结束后自动生成节点CPU/话题频率报告"
+else
+  echo "==> 竞赛运行监控默认关闭；如需记录本次运行，请追加 --monitor"
+fi
+
 # 让 launch 在后台保持输出，前台脚本则可以持续读取本终端的单键输入。
 # 不通过修改运行时参数实现冻结，而是调用主控服务，确保按键与自动发车
 # 使用同一份 READY 静态快照和同一套路线重建逻辑。
@@ -129,6 +147,11 @@ cleanup_path_follower() {
   if [ -n "${LAUNCH_PID:-}" ] && kill -0 "$LAUNCH_PID" 2>/dev/null; then
     kill -INT "$LAUNCH_PID" 2>/dev/null || true
     wait "$LAUNCH_PID" 2>/dev/null || true
+  fi
+  if [ -n "${MONITOR_PID:-}" ] && kill -0 "$MONITOR_PID" 2>/dev/null; then
+    kill -TERM "$MONITOR_PID" 2>/dev/null || true
+    wait "$MONITOR_PID" 2>/dev/null || true
+    echo "==> 竞赛监控已停止；报告路径见：$MONITOR_LOG"
   fi
   [ -z "${TMP_FILE:-}" ] || rm -f "$TMP_FILE"
   return "$status"

@@ -34,6 +34,7 @@ install(DIRECTORY launch config foxglove map DESTINATION share/${PROJECT_NAME})
 
 install(PROGRAMS
   scripts/generate_task1_waypoints.py
+  scripts/competition_run_monitor.py
   scripts/open_foxglove.sh
   scripts/route_snapshot_renderer.py
   DESTINATION lib/${PROJECT_NAME}

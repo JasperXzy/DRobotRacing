@@ -174,7 +174,7 @@ visual_lidar_path_follower:
     logic3_static_average_samples: 10  # [发车前静态绿色] 状态1后累计这么多个有效观测，生成最终平均绿色坐标
     logic3_static_loss_grace_seconds: 1.0  # [发车前静态绿色] 仅状态1后启用；判定失联后等待重捕的最长时间，单位s
     logic3_static_reacquire_radius: 0.20  # [发车前静态绿色] 状态1后失联ID相对固定锚点的严格重捕半径，单位m
-    logic3_old_cluster_radius: 0.50  # [静态绿色与动态红点] 发车冻结后绿色点云掩码与绘图半径；圈内点不触发雷达避障且不记红点，单位m
+    logic3_old_cluster_radius: 0.35  # [静态绿色与动态红点] 发车冻结后绿色簇与运行红点的身份去重、绘图半径；不再屏蔽实时雷达避障，单位m
 
     # --------------------- 静态+动态方案：可信发车与位姿锚定 -----------------------
     logic3_odom_topic: /chassis/odom  # [可信发车] 可信发车检测使用的底盘里程计话题
@@ -284,14 +284,14 @@ visual_lidar_path_follower:
     image_sign_clockwise_y: 4.10  # [Task2固定立牌] 顺时针对应右侧图文立牌map.y，单位m
     image_sign_counterclockwise_x: -0.10  # [Task2固定立牌] 逆时针对应左侧图文立牌map.x，单位m
     image_sign_counterclockwise_y: 4.10  # [Task2固定立牌] 逆时针对应左侧图文立牌map.y，单位m
-    image_capture_zone_min_distance: 0.35  # [Task2扇形拍照区] 车辆中心距立牌的最小可拍距离，单位m
-    image_capture_zone_max_distance: 0.75  # [Task2扇形拍照区] 车辆中心距立牌的最大可拍距离，单位m
-    image_capture_zone_half_angle_deg: 25.0  # [Task2扇形拍照区] 指定一侧扇形半角，单位degree
-    image_capture_heading_tolerance_deg: 15.0  # [Task2扇形拍照区] 车头相对“车辆→立牌”视线允许误差，单位degree
-    image_capture_approach_distance: 0.95  # [Task2图生文] 距固定立牌小于此距离进入低速精确接近，单位m
-    image_capture_slow_speed: 0.20  # [Task2图生文] 接近拍照点时的最大线速度，单位m/s
-    image_capture_angular_gain: 1.6  # [Task2图生文] 追拍照点时航向误差到下位机前轮目标转角的专用比例增益
-    image_capture_stop_time: 0.40  # [Task2图生文] 到点后先停车稳定这么久再拍照，单位s
+    image_capture_zone_min_distance: 0.15  # [Task2扇形拍照区] 车辆中心距立牌的最小可拍距离，单位m
+    image_capture_zone_max_distance: 0.55  # [Task2扇形拍照区] 车辆中心距立牌的最大可拍距离，单位m
+    image_capture_zone_half_angle_deg: 20.0  # [Task2扇形拍照区] 指定一侧扇形半角，单位degree
+    image_capture_heading_tolerance_deg: 10.0  # [Task2扇形拍照区] 车头相对“车辆→立牌”视线允许误差，单位degree
+    image_capture_approach_distance: 0.75  # [Task2图生文] 距固定立牌小于此距离进入低速精确接近，单位m
+    image_capture_slow_speed: 0.40  # [Task2图生文] 接近拍照点时的最大线速度，单位m/s
+    image_capture_angular_gain: 2.0  # [Task2图生文] 追拍照点时航向误差到下位机前轮目标转角的专用比例增益
+    image_capture_stop_time: 0.20  # [Task2图生文] 到点后先停车稳定这么久再拍照，单位s
     image_capture_recovery_enabled: true  # [Task2图生文复位] 首次以不合格航向进入扇形区时是否允许一次倒车复位
     image_capture_recovery_reverse_distance: 0.35  # [Task2图生文复位] 唯一一次倒车的目标距离，单位m
     image_capture_recovery_reverse_speed: 0.4  # [Task2图生文复位] 倒车线速度绝对值，单位m/s

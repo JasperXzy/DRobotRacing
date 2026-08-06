@@ -4023,12 +4023,13 @@ void VisualLidarPathFollower::update_qr_channel_approach_phase(
   RCLCPP_INFO(
     get_logger(),
     "已进入 waypoint_channel：延长段=%zu点，入口首点距离=%.3fm，入口截面穿越=%s；"
-    "切换到Task2参数，继续使用运行限制图和绿圈掩码后的雷达避障。",
+    "切换到Task2参数；实时雷达经过运行限制图过滤，冻结绿色簇也保留碰撞兜底。",
     entry_index, entry_waypoint_distance, crossed_entry_section ? "是" : "否");
 }
 
-// channel 雷达避障：逐点经过物理墙体、静态+动态方案运行限制图和冻结绿圈过滤后，
-// 取前方扇形走廊内最近的新障碍。障碍在左则右绕，障碍在右则左绕。
+// channel 雷达避障：逐点经过物理墙体和静态+动态方案运行限制图过滤后，
+// 取前方扇形走廊内最近障碍。冻结绿色簇仍须参与这里的碰撞兜底，
+// 否则静态路线偏移不足时会形成实时避障盲区。障碍在左则右绕，障碍在右则左绕。
 bool VisualLidarPathFollower::apply_channel_lidar_obstacle_avoidance(
   geometry_msgs::msg::Twist & cmd, bool * observation_valid,
   bool * obstacle_found)
@@ -4040,13 +4041,11 @@ bool VisualLidarPathFollower::apply_channel_lidar_obstacle_avoidance(
     *obstacle_found = false;
   }
   const bool filter_logic3_runtime_map = logic3_planning_pose_anchored_;
-  const bool filter_logic3_green_mask =
-    logic3_planning_pose_anchored_ && !logic3_green_clusters_.empty();
   RobotPose scan_to_base;
   RobotPose scan_to_map;
   if (!prepare_lidar_scan(
       scan_to_base, scan_to_map,
-      filter_logic3_runtime_map || filter_logic3_green_mask,
+      filter_logic3_runtime_map,
       filter_logic3_runtime_map))
   {
     cmd = geometry_msgs::msg::Twist();
@@ -4068,7 +4067,7 @@ bool VisualLidarPathFollower::apply_channel_lidar_obstacle_avoidance(
   const auto obstacle = find_lidar_obstacle(
     0.0, channel_lidar_avoid_distance_, channel_lidar_avoid_fov_deg_,
     channel_lidar_corridor_half_width_, scan_to_base, scan_to_map,
-    filter_logic3_green_mask, filter_logic3_runtime_map);
+    false, filter_logic3_runtime_map);
   if (!obstacle.found) {
     if (channel_lidar_obstacle_active_) {
       RCLCPP_INFO(
@@ -6646,7 +6645,8 @@ bool VisualLidarPathFollower::switch_route(const std::string & direction)
     get_logger(),
     "QR 选择%s路线；下一控制周期先从当前base_link直连waypoint_channel首点并等距插点，"
     "再按冻结静态坐标规划；每轮条件倒车结束后还会从新base_link重复一次；"
-    "静态+动态方案在 channel 全程使用运行限制图和绿圈掩码后的雷达避障。",
+    "静态+动态方案在 channel 全程使用运行限制图过滤后的雷达避障；"
+    "冻结绿色簇也保留碰撞兜底。",
     route_name.c_str());
   if (debug_control_logs_) {
     RCLCPP_INFO(
