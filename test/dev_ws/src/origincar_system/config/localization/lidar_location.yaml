@@ -38,14 +38,14 @@ lidar_location:
 
     # 扫描匹配参数。
     occupied_threshold: 65
-    likelihood_field_radius: 0.25
+    likelihood_field_radius: 1.25
     linear_search_step: 0.0       # 0 表示自动使用地图分辨率
     angular_search_step_deg: 1.0
     max_iterations: 80
     max_beams: 180
     min_valid_beams: 20
     min_match_score: 0.05
-    match_score_terminal_rate: 1.0  # 终端1每秒输出一次最新匹配度；设为0可关闭
+    match_score_terminal_rate: 0.0  # 性能监控节点记录分数，终端不再周期刷新
     min_laser_range: 0.1
     max_laser_range: 7.1
 

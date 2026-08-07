@@ -67,3 +67,5 @@ costmap_converter/
 test/zhy_car
 
 test/dev_ws/simulation_logs
+
+test/dev_ws/debug_log

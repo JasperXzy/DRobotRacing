@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the Task1 route by equal-distance interpolation of map control points."""
+"""Generate a C2-smoothed, equal-distance Task1 route from map control points."""
 
 import argparse
 import math
@@ -30,26 +30,159 @@ DEFAULT_SCHEMATIC_PREVIEW_OUTPUT = (
 DEFAULT_CONTROL_POINTS = [
     (0.00, 0.00),
     (0.50, 0.00),
-    (1.50, 0.50),
-    (3.70, 0.45),
-    (4.20, 1.30),
+    (1.50, 0.40),
+    (3.60, 0.30),
+    (4.10, 1.10),
 ]
 
 
-def interpolate_polyline(control_points, spacing):
-    points = [control_points[0]]
-    for start, finish in zip(control_points, control_points[1:]):
-        dx = finish[0] - start[0]
-        dy = finish[1] - start[1]
-        length = math.hypot(dx, dy)
-        segment_count = max(1, int(math.ceil(length / spacing)))
-        for index in range(1, segment_count + 1):
-            ratio = index / segment_count
-            points.append((
-                start[0] + ratio * dx,
-                start[1] + ratio * dy,
-            ))
-    return points
+def resample_polyline(points, spacing):
+    """Resample an already-shaped polyline at nearly equal arc-length spacing."""
+    if len(points) < 2:
+        return list(points)
+
+    cumulative = [0.0]
+    for start, finish in zip(points, points[1:]):
+        cumulative.append(cumulative[-1] + math.hypot(
+            finish[0] - start[0], finish[1] - start[1]))
+    total_length = cumulative[-1]
+    if total_length <= 1.0e-9:
+        return [points[0]]
+
+    result = [points[0]]
+    segment_index = 0
+    target_distance = spacing
+    while target_distance < total_length:
+        while (segment_index + 1 < len(cumulative) - 1 and
+               cumulative[segment_index + 1] < target_distance):
+            segment_index += 1
+        segment_start_distance = cumulative[segment_index]
+        segment_finish_distance = cumulative[segment_index + 1]
+        segment_length = segment_finish_distance - segment_start_distance
+        ratio = ((target_distance - segment_start_distance) / segment_length
+                 if segment_length > 1.0e-12 else 0.0)
+        start = points[segment_index]
+        finish = points[segment_index + 1]
+        result.append((
+            start[0] + ratio * (finish[0] - start[0]),
+            start[1] + ratio * (finish[1] - start[1]),
+        ))
+        target_distance += spacing
+    if math.hypot(
+            result[-1][0] - points[-1][0],
+            result[-1][1] - points[-1][1]) > 1.0e-9:
+        result.append(points[-1])
+    return result
+
+
+def smooth_control_polyline(control_points, spacing, corner_length):
+    """Replace each interior corner with a zero-end-curvature quintic curve."""
+    if len(control_points) < 3 or corner_length <= 0.0:
+        return resample_polyline(control_points, spacing)
+
+    incoming_cuts = [0.0] * len(control_points)
+    outgoing_cuts = [0.0] * len(control_points)
+    for index in range(1, len(control_points) - 1):
+        previous = control_points[index - 1]
+        corner = control_points[index]
+        following = control_points[index + 1]
+        incoming = (corner[0] - previous[0], corner[1] - previous[1])
+        outgoing = (following[0] - corner[0], following[1] - corner[1])
+        incoming_length = math.hypot(*incoming)
+        outgoing_length = math.hypot(*outgoing)
+        if incoming_length <= 1.0e-9 or outgoing_length <= 1.0e-9:
+            continue
+        turn_cosine = max(-1.0, min(1.0, (
+            incoming[0] * outgoing[0] + incoming[1] * outgoing[1]) /
+            (incoming_length * outgoing_length)))
+        if math.acos(turn_cosine) < math.radians(1.0):
+            continue
+        incoming_cuts[index] = corner_length
+        outgoing_cuts[index] = corner_length
+
+    # Adjacent rounded corners must leave a straight, forward-moving remainder
+    # on their shared control segment. Endpoint segments only have one cut.
+    for index in range(len(control_points) - 1):
+        segment_length = math.hypot(
+            control_points[index + 1][0] - control_points[index][0],
+            control_points[index + 1][1] - control_points[index][1])
+        used_length = outgoing_cuts[index] + incoming_cuts[index + 1]
+        maximum_used_length = 0.85 * segment_length
+        if used_length > maximum_used_length and used_length > 1.0e-9:
+            scale = maximum_used_length / used_length
+            outgoing_cuts[index] *= scale
+            incoming_cuts[index + 1] *= scale
+
+    shaped_points = [control_points[0]]
+    dense_spacing = max(0.001, min(0.005, 0.25 * spacing))
+    for index in range(1, len(control_points) - 1):
+        previous = control_points[index - 1]
+        corner = control_points[index]
+        following = control_points[index + 1]
+        incoming_vector = (
+            corner[0] - previous[0], corner[1] - previous[1])
+        outgoing_vector = (
+            following[0] - corner[0], following[1] - corner[1])
+        incoming_length = math.hypot(*incoming_vector)
+        outgoing_length = math.hypot(*outgoing_vector)
+        cut_in = incoming_cuts[index]
+        cut_out = outgoing_cuts[index]
+        if (incoming_length <= 1.0e-9 or outgoing_length <= 1.0e-9 or
+                cut_in <= 1.0e-9 or cut_out <= 1.0e-9):
+            shaped_points.append(corner)
+            continue
+
+        tangent_in = (
+            incoming_vector[0] / incoming_length,
+            incoming_vector[1] / incoming_length)
+        tangent_out = (
+            outgoing_vector[0] / outgoing_length,
+            outgoing_vector[1] / outgoing_length)
+        entry = (
+            corner[0] - cut_in * tangent_in[0],
+            corner[1] - cut_in * tangent_in[1])
+        exit_point = (
+            corner[0] + cut_out * tangent_out[0],
+            corner[1] + cut_out * tangent_out[1])
+        delta = (exit_point[0] - entry[0], exit_point[1] - entry[1])
+        derivative_scale = math.hypot(*delta)
+        velocity_start = (
+            derivative_scale * tangent_in[0],
+            derivative_scale * tangent_in[1])
+        velocity_finish = (
+            derivative_scale * tangent_out[0],
+            derivative_scale * tangent_out[1])
+        coefficient3 = tuple(
+            10.0 * delta[axis] - 6.0 * velocity_start[axis] -
+            4.0 * velocity_finish[axis] for axis in range(2))
+        coefficient4 = tuple(
+            -15.0 * delta[axis] + 8.0 * velocity_start[axis] +
+            7.0 * velocity_finish[axis] for axis in range(2))
+        coefficient5 = tuple(
+            6.0 * delta[axis] - 3.0 * velocity_start[axis] -
+            3.0 * velocity_finish[axis] for axis in range(2))
+
+        if math.hypot(
+                shaped_points[-1][0] - entry[0],
+                shaped_points[-1][1] - entry[1]) > 1.0e-9:
+            shaped_points.append(entry)
+        sample_count = max(
+            8, int(math.ceil((cut_in + cut_out) / dense_spacing)))
+        for sample_index in range(1, sample_count + 1):
+            t = sample_index / sample_count
+            point = tuple(
+                entry[axis] + velocity_start[axis] * t +
+                coefficient3[axis] * t ** 3 +
+                coefficient4[axis] * t ** 4 +
+                coefficient5[axis] * t ** 5
+                for axis in range(2))
+            shaped_points.append(point)
+
+    if math.hypot(
+            shaped_points[-1][0] - control_points[-1][0],
+            shaped_points[-1][1] - control_points[-1][1]) > 1.0e-9:
+        shaped_points.append(control_points[-1])
+    return resample_polyline(shaped_points, spacing)
 
 
 def render_map_preview(points, map_yaml, output):
@@ -190,6 +323,11 @@ def main():
         '--spacing', type=float, default=0.02,
         help='Maximum distance between adjacent Task1 waypoints in metres.')
     parser.add_argument(
+        '--corner-transition-length', type=float, default=0.35,
+        help=(
+            'Distance cut from each side of an interior corner before the '
+            'C2 quintic transition; 0 disables smoothing.'))
+    parser.add_argument(
         '--map-yaml', type=Path, default=DEFAULT_MAP_YAML,
         help='Occupancy-map YAML used as the PNG preview background.')
     parser.add_argument(
@@ -208,13 +346,23 @@ def main():
     args = parser.parse_args()
     if not math.isfinite(args.spacing) or args.spacing <= 0.0:
         raise ValueError('--spacing must be a positive finite number')
+    if (not math.isfinite(args.corner_transition_length) or
+            args.corner_transition_length < 0.0):
+        raise ValueError(
+            '--corner-transition-length must be a finite non-negative number')
 
-    points = interpolate_polyline(DEFAULT_CONTROL_POINTS, args.spacing)
+    points = smooth_control_polyline(
+        DEFAULT_CONTROL_POINTS, args.spacing,
+        args.corner_transition_length)
     output = Path(args.output).expanduser()
     output.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         'route_direction': 'task1',
         'control_points': [list(point) for point in DEFAULT_CONTROL_POINTS],
+        'smoothing': {
+            'method': 'quintic_hermite_c2',
+            'corner_transition_length': args.corner_transition_length,
+        },
         'waypoints': [
             {'name': f'task1_{index:03d}', 'x': round(x, 6), 'y': round(y, 6)}
             for index, (x, y) in enumerate(points)
@@ -232,7 +380,8 @@ def main():
         schematic_preview_output)
     print(
         f'Generated {len(points)} Task1 waypoints at {output} '
-        f'(spacing <= {args.spacing:.3f} m)\n'
+        f'(spacing <= {args.spacing:.3f} m, C2 corner transition '
+        f'{args.corner_transition_length:.3f} m)\n'
         f'Task1 map preview: {preview_output}\n'
         f'Task1 schematic preview: {schematic_preview_output}')
 

@@ -10,7 +10,13 @@ usb_cam_node:
     image_height: 1080          # Resolution height
     pixel_format: "mjpeg"         # Output format from camera
     io_method: "mmap"             # I/O method
-    
+    # 手动曝光：该相机的exposure_time_absolute单位为0.1ms，100即约10ms。
+    # camera.launch.py会在启动后把以下值写入相机实际支持的V4L2控制名称。
+    # 若画面偏暗，优先逐步增加gain（例如8、12），尽量不要延长曝光造成拖影。
+    autoexposure: false
+    exposure: 100
+    gain: 8
+
     # --- Frame & Calibration ---
     frame_id: "usb_cam"           # Frame ID
     camera_calibration_file_path: ""

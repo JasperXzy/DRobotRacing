@@ -12,7 +12,6 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <cstdio>
 #include <functional>
 #include <memory>
 #include <string>
@@ -169,11 +168,9 @@ public:
           if (!latest_match_score_valid_) {
             return;
           }
-          // 总系统在终端1以WARN级别启动本节点；直接写stdout，确保固定频率
-          // 的匹配度不会被ROS日志等级过滤，也不额外发布rosout消息。
-          std::printf(
-            "[lidar_location] match_score=%.3f\n", latest_match_score_);
-          std::fflush(stdout);
+          // Keep terminal I/O out of the 12 Hz scan callback. The launch file
+          // runs this node at WARN level, so WARN keeps the score visible.
+          RCLCPP_WARN(get_logger(), "match_score=%.3f", latest_match_score_);
         });
     }
 

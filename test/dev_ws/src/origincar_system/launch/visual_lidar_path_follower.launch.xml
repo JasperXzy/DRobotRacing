@@ -35,5 +35,8 @@
     pkg="origincar_system"
     exec="route_snapshot_renderer.py"
     name="route_snapshot_renderer"
-    output="screen"/>
+    output="screen">
+    <!-- 比赛过程仅记录JSON，停车后再离线绘制PNG。 -->
+    <param name="render_immediately" value="false"/>
+  </node>
 </launch>

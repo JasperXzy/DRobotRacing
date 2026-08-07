@@ -36,6 +36,8 @@ install(PROGRAMS
   scripts/generate_task1_waypoints.py
   scripts/open_foxglove.sh
   scripts/route_snapshot_renderer.py
+  scripts/runtime_metrics_viewer.py
+  scripts/runtime_performance_monitor.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

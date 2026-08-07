@@ -11,7 +11,6 @@ from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, Time
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
-from launch_xml.launch_description_sources import XMLLaunchDescriptionSource
 from launch_ros.actions import LifecycleNode, Node
 from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.substitutions import FindPackageShare
@@ -180,7 +179,7 @@ def generate_launch_description():
         executable='static_transform_publisher',
         name='base_link_to_laser',
         arguments=[
-            '--x', '0.0325',
+            '--x', '0.05',
             '--y', '0.0',
             '--z', '0.05',
             '--roll', '0.0',
@@ -337,15 +336,32 @@ def generate_launch_description():
         arguments=['--ros-args', '--log-level', 'warn'],
     )
 
-    foxglove_launch = IncludeLaunchDescription(
-        XMLLaunchDescriptionSource(
-            PathJoinSubstitution([
-                FindPackageShare('foxglove_bridge'),
-                'launch',
-                'foxglove_bridge_launch.xml',
-            ])
-        ),
+    # Foxglove remains available, but its normal connection chatter is written
+    # to the ROS launch log instead of the competition terminal.
+    foxglove_node = Node(
+        package='foxglove_bridge',
+        executable='foxglove_bridge',
+        name='foxglove_bridge',
+        output='log',
+        parameters=[{
+            'port': 8765,
+            'address': '0.0.0.0',
+        }],
+        arguments=['--ros-args', '--log-level', 'error'],
         condition=IfCondition(start_foxglove),
+    )
+
+    performance_monitor_node = Node(
+        package='origincar_system',
+        executable='runtime_performance_monitor.py',
+        name='runtime_performance_monitor',
+        output='screen',
+        parameters=[{
+            'summary_rate_hz': 1.0,
+            'match_record_rate_hz': 5.0,
+            'cmd_vel_record_rate_hz': 20.0,
+        }],
+        arguments=['--ros-args', '--log-level', 'error'],
     )
 
     return LaunchDescription([
@@ -356,7 +372,8 @@ def generate_launch_description():
         lidar_node,
         laser_static_tf,
         camera_launch,
-        foxglove_launch,
+        foxglove_node,
+        performance_monitor_node,
 
         # t=3s: odom fusion and required IMU static TFs.
         TimerAction(period=3.0, actions=[ekf_launch]),
