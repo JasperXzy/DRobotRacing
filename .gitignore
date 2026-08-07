@@ -65,3 +65,5 @@ costmap_converter/
 !test/dev_ws/src/origincar_system/map/task1_schematic_background.png
 
 test/zhy_car
+
+test/dev_ws/simulation_logs

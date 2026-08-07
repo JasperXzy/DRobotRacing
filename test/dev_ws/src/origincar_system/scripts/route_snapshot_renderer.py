@@ -57,8 +57,7 @@ class RouteSnapshotRenderer(Node):
 
         base, world_to_pixel, pixels_per_meter = self._load_map(
             Path(str(data['map_yaml'])), data.get('base_zone', {}),
-            data.get('parking_zone', {}),
-            data.get('final_pose'))
+            data.get('parking_zone', {}))
         original = data.get('original', [])
         baseline = data.get('baseline', [])
         red = data.get('red', [])
@@ -77,26 +76,29 @@ class RouteSnapshotRenderer(Node):
         except (TypeError, ValueError):
             orange_begin = len(green)
         orange_begin = max(0, min(orange_begin, len(green)))
-        task1_green = green[:orange_begin]
-        post_qr_orange = green[orange_begin:]
+        departure_green = green[:orange_begin]
+        post_departure_orange = green[orange_begin:]
         green_radius = float(data.get('green_radius', 0.5))
+        green_identity_radius = float(
+            data.get('green_identity_radius', green_radius))
         frozen_revision = max(0, int(data.get('frozen_revision', 0)))
         if event == 'task1_frozen':
             image = base.copy()
             self._draw_route(image, original, world_to_pixel, (75, 75, 75, 105), 3)
             self._draw_route(image, frozen, world_to_pixel, (15, 90, 215, 255), 6)
             self._draw_clusters(
-                image, task1_green, world_to_pixel, pixels_per_meter,
+                image, departure_green, world_to_pixel, pixels_per_meter,
                 green_radius, (20, 180, 65), True)
             self._draw_clusters(
-                image, post_qr_orange, world_to_pixel, pixels_per_meter,
+                image, post_departure_orange, world_to_pixel, pixels_per_meter,
                 green_radius, (245, 140, 20), True)
             self._draw_base_zone(image, data, world_to_pixel)
             self._draw_parking_zone(image, data, world_to_pixel)
             self._draw_title(
                 image,
-                f'Task1 frozen route / green pre-QR, orange post-QR '
-                f'(identity R={green_radius:.2f}m)')
+                f'Task1 frozen route / green at departure, orange learned after departure '
+                f'(mask/draw R={green_radius:.2f}m, '
+                f'association R={green_identity_radius:.2f}m)')
             output_path = output_dir / '01_Task1_frozen_route.png'
             self._save_png(image, output_path)
             self.get_logger().debug(f'已生成Task1冻结路线图: {output_path}')
@@ -107,10 +109,10 @@ class RouteSnapshotRenderer(Node):
             self._draw_route(image, original, world_to_pixel, (75, 75, 75, 105), 3)
             self._draw_route(image, frozen, world_to_pixel, (15, 90, 215, 255), 6)
             self._draw_clusters(
-                image, task1_green, world_to_pixel, pixels_per_meter,
+                image, departure_green, world_to_pixel, pixels_per_meter,
                 green_radius, (20, 180, 65), True)
             self._draw_clusters(
-                image, post_qr_orange, world_to_pixel, pixels_per_meter,
+                image, post_departure_orange, world_to_pixel, pixels_per_meter,
                 green_radius, (245, 140, 20), True)
             self._draw_base_zone(image, data, world_to_pixel)
             self._draw_parking_zone(image, data, world_to_pixel)
@@ -118,8 +120,9 @@ class RouteSnapshotRenderer(Node):
             self._draw_title(
                 image,
                 f'Final frozen route revision {frozen_revision} / '
-                f'green pre-QR, orange post-QR '
-                f'(identity R={green_radius:.2f}m)')
+                f'green at departure, orange learned after departure '
+                f'(mask/draw R={green_radius:.2f}m, '
+                f'association R={green_identity_radius:.2f}m)')
             output_path = (
                 output_dir / '03_Final_frozen_route.png'
                 if frozen_revision == 0 else
@@ -133,10 +136,10 @@ class RouteSnapshotRenderer(Node):
         self._draw_route(image, original, world_to_pixel, (75, 75, 75, 90), 3)
         self._draw_route(image, frozen, world_to_pixel, (15, 90, 215, 255), 6)
         self._draw_clusters(
-            image, task1_green, world_to_pixel, pixels_per_meter,
+            image, departure_green, world_to_pixel, pixels_per_meter,
             green_radius, (20, 180, 65), True)
         self._draw_clusters(
-            image, post_qr_orange, world_to_pixel, pixels_per_meter,
+            image, post_departure_orange, world_to_pixel, pixels_per_meter,
             green_radius, (245, 140, 20), True)
         if red:
             self._draw_clusters(
@@ -150,8 +153,11 @@ class RouteSnapshotRenderer(Node):
         self._draw_title(
             image,
             f'{"Task1" if task1_dynamic else "Final"} dynamic route / '
-            f'green pre-QR, orange post-QR, red records '
-            f'(history R={red_identity_radius:.2f}m)')
+            f'green at departure, orange learned after departure, '
+            f'red actual lidar avoidance '
+            f'(mask/draw R={green_radius:.2f}m, '
+            f'association R={green_identity_radius:.2f}m, '
+            f'red history R={red_identity_radius:.2f}m)')
         output_path = output_dir / (
             '02_Task1_dynamic_route.png'
             if task1_dynamic else '04_Final_dynamic_route.png')
@@ -159,7 +165,7 @@ class RouteSnapshotRenderer(Node):
         self.get_logger().debug(f'已生成动态路线图: {output_path}')
 
     @staticmethod
-    def _load_map(map_yaml_path, base_zone, parking_zone, final_pose):
+    def _load_map(map_yaml_path, base_zone, parking_zone):
         with map_yaml_path.open('r', encoding='utf-8') as stream:
             metadata = yaml.safe_load(stream)
         image_path = Path(str(metadata['image']))
@@ -204,21 +210,6 @@ class RouteSnapshotRenderer(Node):
                 raw_world_to_pixel(point) for point in (
                     (min_x, min_y), (max_x, min_y),
                     (max_x, max_y), (min_x, max_y)))
-
-        if isinstance(final_pose, list) and len(final_pose) >= 3:
-            pose_x = float(final_pose[0])
-            pose_y = float(final_pose[1])
-            pose_yaw = float(final_pose[2])
-            if all(math.isfinite(value) for value in (pose_x, pose_y, pose_yaw)):
-                marker_radius_m = 0.35
-                pose_bounds = [
-                    (pose_x - marker_radius_m, pose_y),
-                    (pose_x + marker_radius_m, pose_y),
-                    (pose_x, pose_y - marker_radius_m),
-                    (pose_x, pose_y + marker_radius_m),
-                ]
-                boundary_pixels.extend(
-                    raw_world_to_pixel(point) for point in pose_bounds)
 
         if boundary_pixels:
             xs = [point[0] for point in boundary_pixels]

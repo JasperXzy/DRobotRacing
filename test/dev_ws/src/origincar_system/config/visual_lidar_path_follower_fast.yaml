@@ -120,7 +120,7 @@ visual_lidar_path_follower:
     transition_dynamic_avoid_only: true  # [Task1→Task2过渡] true=A→C→B（含B）静态偏移清零，冻结绿点也交给实时雷达；到B后仅恢复绿圈掩码，不切换路线
     task2_waypoint_shift_target_clearance: 0.30  # [Task2静态偏移] Task2偏移路线越过点云最外沿的目标净距，单位m
     task3_waypoint_shift_target_clearance: 0.30  # [Task3静态偏移] Task3偏移路线越过点云最外沿的目标净距，单位m
-    task1_waypoint_shift_min_y: -0.10  # [Task1静态偏移] Task1偏移及局部重建后的所有路径点不得低于该map.y，单位m
+    task1_waypoint_shift_min_y: -0.20  # [Task1静态偏移] Task1偏移及局部重建后的所有路径点不得低于该map.y，单位m
     waypoint_shift_enable_local_rebuild: true  # [全阶段静态偏移] 圆弧内侧偏移反相时只重建最小连续危险点段；其余点保持直接偏移，B前基准圆滑区禁止偏移后重构
     waypoint_shift_rebuild_min_progress_ratio: 0.15  # [全阶段静态偏移] 1-kappa*d或离散前进比例不高于该值时提前触发重建
     waypoint_shift_rebuild_plateau_half_length: 0.08  # [全阶段静态偏移] 障碍对应点前后保持完整目标偏移量的半段长度，单位m
@@ -164,7 +164,7 @@ visual_lidar_path_follower:
     logic3_static_average_samples: 10  # [发车前静态绿色] 状态1后累计这么多个有效观测，生成最终平均绿色坐标
     logic3_static_loss_grace_seconds: 1.0  # [发车前静态绿色] 仅状态1后启用；判定失联后等待重捕的最长时间，单位s
     logic3_static_reacquire_radius: 0.20  # [发车前静态绿色] 状态1后失联ID相对固定锚点的严格重捕半径，单位m
-    logic3_old_cluster_radius: 0.50  # [静态绿色与动态红点] 发车冻结后绿色点云掩码与绘图半径；圈内点不触发雷达避障且不记红点，单位m
+    logic3_old_cluster_radius: 0.45  # [永久绿/橙点] 雷达掩码与绘图半径；正常静态阶段圈内点不触发雷达避障，单位m
 
     # --------------------- 静态+动态方案：可信发车与位姿锚定 -----------------------
     logic3_odom_topic: /chassis/odom  # [可信发车] 可信发车检测使用的底盘里程计话题
@@ -182,27 +182,25 @@ visual_lidar_path_follower:
     logic3_static_status_log_rate_hz: 2.0  # [发车前静态绿色] 发车前终端输出最终绿色点数量和map坐标的频率
 
     # ---------------------- 静态+动态方案：运行中地图过滤 --------------------------
-    logic3_runtime_restriction_map_topic: /logic3_runtime_restriction_map  # [运行中点云] 全图观测先过滤固定墙体/禁行区，再做绿点更新与红点记录
+    logic3_runtime_restriction_map_topic: /logic3_runtime_restriction_map  # [运行中点云] 全图观测和实时避障先过滤固定墙体/禁行区，再做永久点更新或动态控制
 
-    # ---------------------- 静态+动态方案：高置信度绿点更新 ------------------------
-    # 发车后全图障碍均可在高分时加入/修正永久绿点库；观测阶段不决定控制方式。
-    # Task1矩形、过渡段动态专用、Task2全静态和Task3高度分界只决定当前路线是否采用该绿点。
-    logic3_match_score_topic: /lidar_location/match_score  # [运行绿点] lidar_location发布的整帧地图匹配分数
-    logic3_runtime_green_update_enabled: true  # [运行绿点] 是否允许高分帧新增/修正永久绿点并重算路线
-    logic3_runtime_green_min_match_score: 0.70  # [运行绿点] 整帧分数达到该值才接收；0.70为现有日志得出的首轮实跑值
-    logic3_runtime_green_confirm_scans: 3  # [运行绿点] 同一障碍连续多少个高分雷达帧后才新增或修正
-    logic3_runtime_green_match_radius: 0.45  # [运行绿点] 候选和已有绿点的身份关联半径，单位m；必须小于0.50m避免合并相邻障碍
-    logic3_runtime_green_average_samples: 3  # [运行绿点] 用最近多少个连续高分观测确定新中心；不累计起点旧坐标
-    logic3_runtime_green_replan_min_distance: 0.02  # [运行绿点] 相对上次已规划中心累计移动达到该值才重算路线，单位m；绿点存储位置仍逐次更新
-    logic3_runtime_green_candidate_release_scans: 8  # [运行绿点] 临时跨帧轨迹失联多少帧后清除；已写入的永久绿点永不删除
+    # -------------------- 静态+动态方案：高置信度绿/橙点更新 ----------------------
+    # 发车后全图障碍均可在高分时加入/修正永久绿/橙点库；观测阶段不决定控制方式。
+    # Task1矩形、过渡段动态专用、Task2全静态和Task3高度分界只决定当前路线是否采用该永久点。
+    logic3_match_score_topic: /lidar_location/match_score  # [运行绿/橙点] lidar_location发布的整帧地图匹配分数
+    logic3_runtime_green_update_enabled: true  # [运行绿/橙点] 是否允许高分帧新增/修正永久点并重算路线
+    logic3_runtime_green_min_match_score: 0.70  # [运行绿/橙点] 整帧分数达到该值才接收；0.70为现有日志得出的首轮实跑值
+    logic3_runtime_green_confirm_scans: 3  # [运行绿/橙点] 同一障碍连续多少个高分雷达帧后才新增或修正
+    logic3_runtime_green_match_radius: 0.35  # [运行绿/橙点] 发车后候选、已有绿点和橙点共用的身份关联半径，单位m；小于0.45m掩码半径
+    logic3_runtime_green_average_samples: 3  # [运行绿/橙点] 用最近多少个连续高分观测确定新中心；不累计起点旧坐标
+    logic3_runtime_green_replan_min_distance: 0.05  # [运行绿/橙点] 已有永久点相对上次已规划中心移动达到该值才重算路线，单位m；存储位置仍逐次更新
+    logic3_runtime_green_candidate_release_scans: 8  # [运行绿/橙点] 临时跨帧轨迹失联多少帧后清除；已写入的永久点永不删除
 
-    # ---------------------- 静态+动态方案：圈外红点记录/绘图 -----------------------
-    logic3_runtime_roi_width: 0.0  # [运行红点] 红点历史map.x方向ROI总宽；<=0关闭，不影响全图绿点更新
-    logic3_runtime_roi_height: 0.0  # [运行红点] 红点历史map.y方向ROI总高；<=0关闭，不影响全图绿点更新
-    logic3_runtime_channel_min_y: -0.20  # [运行红点] 最终图片仅记录中心map.y不低于该值的圈外红簇；不影响绿点或实时雷达
-    logic3_runtime_cluster_match_radius: 0.35  # [运行红点] 圈外红簇跨帧身份关联半径；小于障碍最小间距的一半，单位m
-    logic3_runtime_average_samples: 5  # [运行红点] 已关联红簇最近多少帧做坐标平滑；不把运动轨迹累积成大点云
-    logic3_red_history_merge_radius: 0.65  # [运行红点] 红点历史身份半径与图片红圈半径；等于各阶段0.65m动态避障距离
+    # ---------------- 静态+动态方案：实际雷达避障红点记录/绘图 -------------------
+    logic3_runtime_roi_width: 0.0  # [实际避障红点] map.x方向ROI总宽；<=0关闭，不影响永久点更新或实时雷达
+    logic3_runtime_roi_height: 0.0  # [实际避障红点] map.y方向ROI总高；<=0关闭，不影响永久点更新或实时雷达
+    logic3_runtime_channel_min_y: -0.20  # [实际避障红点] 仅记录命中点map.y不低于该值的实际避障行为
+    logic3_red_history_merge_radius: 0.65  # [实际避障红点] 同一实际避障障碍的历史身份半径与图片红圈半径
     task1_qr_timeout_seconds: 1000.0  # [Task1] 大厅二维码识别超时时间；从可信发车确认时刻开始计时，超时后默认按顺时针路线继续，单位s
     task1_timeout_qr_text: "4399"  # [Task1] 计时超时或末点等待结束时缓存的兜底二维码；进入过渡并生成Final冻结路线后按真实二维码方式播报
     task1_endpoint_qr_wait_seconds: 0.30  # [Task1] Task1末点先停车等待二维码；仍无结果则默认顺时针
@@ -228,7 +226,7 @@ visual_lidar_path_follower:
 
     # 扫到二维码后持续武装到waypoint_channel的雷达条件倒车；数值来自雷达实跑的 1.15 profile
     qr_reverse_y_threshold: 0.10  # [Task1→Task2条件倒车] map.y达到该后退硬边界时优先退出，不受最小倒车距离锁定，单位m
-    qr_reverse_force_qr_y_threshold: 0.90  # [二维码Y阈值强制倒车] 真实QR识别或超时默认选路时base_link的map.y严格大于该值则强制倒车一轮，并占用总倒车次数
+    qr_reverse_force_qr_y_threshold: 0.78  # [二维码Y阈值强制倒车] 真实QR识别或超时默认选路时base_link的map.y严格大于该值则强制倒车一轮，并占用总倒车次数
     qr_reverse_x_limit: 4.30  # [Task1→Task2条件倒车] map.x达到该后退硬边界时优先退出，不受最小倒车距离锁定，单位m
     qr_reverse_min_distance: 0.30  # [Task1→Task2条件倒车] 普通轮前方清空后仍需达到；QR-Y强制轮忽略前方状态并以此为锁定目标；后方障碍或x/y硬保护可提前截断，单位m
     qr_reverse_max_distance: 0.80  # [Task1→Task2条件倒车] 单轮倒车净位移绝对上限；普通轮和QR-Y强制轮均生效，且程序保证不小于最小距离，单位m
@@ -272,7 +270,7 @@ visual_lidar_path_follower:
     return_brake_reverse_cycles: 20  # [Task3返航停车] 按control_frequency连续发送反向速度的周期数；50Hz下20周期约0.40s
     return_brake_zero_cycles: 20  # [Task3返航停车] 反向制动后连续发送零速度的周期数；50Hz下20周期约0.40s
     # 返程障碍按“障碍簇中心Y”分类；该高度只分类障碍，绝不裁剪上方障碍的偏移航点窗口
-    return_obstacle_split_y: 0.50  # [Task3返航停车] 中心Y严格大于此值走静态偏移；小于等于此值走实时channel雷达避障
+    return_obstacle_split_y: 0.50  # [Task3返航停车] 绿/橙永久点中心Y严格大于此值走静态偏移；小于等于此值走实时channel雷达避障
     # QR 选路；Task1不再使用visual_control视觉巡线
     route_direction: auto  # [Task1→Task2二维码选路] 未通过二维码指定时的路线方向；auto 使用航点文件设置
     enable_qr_direction_select: true  # [Task1→Task2二维码选路] 是否根据二维码内容选择顺逆时针路线
@@ -283,17 +281,16 @@ visual_lidar_path_follower:
     clockwise_qr_value: 1  # [Task1→Task2二维码选路] 不使用奇偶规则时代表顺时针的二维码值
     counterclockwise_qr_value: 2  # [Task1→Task2二维码选路] 不使用奇偶规则时代表逆时针的二维码值
 
-    # 独立图生文拍照点；运行时插入到最近路线段，可随 waypoint_shift 避障平移
-    enable_image_analysis_trigger: true  # [全阶段共享] 是否在环线中到达所选拍照点后触发一次图生文
-    image_capture_clockwise_x: 3.35  # [Task2图生文] 顺时针使用的右侧车辆拍照点map坐标x，单位m
-    image_capture_clockwise_y: 4.10  # [Task2图生文] 顺时针使用的右侧车辆拍照点map坐标y，单位m
-    image_capture_counterclockwise_x: 0.40  # [Task2图生文] 逆时针使用的左侧车辆拍照点map坐标x，单位m
-    image_capture_counterclockwise_y: 4.10  # [Task2图生文] 逆时针使用的左侧车辆拍照点map坐标y，单位m
-    image_capture_radius: 0.2  # [Task2图生文] 必须真正进入此距离才算到达，且路线进度不能跳过该点，单位m
-    image_capture_slow_distance: 0.5  # [Task2图生文] 距拍照点小于此距离开始限速，单位m
-    image_capture_slow_speed: 0.4  # [Task2图生文] 接近拍照点时的最大线速度，单位m/s
-    image_capture_angular_gain: 1.6  # [Task2图生文] 追拍照点时航向误差到下位机前轮目标转角的专用比例增益
-    image_capture_stop_time: 0.2  # [Task2图生文] 到点后先停车稳定这么久再拍照，单位s
-
-    image_capture_trigger_value: 8  # [Task2图生文] 发布到图生文触发话题的整数值
+    # Task2顶部直道图生文拍照走廊；不插点、不停车、不改变原路线追踪目标
+    enable_image_analysis_trigger: true  # [Task2图生文] 是否启用拍照走廊与离场单次识别
+    image_capture_clockwise_enter_x: 2.75  # [Task2图生文] 顺时针x增大到此值后进入走廊，单位m
+    image_capture_clockwise_exit_x: 3.25  # [Task2图生文] 顺时针x增大到此值后离开走廊并识别，单位m
+    image_capture_counterclockwise_enter_x: 0.90  # [Task2图生文] 逆时针x减小到此值后进入走廊，单位m
+    image_capture_counterclockwise_exit_x: 0.40  # [Task2图生文] 逆时针x减小到此值后离开走廊并识别，单位m
+    image_capture_corridor_min_y: 3.60  # [Task2图生文] 仅map.y不低于该值时允许进入走廊、减速和选图，单位m
+    image_capture_corridor_max_y: 4.60  # [Task2图生文] 仅map.y不高于该值时允许进入走廊、减速和选图，单位m
+    image_capture_corridor_speed: 0.8  # [Task2图生文] 走廊内最终线速度上限，避障控制也不能超过，单位m/s
+    image_capture_yaw_tolerance: 0.20  # [Task2图生文] 与水平目标航向的最大误差，单位rad（约11.5度）
+    image_capture_trigger_value: 8  # [Task2图生文] 航向合格时在内存中覆盖候选图的整数值
+    image_infer_trigger_value: 0  # [Task2图生文] 离开走廊后写入最终候选图并调用一次API的整数值
     image_analysis_trigger_topic: /sign4return  # [Task2图生文] 图像分析触发整数消息的发布话题

@@ -16,11 +16,13 @@ from std_msgs.msg import Int32, String
 
 
 DEFAULT_PROMPT = (
-    "只关注画面中央附近的医疗立牌或展示牌，不要背景信息。"
-    "识别立牌上描绘的医疗场景，只输出场景内容本身。"
-    "不要使用“立牌展示了”“画面中”“内容是”“这是一张”“可以看到”等开头。"
-    "必须包含可见细节，不要回答“无法识别”或“看不清”等模糊词语。"
-    "字数控制在25字以内。"
+    "识别画面中靠黄绿赛道边缘、通常竖立的矩形医疗立牌或展示牌，"
+    "它可能位于左侧、中间或右侧。忽略围栏、墙面、灯光、锥桶、赛道和其他背景。"
+    "根据牌面中最明显的人物、动作、姿势和医疗设备，判断最可能的医疗场景。"
+    "即使立牌偏斜、位于画面边缘、局部出框、占比较小或略微模糊，也要依据可见轮廓给出最可能的场景，不要解释不确定性。"
+    "只输出一条15至25字的中文场景描述，描述最主要的人物、动作、患者或设备。"
+    "禁止输出“找不到立牌”“未检测到立牌”“无法识别”“看不清”“图像模糊”“无法判断”“不确定”等失败说明。"
+    "禁止使用“立牌展示了”“画面中”“内容是”“这是一张”“可以看到”等开头。"
 )
 TASK_SESSION_PATTERN = re.compile(r'^\d{4}\.\d{2}\.\d{2}_\d{2}:\d{2}:\d{2}$')
 
@@ -35,6 +37,7 @@ class VlmTtsDemoNode(Node):
         self.declare_parameter('trigger_value', -1)
         self.declare_parameter('infer_trigger_value', 0)
         self.declare_parameter('infer_on_capture', False)
+        self.declare_parameter('defer_capture_write', False)
         self.declare_parameter('camera_topic', '/camera/image')
         self.declare_parameter('captured_image_file', 'vlm_tts_demo_capture.jpg')
         self.declare_parameter('source_capture_file', '')
@@ -66,6 +69,7 @@ class VlmTtsDemoNode(Node):
         self.trigger_value = self.get_parameter('trigger_value').value
         self.infer_trigger_value = self.get_parameter('infer_trigger_value').value
         self.infer_on_capture = self.get_parameter('infer_on_capture').value
+        self.defer_capture_write = self.get_parameter('defer_capture_write').value
         self.camera_topic = self.get_parameter('camera_topic').value
         self.captured_image_file = self.get_parameter('captured_image_file').value
         self.source_capture_file = self.get_parameter('source_capture_file').value
@@ -126,12 +130,14 @@ class VlmTtsDemoNode(Node):
         )
 
         self.get_logger().info(
-            'API VLM TTS ready: camera=%s, trigger=%s:%d capture, infer=%d, model=%s'
+            'API VLM TTS ready: camera=%s, trigger=%s:%d capture, infer=%d, '
+            'defer_write=%s, model=%s'
             % (
                 self.camera_topic,
                 self.trigger_topic,
                 self.trigger_value,
                 self.infer_trigger_value,
+                self.defer_capture_write,
                 self.api_model,
             )
         )
@@ -249,8 +255,15 @@ class VlmTtsDemoNode(Node):
     def _on_trigger(self, msg):
         if msg.data == self.trigger_value:
             self.get_logger().debug('Capture trigger received.')
-            if self._save_latest_image():
+            capture_succeeded = (
+                self._select_latest_image()
+                if self.defer_capture_write
+                else self._save_latest_image()
+            )
+            if capture_succeeded:
                 if self.infer_on_capture:
+                    if self.defer_capture_write:
+                        self._persist_selected_image()
                     self._start_api_inference()
                 return
 
@@ -262,6 +275,8 @@ class VlmTtsDemoNode(Node):
         if msg.data == self.infer_trigger_value:
             self.get_logger().debug('Infer trigger received.')
             self._publish_start_notice()
+            if self.defer_capture_write:
+                self._persist_selected_image()
             self._start_api_inference()
             return
 
@@ -274,10 +289,18 @@ class VlmTtsDemoNode(Node):
             if should_capture:
                 self._waiting_for_image = False
 
-        if should_capture and self._save_latest_image() and self.infer_on_capture:
-            self._start_api_inference()
+        if should_capture:
+            capture_succeeded = (
+                self._select_latest_image()
+                if self.defer_capture_write
+                else self._save_latest_image()
+            )
+            if capture_succeeded and self.infer_on_capture:
+                if self.defer_capture_write:
+                    self._persist_selected_image()
+                self._start_api_inference()
 
-    def _save_latest_image(self):
+    def _select_latest_image(self):
         with self._lock:
             image_data = self._latest_image_data
 
@@ -285,7 +308,23 @@ class VlmTtsDemoNode(Node):
             self.get_logger().warn('No camera frame available yet.')
             return False
 
-        output_directory = self._current_task_output_directory()
+        # 走廊内可以高频调用：这里只替换内存引用，不写盘、不请求API。
+        with self._lock:
+            self._captured_image_data = image_data
+            self._active_task_output_directory = None
+        return True
+
+    def _persist_selected_image(self):
+        with self._lock:
+            image_data = self._captured_image_data or self._latest_image_data
+            output_directory = self._active_task_output_directory
+
+        if not image_data:
+            self.get_logger().warn('No camera frame available yet.')
+            return False
+
+        if output_directory is None:
+            output_directory = self._current_task_output_directory()
         captured_image_path = self._output_path(
             self.captured_image_file, output_directory)
         self._write_image_file(captured_image_path, image_data)
@@ -298,6 +337,11 @@ class VlmTtsDemoNode(Node):
 
         self.get_logger().debug('Saved camera frame to %s.' % captured_image_path)
         return True
+
+    def _save_latest_image(self):
+        if not self._select_latest_image():
+            return False
+        return self._persist_selected_image()
 
     def _write_image_file(self, path, image_data):
         image_path = Path(path).expanduser()

@@ -20,6 +20,7 @@ def generate_launch_description():
     trigger_value = LaunchConfiguration('trigger_value')
     infer_trigger_value = LaunchConfiguration('infer_trigger_value')
     infer_on_capture = LaunchConfiguration('infer_on_capture')
+    defer_capture_write = LaunchConfiguration('defer_capture_write')
     camera_topic = LaunchConfiguration('camera_topic')
     launch_camera = LaunchConfiguration('launch_camera')
     launch_tts = LaunchConfiguration('launch_tts')
@@ -49,6 +50,11 @@ def generate_launch_description():
             'infer_on_capture',
             default_value='false',
             description='Call the vision API immediately after capture.',
+        ),
+        DeclareLaunchArgument(
+            'defer_capture_write',
+            default_value='false',
+            description='Keep capture candidates in memory and write only on infer.',
         ),
         DeclareLaunchArgument(
             'camera_topic',
@@ -190,6 +196,8 @@ def generate_launch_description():
                 'trigger_value': ParameterValue(trigger_value, value_type=int),
                 'infer_trigger_value': ParameterValue(infer_trigger_value, value_type=int),
                 'infer_on_capture': ParameterValue(infer_on_capture, value_type=bool),
+                'defer_capture_write': ParameterValue(
+                    defer_capture_write, value_type=bool),
                 'camera_topic': camera_topic,
                 'captured_image_file': captured_image_file,
                 'source_capture_file': source_capture_file,

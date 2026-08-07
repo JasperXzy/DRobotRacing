@@ -246,7 +246,8 @@ def generate_launch_description():
             'launch_tts': 'true',
             'camera_topic': vlm_camera_topic,
             'trigger_value': vlm_trigger_value,
-            'infer_on_capture': 'true',
+            'infer_on_capture': 'false',
+            'defer_capture_write': 'true',
         }.items(),
     )
 

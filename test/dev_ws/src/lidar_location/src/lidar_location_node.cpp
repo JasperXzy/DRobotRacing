@@ -118,7 +118,7 @@ public:
     min_match_score_ =
       std::clamp(declare_parameter<double>("min_match_score", 0.05), 0.0, 1.0);
     match_score_terminal_rate_ = std::max(
-      0.0, declare_parameter<double>("match_score_terminal_rate", 10.0));
+      0.0, declare_parameter<double>("match_score_terminal_rate", 1.0));
     min_laser_range_ =
       std::max(0.0, declare_parameter<double>("min_laser_range", 0.0));
     max_laser_range_ =
@@ -766,7 +766,7 @@ private:
   int max_beams_{180};
   int min_valid_beams_{20};
   double min_match_score_{0.05};
-  double match_score_terminal_rate_{10.0};
+  double match_score_terminal_rate_{1.0};
   double min_laser_range_{0.0};
   double max_laser_range_{0.0};
   double covariance_x_{0.05};

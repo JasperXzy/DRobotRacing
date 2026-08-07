@@ -29,7 +29,6 @@ struct Waypoint
   double x{0.0};
   double y{0.0};
   bool reverse{false};
-  bool image_capture{false};
   bool task3_start{false};
   double pass_radius{0.0};
   double reverse_pass_radius{0.0};
@@ -67,6 +66,13 @@ private:
     TRANSITION,
     TASK2,
     TASK3,
+    FINISHED
+  };
+
+  enum class ImageCaptureCorridorState
+  {
+    WAITING,
+    COLLECTING,
     FINISHED
   };
 
@@ -119,6 +125,7 @@ private:
     bool found{false};
     double range{0.0};
     double relative_angle{0.0};
+    Point2D map_point;
   };
 
   struct Logic3StaticObstacle
@@ -146,18 +153,6 @@ private:
     double sample_center_sum_y{0.0};
     std::vector<Point2D> sampled_points;
     Logic3StaticObstacle ready_obstacle;
-  };
-
-  // 发车后逻辑3使用独立的小半径身份跟踪，仅用于红点历史记录和绘图；
-  // 红簇不再参与航点偏移，实时避障统一交给雷达控制。
-  struct Logic3RuntimeClusterTrack
-  {
-    ScanPointCluster cluster;
-    Point2D latest_center;
-    bool confirmed{false};
-    int consecutive_hits{0};
-    int missing_count{0};
-    std::deque<ScanPointCluster> recent_samples;
   };
 
   // 发车后的高置信度绿色障碍候选。这个短期轨迹只负责跨帧确认；
@@ -260,7 +255,7 @@ private:
   bool transition_dynamic_avoid_only_{true};
   double task2_waypoint_shift_target_clearance_{0.40};
   double task3_waypoint_shift_target_clearance_{0.40};
-  double task1_waypoint_shift_min_y_{-0.10};
+  double task1_waypoint_shift_min_y_{-0.20};
   bool waypoint_shift_enable_local_rebuild_{true};
   double waypoint_shift_rebuild_min_progress_ratio_{0.15};
   double waypoint_shift_rebuild_plateau_half_length_{0.08};
@@ -298,18 +293,16 @@ private:
   double logic3_start_zone_min_y_{-0.05};
   double logic3_start_zone_max_y_{0.20};
   double logic3_start_zone_guard_margin_{0.12};
-  double logic3_old_cluster_radius_{0.50};
+  double logic3_old_cluster_radius_{0.45};
   double logic3_runtime_roi_width_{3.75};
   double logic3_runtime_roi_height_{3.75};
   double logic3_runtime_channel_min_y_{-0.20};
-  double logic3_runtime_cluster_match_radius_{0.35};
-  int logic3_runtime_average_samples_{5};
   bool logic3_runtime_green_update_enabled_{true};
   double logic3_runtime_green_min_match_score_{0.70};
   int logic3_runtime_green_confirm_scans_{3};
-  double logic3_runtime_green_match_radius_{0.45};
+  double logic3_runtime_green_match_radius_{0.35};
   int logic3_runtime_green_average_samples_{3};
-  double logic3_runtime_green_replan_min_distance_{0.02};
+  double logic3_runtime_green_replan_min_distance_{0.05};
   int logic3_runtime_green_candidate_release_scans_{8};
   int logic3_static_cluster_min_points_{1};
   int logic3_static_restriction_inflation_cells_{0};
@@ -357,7 +350,7 @@ private:
   // 前后检测区均为“扇形与矩形走廊的交集”。PENDING表示机制仍武装，
   // BACKING_RIGHT只表示当前这一轮正在倒车。后方命中与x/y边界同为硬保护。
   double qr_reverse_y_threshold_{0.10};
-  double qr_reverse_force_qr_y_threshold_{0.90};
+  double qr_reverse_force_qr_y_threshold_{0.78};
   double qr_reverse_x_limit_{4.30};
   double qr_reverse_min_distance_{0.30};
   double qr_reverse_max_distance_{0.80};
@@ -432,16 +425,16 @@ private:
   bool suspend_visual_control_on_qr_{true};
   bool resume_visual_control_on_finish_{true};
   bool enable_image_analysis_trigger_{true};
-  double image_capture_clockwise_x_{3.50};
-  double image_capture_clockwise_y_{4.05};
-  double image_capture_counterclockwise_x_{0.25};
-  double image_capture_counterclockwise_y_{4.05};
-  double image_capture_radius_{0.10};
-  double image_capture_slow_distance_{0.50};
-  double image_capture_slow_speed_{0.40};
-  double image_capture_angular_gain_{2.0};
-  double image_capture_stop_time_{0.30};
+  double image_capture_clockwise_enter_x_{2.70};
+  double image_capture_clockwise_exit_x_{3.25};
+  double image_capture_counterclockwise_enter_x_{1.00};
+  double image_capture_counterclockwise_exit_x_{0.50};
+  double image_capture_corridor_min_y_{3.60};
+  double image_capture_corridor_max_y_{4.60};
+  double image_capture_corridor_speed_{0.40};
+  double image_capture_yaw_tolerance_{0.20};
   int image_capture_trigger_value_{8};
+  int image_infer_trigger_value_{0};
   std::string image_analysis_trigger_topic_{"/person_trigger"};
 
   // 运行状态
@@ -464,11 +457,9 @@ private:
   ControlState next_control_state_{ControlState::PATH_FOLLOWING};
   bool qr_route_selected_{false};
   bool yolo_shutdown_requested_{false};
-  bool image_analysis_triggered_{false};
-  bool has_image_capture_waypoint_{false};
-  bool image_capture_stopping_{false};
-  std::size_t image_capture_waypoint_index_{0};
-  std::chrono::steady_clock::time_point image_capture_stop_started_at_;
+  ImageCaptureCorridorState image_capture_corridor_state_{
+    ImageCaptureCorridorState::WAITING};
+  bool image_capture_candidate_selected_{false};
   bool publish_stop_on_exit_{true};
   bool task3_route_available_{false};
   bool task3_route_active_{false};
@@ -515,9 +506,9 @@ private:
   ai_msgs::msg::PerceptionTargets::ConstSharedPtr latest_return_visual_targets_;
   std::chrono::steady_clock::time_point latest_return_visual_received_at_;
 
-  // 逻辑3的可信运动、稳定规划位姿、运行红点和绘图状态。
+  // 逻辑3的可信运动、稳定规划位姿、实际避障红点和绘图状态。
   std::vector<Point2D> logic3_red_cluster_history_;
-  // 全局红簇历史继续跨阶段执行身份去重；04图仅绘制Task1正式结束后
+  // 实际雷达避障身份继续跨阶段去重；04图仅绘制Task1正式结束后
   // 追加的元素，避免与02图中的Task1红圈重影。
   std::size_t logic3_final_red_history_begin_index_{0};
   std::vector<Waypoint> task1_original_route_;
@@ -570,13 +561,12 @@ private:
   // 仅逻辑3使用：静止阶段持续快照，可信发车后冻结绿色簇和最终路线。
   std::vector<Logic3StaticClusterTrack> logic3_static_cluster_tracks_;
   std::deque<double> logic3_static_scan_times_;
-  std::vector<Logic3RuntimeClusterTrack> logic3_runtime_cluster_tracks_;
   std::vector<Logic3RuntimeGreenTrack> logic3_runtime_green_tracks_;
   Logic3PlanningSnapshot logic3_motion_pending_snapshot_;
   Logic3PlanningSnapshot logic3_last_complete_ready_snapshot_;
   std::vector<ScanPointCluster> logic3_green_clusters_;
-  // [0, orange_begin)保持Task1冻结/二维码前的绿色身份；边界之后新增的
-  // 永久身份只在快照中画成橙色，规划仍统一使用logic3_green_clusters_。
+  // [0, orange_begin)保持可信发车时冻结的绿色身份；发车后由高分跨帧
+  // 逻辑新增的永久身份画成橙色，规划仍统一使用logic3_green_clusters_。
   std::size_t logic3_orange_green_begin_index_{0};
   bool logic3_orange_green_boundary_locked_{false};
   // 仅用于累计判断路线是否需要重算；长度与绿色集合同步，绿色不会删除。
@@ -660,10 +650,9 @@ private:
   double waypoint_pass_radius(std::size_t index) const;
   bool is_segment_reverse(std::size_t segment_index) const;
   bool is_precision_waypoint(std::size_t index) const;
-  void insert_image_capture_waypoint(const std::string & direction);
-  bool handle_image_capture_stop(const RobotPose & pose);
-  void apply_image_capture_speed_limit(
-    const RobotPose & pose, geometry_msgs::msg::Twist & cmd) const;
+  void reset_image_capture_corridor();
+  bool update_image_capture_corridor(const RobotPose & pose);
+  void apply_image_capture_speed_limit(geometry_msgs::msg::Twist & cmd) const;
   void apply_turn_speed_limit(geometry_msgs::msg::Twist & cmd) const;
 
   geometry_msgs::msg::Twist compute_tracking_command(
@@ -711,12 +700,12 @@ private:
   void reset_waypoint_shift_state();
   void update_waypoint_shifts(
     const RobotPose & robot_pose, std::size_t target_waypoint_index);
-  void update_logic3_runtime_red_tracks(
-    const std::vector<ScanPointCluster> & clusters);
   bool update_logic3_runtime_green_tracks(
     const std::vector<ScanPointCluster> & clusters);
   void rebuild_logic3_route_from_green_clusters(const char * reason);
-  void record_logic3_red_cluster(const ScanPointCluster & cluster);
+  void record_logic3_lidar_avoidance_obstacle(
+    const LidarObstacle & obstacle, const RobotPose & scan_to_base,
+    const RobotPose & scan_to_map);
   void update_logic3_static_cluster_tracks(
     const std::vector<ScanPointCluster> & clusters, const RobotPose & robot_pose);
   double logic3_static_stability_radius_for_range(double obstacle_range) const;
@@ -739,7 +728,6 @@ private:
   std::string direction_from_qr(const std::string & data) const;
   bool complete_task1_and_select_route(
     const std::string & direction, const char * reason, bool from_qr = false);
-  void lock_logic3_orange_green_boundary(const char * reason);
   void publish_pending_qr_speech();
   bool switch_route(const std::string & direction);
   double estimate_channel_waypoint_spacing(
@@ -749,7 +737,7 @@ private:
   void suspend_visual_control();
   void shutdown_yolo_detector(const char * reason);
   void resume_visual_control();
-  void publish_image_analysis_trigger();
+  void publish_image_analysis_trigger(int value, const char * reason);
 
   std::vector<Waypoint> load_waypoints(
     const std::string & waypoints_file, const std::string & requested_direction,

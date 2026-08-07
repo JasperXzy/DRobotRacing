@@ -36,7 +36,7 @@ ros2 launch origincar_system test_bringup_lidar_location.launch.py \
 
 `lidar_location` 默认从
 `src/origincar_system/config/localization/lidar_location.yaml` 中的
-`initial_pose` 启动，目前为 `x=0.0, y=0.0, yaw=0.7853981634 rad（45°）`。如果车辆实际起点不同，
+`initial_pose` 启动，目前为 `x=0.0, y=0.0, yaw=0.0`。如果车辆实际起点不同，
 请在 Foxglove/RViz 中通过 `/initialpose` 发布正确的初始位姿。
 
 `/amcl_pose` 是为兼容原有下游节点而保留的位姿话题名称，此方案不会启动 AMCL。

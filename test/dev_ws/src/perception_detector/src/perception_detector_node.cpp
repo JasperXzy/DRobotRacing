@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
 #include <functional>
 #include <limits>
 #include <memory>
@@ -82,7 +83,12 @@ public:
       10,
       std::bind(&PerceptionDetectorNode::signCallback, this, std::placeholders::_1));
 
-    fps_window_start_ = now();
+    last_fps_report_time_ = std::chrono::steady_clock::now();
+    if (log_fps_) {
+      fps_timer_ = create_wall_timer(
+        std::chrono::seconds(1),
+        std::bind(&PerceptionDetectorNode::reportFps, this));
+    }
     RCLCPP_INFO(
       get_logger(),
       "perception_detector started: input=%s, detections=%s, qr_roi=%s, model=%s",
@@ -272,16 +278,13 @@ private:
 
     ++processed_frames_;
     publishDetections(detections, stamp);
-    if (qr_roi_publisher_.publishBestRoi(
-        nv12_data,
-        src_width,
-        src_height,
-        detections,
-        stamp,
-        camera_frame_id_))
-    {
-      ++roi_frames_;
-    }
+    qr_roi_publisher_.publishBestRoi(
+      nv12_data,
+      src_width,
+      src_height,
+      detections,
+      stamp,
+      camera_frame_id_);
 
     if (log_timing_) {
       RCLCPP_INFO_THROTTLE(
@@ -295,8 +298,6 @@ private:
         timing.total_ms,
         detections.size());
     }
-
-    maybeLogFps();
   }
 
   void publishDetections(
@@ -330,34 +331,28 @@ private:
     detection_pub_->publish(std::move(msg));
   }
 
-  void maybeLogFps()
+  void reportFps()
   {
-    if (!log_fps_) {
-      return;
-    }
-
-    const auto current_time = now();
-    const double elapsed = (current_time - fps_window_start_).seconds();
-    if (elapsed < 1.0) {
+    const auto current_time = std::chrono::steady_clock::now();
+    const double elapsed = std::chrono::duration<double>(
+      current_time - last_fps_report_time_).count();
+    if (elapsed <= 0.0) {
       return;
     }
 
     const double processed_fps = processed_frames_ / elapsed;
-    const double roi_fps = roi_frames_ / elapsed;
     last_output_fps_ = static_cast<int16_t>(std::clamp(
       static_cast<int>(std::round(processed_fps)),
       0,
       static_cast<int>(std::numeric_limits<int16_t>::max())));
 
-    RCLCPP_INFO(
-      get_logger(),
-      "detector fps: processed=%.1f qr_roi=%.1f",
-      processed_fps,
-      roi_fps);
+    // Fast启动把本节点日志等级设为WARN；直接写stdout，保证实际完成的
+    // YOLO推理帧率每秒可见，又不会将正常诊断伪装成WARN写入rosout。
+    std::printf("[perception_detector] yolo_scan_fps=%.1f\n", processed_fps);
+    std::fflush(stdout);
 
     processed_frames_ = 0;
-    roi_frames_ = 0;
-    fps_window_start_ = current_time;
+    last_fps_report_time_ = current_time;
   }
 
   std::string input_topic_;
@@ -373,8 +368,7 @@ private:
   int shutdown_value_ = 10;
   int16_t last_output_fps_ = -1;
   int processed_frames_ = 0;
-  int roi_frames_ = 0;
-  rclcpp::Time fps_window_start_;
+  std::chrono::steady_clock::time_point last_fps_report_time_;
   std::atomic<bool> inference_enabled_{true};
   std::atomic<bool> shutdown_requested_{false};
 
@@ -385,6 +379,7 @@ private:
 
   rclcpp::Subscription<hbm_img_msgs::msg::HbmMsg1080P>::SharedPtr image_sub_;
   rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr sign_sub_;
+  rclcpp::TimerBase::SharedPtr fps_timer_;
   rclcpp::Publisher<ai_msgs::msg::PerceptionTargets>::SharedPtr detection_pub_;
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr qr_roi_pub_;
 };
