@@ -99,9 +99,9 @@ public:
   }
 
 private:
-  void signCallback(const std_msgs::msg::Int32::SharedPtr msg)
+  void signCallback(const std_msgs::msg::Int32 & msg)
   {
-    if (msg->data != shutdown_value_ || shutdown_requested_.exchange(true)) {
+    if (msg.data != shutdown_value_ || shutdown_requested_.exchange(true)) {
       return;
     }
 
@@ -212,28 +212,28 @@ private:
     }
   }
 
-  void imageCallback(const hbm_img_msgs::msg::HbmMsg1080P::SharedPtr msg)
+  void imageCallback(const hbm_img_msgs::msg::HbmMsg1080P & msg)
   {
     if (!inference_enabled_.load()) {
       return;
     }
 
-    const int src_width = source_width_ > 0 ? source_width_ : static_cast<int>(msg->width);
-    const int src_height = source_height_ > 0 ? source_height_ : static_cast<int>(msg->height);
-    if (msg->step > 0U && msg->step != static_cast<uint32_t>(src_width)) {
+    const int src_width = source_width_ > 0 ? source_width_ : static_cast<int>(msg.width);
+    const int src_height = source_height_ > 0 ? source_height_ : static_cast<int>(msg.height);
+    if (msg.step > 0U && msg.step != static_cast<uint32_t>(src_width)) {
       RCLCPP_WARN_THROTTLE(
         get_logger(),
         *get_clock(),
         3000,
         "drop frame: unsupported NV12 row step=%u for source width=%d",
-        msg->step,
+        msg.step,
         src_width);
       return;
     }
 
     const auto expected_size = expectedNv12Size(src_width, src_height);
-    const auto available_size = msg->data_size > 0U ?
-      static_cast<std::size_t>(msg->data_size) : msg->data.size();
+    const auto available_size = msg.data_size > 0U ?
+      static_cast<std::size_t>(msg.data_size) : msg.data.size();
 
     if (expected_size == 0U || available_size < expected_size) {
       RCLCPP_WARN_THROTTLE(
@@ -248,7 +248,7 @@ private:
       return;
     }
 
-    builtin_interfaces::msg::Time stamp = msg->time_stamp;
+    builtin_interfaces::msg::Time stamp = msg.time_stamp;
     if (stamp.sec == 0 && stamp.nanosec == 0U) {
       stamp = timeMsgFromRclTime(now());
     }
@@ -257,7 +257,7 @@ private:
     PreprocessInfo preprocess_info;
     DetectorTiming timing;
     std::string error;
-    const uint8_t * nv12_data = msg->data.data();
+    const uint8_t * nv12_data = msg.data.data();
     if (!detector_.infer(
         nv12_data,
         src_width,

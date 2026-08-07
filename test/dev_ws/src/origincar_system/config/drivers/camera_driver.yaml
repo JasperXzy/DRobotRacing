@@ -10,31 +10,29 @@ usb_cam_node:
     image_height: 1080          # Resolution height
     pixel_format: "mjpeg"         # Output format from camera
     io_method: "mmap"             # I/O method
-    # 手动曝光：该相机的exposure_time_absolute单位为0.1ms，100即约10ms。
-    # camera.launch.py会在启动后把以下值写入相机实际支持的V4L2控制名称。
-    # 若画面偏暗，优先逐步增加gain（例如8、12），尽量不要延长曝光造成拖影。
-    autoexposure: false
-    exposure: 100
-    gain: 8
-
+    
     # --- Frame & Calibration ---
     frame_id: "usb_cam"           # Frame ID
     camera_calibration_file_path: ""
-    zero_copy: false              # Zero copy
+    # Publish the camera MJPEG through HbmMsg1080P loaned messages.  At 1080p
+    # this avoids serializing/copying the fixed 6.2 MB hbmem message per frame.
+    zero_copy: true
 
 # MJPEG -> NV12 Codec Configuration
 usb_cam_nv12_codec_node:
   ros__parameters:
     # --- Codec Settings ---
     channel: 0                # Channel ID
-    in_mode: "ros"            # Input from ROS topic
+    in_mode: "shared_mem"     # Input through Fast DDS data-sharing
     in_format: "jpeg"         # Input format
     out_mode: "shared_mem"    # Output to Shared Memory
     out_format: "nv12"        # Output format
+    input_framerate: 30
+    output_framerate: -1       # Keep every frame for YOLO
     
     # --- Topics ---
-    sub_topic: "/camera/image"       # Subscribe to raw camera image
-    pub_topic: "/camera/image_hbmem" # Publish shared memory handle
+    sub_topic: "/camera/image_mjpeg_hbmem" # Zero-copy MJPEG from USB camera
+    pub_topic: "/camera/image_hbmem"       # Zero-copy NV12 for YOLO
 
 # NV12 -> JPEG Codec Configuration
 usb_cam_preview_codec_node:
@@ -45,8 +43,10 @@ usb_cam_preview_codec_node:
     in_format: "nv12"         # Input format
     out_mode: "ros"           # Output to ROS topic
     out_format: "jpeg"        # Output format
-    jpg_quality: 15.0         # Compress ratio
+    jpg_quality: 70.0          # Good enough for QR snapshots and VLM
+    input_framerate: 30
+    output_framerate: 10       # Auxiliary stream; do not burden YOLO at 30 FPS
 
     # --- Topics ---
-    sub_topic: "/camera/image_hbmem"      # Subscribe to raw camera image
-    pub_topic: "/camera/image_compressed" # Publish compressed image
+    sub_topic: "/camera/image_hbmem" # Zero-copy NV12 input
+    pub_topic: "/camera/image"       # CompressedImage compatibility topic

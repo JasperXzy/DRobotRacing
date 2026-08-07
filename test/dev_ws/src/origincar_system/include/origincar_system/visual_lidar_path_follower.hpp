@@ -73,8 +73,6 @@ private:
   {
     WAITING,
     COLLECTING,
-    STOPPING,
-    CAPTURED,
     FINISHED
   };
 
@@ -235,28 +233,6 @@ private:
   double route_projection_max_distance_{1.00};
   double segment_advance_t_{0.85};
 
-  // 正向路线跟踪器可独立切换；倒车和特殊机动始终保留原控制逻辑。
-  std::string tracking_controller_mode_{"legacy_lookahead"};
-  double path_pid_yaw_scale_left_{0.675};
-  double path_pid_yaw_scale_right_{0.675};
-  double path_pid_heading_kp_{1.50};
-  double path_pid_lateral_kp_{1.00};
-  double path_pid_lateral_ki_{0.00};
-  double path_pid_lateral_kd_{0.00};
-  double path_pid_integral_limit_{0.25};
-  double path_pid_derivative_filter_alpha_{0.20};
-  double path_pid_preview_base_{0.10};
-  double path_pid_preview_time_{0.15};
-  double path_pid_preview_max_{0.35};
-  double path_pid_curvature_window_length_{0.16};
-  double path_pid_max_curvature_{2.857};
-  double path_pid_max_lateral_accel_{1.50};
-  double path_pid_max_accel_{0.60};
-  double path_pid_max_decel_{1.00};
-  double path_pid_min_tracking_speed_{0.25};
-  double path_pid_absolute_angular_limit_{4.50};
-  double path_pid_max_angular_rate_{0.0};
-
   double turn_angular_gain_{1.4};
   bool enable_turn_speed_slowdown_{true};
   double turn_speed_full_steering_angle_{0.55};
@@ -280,17 +256,6 @@ private:
   double task2_waypoint_shift_target_clearance_{0.40};
   double task3_waypoint_shift_target_clearance_{0.40};
   double task1_waypoint_shift_min_y_{-0.20};
-  // legacy_offset完整保留旧逐点偏移；circle_envelope把已确认障碍窗口
-  // 转换成C2平滑的圆外包络，两种路线算法共用点云确认与选边状态机。
-  std::string route_deformation_mode_{"legacy_offset"};
-  double circle_envelope_target_clearance_{0.30};
-  double circle_envelope_numeric_margin_{0.01};
-  double circle_envelope_min_transition_length_{0.60};
-  double circle_envelope_max_transition_length_{1.50};
-  double circle_envelope_extension_step_{0.05};
-  double circle_envelope_merge_gap_{0.10};
-  double circle_envelope_max_curvature_{2.40};
-  int circle_envelope_smoothing_iterations_{8};
   bool waypoint_shift_enable_local_rebuild_{true};
   double waypoint_shift_rebuild_min_progress_ratio_{0.15};
   double waypoint_shift_rebuild_plateau_half_length_{0.08};
@@ -335,9 +300,9 @@ private:
   bool logic3_runtime_green_update_enabled_{true};
   double logic3_runtime_green_min_match_score_{0.70};
   int logic3_runtime_green_confirm_scans_{3};
-  double logic3_runtime_green_match_radius_{0.45};
+  double logic3_runtime_green_match_radius_{0.35};
   int logic3_runtime_green_average_samples_{3};
-  double logic3_runtime_green_replan_min_distance_{0.02};
+  double logic3_runtime_green_replan_min_distance_{0.05};
   int logic3_runtime_green_candidate_release_scans_{8};
   int logic3_static_cluster_min_points_{1};
   int logic3_static_restriction_inflation_cells_{0};
@@ -372,9 +337,9 @@ private:
 
   double task1_qr_timeout_seconds_{10.0};
   std::string task1_timeout_qr_text_{"4399"};
-  double task1_endpoint_qr_wait_seconds_{0.80};
+  double task1_endpoint_qr_wait_seconds_{0.30};
   double task1_endpoint_arrival_radius_{0.18};
-  double task1_transition_min_x_{3.50};
+  double task1_transition_min_x_{1.80};
   StageControlProfile task1_profile_;
   StageControlProfile transition_profile_;
   StageControlProfile task2_profile_;
@@ -385,7 +350,7 @@ private:
   // 前后检测区均为“扇形与矩形走廊的交集”。PENDING表示机制仍武装，
   // BACKING_RIGHT只表示当前这一轮正在倒车。后方命中与x/y边界同为硬保护。
   double qr_reverse_y_threshold_{0.10};
-  double qr_reverse_force_qr_x_threshold_{3.50};
+  double qr_reverse_force_qr_y_threshold_{0.78};
   double qr_reverse_x_limit_{4.30};
   double qr_reverse_min_distance_{0.30};
   double qr_reverse_max_distance_{0.80};
@@ -396,10 +361,7 @@ private:
   double qr_reverse_rear_fov_deg_{120.0};
   double qr_reverse_rear_corridor_half_width_{0.35};
   double qr_reverse_linear_speed_{0.60};
-  double qr_reverse_angular_speed_{0.50};
-  double qr_reverse_angular_speed_max_{0.90};
-  double qr_reverse_angular_ramp_start_x_{3.00};
-  double qr_reverse_angular_ramp_end_x_{4.50};
+  double qr_reverse_angular_speed_{3.0};
   int qr_reverse_max_count_{0};
 
   // A→C→B进场坐标、结束判定与入口基准路线圆滑；
@@ -460,8 +422,6 @@ private:
 
   bool enable_qr_direction_select_{true};
   bool use_qr_parity_direction_{true};
-  int qr_code_height_threshold_{54};
-  double qr_code_speed_limit_{0.20};
   bool suspend_visual_control_on_qr_{true};
   bool resume_visual_control_on_finish_{true};
   bool enable_image_analysis_trigger_{true};
@@ -471,7 +431,7 @@ private:
   double image_capture_counterclockwise_exit_x_{0.50};
   double image_capture_corridor_min_y_{3.60};
   double image_capture_corridor_max_y_{4.60};
-  double image_capture_stop_duration_{0.20};
+  double image_capture_corridor_speed_{0.40};
   double image_capture_yaw_tolerance_{0.20};
   int image_capture_trigger_value_{8};
   int image_infer_trigger_value_{0};
@@ -488,8 +448,6 @@ private:
   std::vector<int> waypoint_shift_dynamic_directions_;
   std::vector<Point2D> waypoint_shift_world_directions_;
   std::vector<std::size_t> waypoint_shift_source_indices_;
-  std::vector<Point2D> waypoint_shift_obstacle_centers_;
-  std::vector<double> waypoint_shift_forbidden_radii_;
   std::size_t current_index_{0};
   bool first_waypoint_reached_{false};
   bool waiting_for_qr_start_{false};
@@ -498,12 +456,10 @@ private:
   ControlState control_state_{ControlState::PATH_FOLLOWING};
   ControlState next_control_state_{ControlState::PATH_FOLLOWING};
   bool qr_route_selected_{false};
-  bool valid_qr_received_{false};
   bool yolo_shutdown_requested_{false};
   ImageCaptureCorridorState image_capture_corridor_state_{
     ImageCaptureCorridorState::WAITING};
   bool image_capture_candidate_selected_{false};
-  std::chrono::steady_clock::time_point image_capture_stop_started_at_{};
   bool publish_stop_on_exit_{true};
   bool task3_route_available_{false};
   bool task3_route_active_{false};
@@ -573,12 +529,12 @@ private:
   bool return_stop_zone_entry_active_{false};
   std::chrono::steady_clock::time_point return_stop_zone_entered_at_;
   bool qr_reverse_waiting_for_inputs_{false};
-  bool qr_reverse_x_force_evaluated_{false};
-  bool qr_reverse_x_force_pending_{false};
-  double qr_reverse_force_source_x_{0.0};
+  bool qr_reverse_y_force_evaluated_{false};
+  bool qr_reverse_y_force_pending_{false};
+  double qr_reverse_force_source_y_{0.0};
   std::string qr_reverse_force_source_label_;
   std::string qr_reverse_active_trigger_reason_;
-  bool qr_reverse_active_x_force_{false};
+  bool qr_reverse_active_y_force_{false};
   Point2D latest_chassis_odom_position_;
   Point2D qr_reverse_start_position_;
   bool latest_chassis_odom_position_valid_{false};
@@ -615,13 +571,9 @@ private:
   bool logic3_orange_green_boundary_locked_{false};
   // 仅用于累计判断路线是否需要重算；长度与绿色集合同步，绿色不会删除。
   std::vector<Point2D> logic3_green_last_planned_centers_;
-  // smac_pid实时雷达只屏蔽已经进入当前路线、且路线通过禁入圆校验的障碍。
-  std::vector<Point2D> logic3_route_applied_obstacle_centers_;
   std::vector<double> logic3_frozen_base_offsets_;
   std::vector<Point2D> logic3_frozen_base_shift_directions_;
   std::vector<std::size_t> logic3_frozen_base_source_indices_;
-  std::vector<Point2D> logic3_frozen_base_obstacle_centers_;
-  std::vector<double> logic3_frozen_base_forbidden_radii_;
   bool logic3_replay_frozen_clusters_{false};
   bool logic3_force_full_route_{false};
   bool logic3_force_confirm_{false};
@@ -634,14 +586,6 @@ private:
   bool logic3_static_status_log_started_{false};
   double logic3_last_static_status_log_seconds_{0.0};
 
-  // smac_pid跟踪器的跨周期状态；路线/阶段/倒车切换时统一清零。
-  bool path_pid_state_valid_{false};
-  double path_pid_lateral_integral_{0.0};
-  double path_pid_last_lateral_error_{0.0};
-  double path_pid_filtered_lateral_derivative_{0.0};
-  double path_pid_last_linear_command_{0.0};
-  double path_pid_last_angular_command_{0.0};
-
   // ROS 通信对象
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_;
@@ -649,7 +593,6 @@ private:
   rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr image_analysis_trigger_pub_;
   rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr visual_control_suspend_pub_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr tts_pub_;
-  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr state_event_pub_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr logic3_snapshot_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr debug_marker_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr debug_route_marker_pub_;
@@ -686,7 +629,6 @@ private:
   bool return_visual_detection_is_fresh() const;
   int scale_return_visual_x(int x) const;
   int scale_return_visual_y(int y) const;
-  int return_visual_target_height(const ai_msgs::msg::Target & target) const;
   int return_visual_target_center_x(const ai_msgs::msg::Target & target) const;
   int return_visual_target_center_y(const ai_msgs::msg::Target & target) const;
   int return_visual_target_bottom_y(const ai_msgs::msg::Target & target) const;
@@ -710,14 +652,11 @@ private:
   bool is_precision_waypoint(std::size_t index) const;
   void reset_image_capture_corridor();
   bool update_image_capture_corridor(const RobotPose & pose);
-  void apply_qr_code_speed_limit(geometry_msgs::msg::Twist & cmd);
+  void apply_image_capture_speed_limit(geometry_msgs::msg::Twist & cmd) const;
   void apply_turn_speed_limit(geometry_msgs::msg::Twist & cmd) const;
 
   geometry_msgs::msg::Twist compute_tracking_command(
     const RobotPose & pose, const TargetPoint & target) const;
-  bool compute_path_pid_tracking_command(
-    const RobotPose & pose, geometry_msgs::msg::Twist & cmd);
-  void reset_path_pid_state();
 
   bool lookup_pose(
     const std::string & target_frame, const std::string & source_frame,
@@ -726,9 +665,6 @@ private:
   bool original_route_normal_at(std::size_t waypoint_index, Point2D & normal) const;
   std::size_t rebuild_curvature_unsafe_shift_segments(
     std::vector<Waypoint> & shifted_route);
-  void rebuild_route_from_confirmed_shifts();
-  void apply_circle_envelope_deformation(std::vector<Waypoint> & shifted_route);
-  void refresh_logic3_route_applied_obstacles();
   bool is_static_map_point(const RobotPose & robot_pose, const Point2D & base_point) const;
   bool is_static_map_point(
     const RobotPose & robot_pose, const Point2D & base_point,

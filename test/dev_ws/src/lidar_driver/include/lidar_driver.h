@@ -86,7 +86,6 @@ private:
     boost::mutex pubscan_mutex_;
     boost::condition_variable pubscan_cond_;
     int UDP_PORT_NUMBER; 
-    int count_num;
     int package_points;
     int data_bits_start;
     int degree_bits_start;

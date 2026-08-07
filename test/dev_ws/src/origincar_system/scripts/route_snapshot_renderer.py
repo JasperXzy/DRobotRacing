@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-"""Record route snapshots during a run and render them offline on demand."""
+"""Render the four-stage route snapshots received as compact JSON events."""
 
-import argparse
 import json
 import math
 import re
@@ -18,9 +17,6 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 class RouteSnapshotRenderer(Node):
     def __init__(self):
         super().__init__('route_snapshot_renderer')
-        self.declare_parameter('render_immediately', False)
-        self._render_immediately = bool(
-            self.get_parameter('render_immediately').value)
         qos = QoSProfile(
             history=HistoryPolicy.KEEP_LAST,
             depth=32,
@@ -37,36 +33,11 @@ class RouteSnapshotRenderer(Node):
     def _on_snapshot(self, message):
         try:
             data = json.loads(message.data)
-            snapshot_path = self._record(data, message.data)
-            if self._render_immediately:
-                self._render(data)
-            else:
-                self.get_logger().debug(f'已记录路线快照: {snapshot_path}')
+            self._render(data)
         except Exception as exc:  # Keep the control node independent from plot failures.
-            self.get_logger().error(f'路线快照记录失败: {exc}')
+            self.get_logger().error(f'路线快照绘图失败: {exc}')
 
-    def _record(self, data, raw_json):
-        event, output_dir = self._validate_destination(data)
-        revision = max(0, int(data.get('frozen_revision', 0)))
-        names = {
-            'task1_frozen': '01_Task1_frozen_route.json',
-            'task1_dynamic': '02_Task1_dynamic_route.json',
-            'final_dynamic': '04_Final_dynamic_route.json',
-        }
-        if event == 'final_frozen':
-            name = (
-                '03_Final_frozen_route.json' if revision == 0 else
-                f'03_Final_frozen_route({revision}).json')
-        else:
-            name = names[event]
-        output_path = output_dir / name
-        temporary_path = output_dir / f'.{name}.tmp'
-        temporary_path.write_text(raw_json + '\n', encoding='utf-8')
-        temporary_path.replace(output_path)
-        return output_path
-
-    @staticmethod
-    def _validate_destination(data):
+    def _render(self, data):
         event = str(data.get('event', ''))
         session = str(data.get('session', ''))
         valid_session = (
@@ -79,13 +50,10 @@ class RouteSnapshotRenderer(Node):
         }
         if not valid_session or event not in valid_events:
             raise ValueError('invalid snapshot event/session')
+
         output_root = Path(str(data['output_root'])).expanduser()
         output_dir = output_root / session
         output_dir.mkdir(parents=True, exist_ok=True)
-        return event, output_dir
-
-    def _render(self, data):
-        event, output_dir = self._validate_destination(data)
 
         base, world_to_pixel, pixels_per_meter = self._load_map(
             Path(str(data['map_yaml'])), data.get('base_zone', {}),
@@ -491,43 +459,11 @@ class RouteSnapshotRenderer(Node):
         image.convert('RGB').save(path)
 
 
-def _resolve_session(output_root, requested_session):
-    if requested_session != 'latest':
-        session_dir = output_root / requested_session
-        if not session_dir.is_dir():
-            raise FileNotFoundError(f'路线快照目录不存在: {session_dir}')
-        return session_dir
-    candidates = sorted(
-        path for path in output_root.iterdir()
-        if path.is_dir() and list(path.glob('0*_route*.json')))
-    if not candidates:
-        raise FileNotFoundError(f'未找到已记录的路线快照: {output_root}')
-    return candidates[-1]
-
-
 def main(args=None):
-    parser = argparse.ArgumentParser(add_help=True)
-    parser.add_argument(
-        '--render-session', metavar='SESSION',
-        help='离线绘制指定批次；使用 latest 绘制最新批次')
-    parser.add_argument(
-        '--output-root',
-        default='/root/D_Robot/test/dev_ws/src/origincar_system/path',
-        help='路线快照根目录')
-    parsed, ros_args = parser.parse_known_args(args=args)
-    rclpy.init(args=ros_args)
+    rclpy.init(args=args)
     node = RouteSnapshotRenderer()
     try:
-        if parsed.render_session:
-            session_dir = _resolve_session(
-                Path(parsed.output_root).expanduser(), parsed.render_session)
-            snapshot_paths = sorted(session_dir.glob('0*_route*.json'))
-            for snapshot_path in snapshot_paths:
-                data = json.loads(snapshot_path.read_text(encoding='utf-8'))
-                node._render(data)
-            print(f'已绘制 {len(snapshot_paths)} 张路线图: {session_dir}')
-        else:
-            rclpy.spin(node)
+        rclpy.spin(node)
     finally:
         node.destroy_node()
         rclpy.shutdown()

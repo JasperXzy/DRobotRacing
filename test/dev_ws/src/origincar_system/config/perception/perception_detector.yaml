@@ -33,8 +33,8 @@ perception_detector_node:
 
     qos_keep_last: 1
     bpu_core: any
-    log_timing: false
-    log_fps: false
+    log_timing: true
+    log_fps: true
     debug_image: false
 
     # YOLO只用于Task1二维码ROI。收到10后释放模型/BPU内存并退出进程，后续阶段不再恢复。

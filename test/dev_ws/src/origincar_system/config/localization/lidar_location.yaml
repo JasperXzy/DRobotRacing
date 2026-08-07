@@ -45,7 +45,7 @@ lidar_location:
     max_beams: 180
     min_valid_beams: 20
     min_match_score: 0.05
-    match_score_terminal_rate: 0.0  # 性能监控节点记录分数，终端不再周期刷新
+    match_score_terminal_rate: 1.0  # 终端1每秒输出一次最新匹配度；设为0可关闭
     min_laser_range: 0.1
     max_laser_range: 7.1
 
