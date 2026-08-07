@@ -12,8 +12,8 @@
 #   ./start_path_follower.sh --zyr --qr 4399   # ZYR路线+手动二维码
 #   ./start_path_follower.sh --lidar off --static off   # 纯航点追线
 # 运行后可直接在本终端按键：
-#   1：用当前最后一份READY静态雷达快照手动冻结路线
-#   2：仅在尚未检测到发车运动时，解除人工冻结并恢复静态探测
+#   1：READY=1时立即冻结；READY=0时登记请求，等下一次READY=1自动冻结
+#   2：取消等待中的冻结请求；或在尚未确认发车时解冻人工冻结路线
 set -e
 
 BASE_PARAMS=/root/D_Robot/test/dev_ws/src/origincar_system/config/visual_lidar_path_follower_fast.yaml
@@ -175,7 +175,8 @@ send_manual_route_freeze() {
 keyboard_route_freeze_loop() {
   echo
   echo "=============================================================="
-  echo "静态路线人工冻结：看到READY静态障碍输出稳定时按 [1] 冻结；按 [2] 解冻。"
+  echo "静态路线人工冻结：按 [1]；若READY=0会等待下一次READY=1再自动冻结。"
+  echo "按 [2] 可取消等待请求，或在确认发车前解冻已人工冻结的路线。"
   echo "人工冻结后直接开启电机即可按该路线发车；未按1则保留发车自动冻结。"
   echo "一旦检测到小车运动，系统会拒绝解冻，防止行驶中误操作。"
   echo "=============================================================="

@@ -24,6 +24,7 @@ def generate_launch_description():
 
     playback_device = LaunchConfiguration('playback_device')
     trigger_value = LaunchConfiguration('trigger_value')
+    fallback_trigger_value = LaunchConfiguration('fallback_trigger_value')
     infer_trigger_value = LaunchConfiguration('infer_trigger_value')
     infer_on_capture = LaunchConfiguration('infer_on_capture')
     camera_topic = LaunchConfiguration('camera_topic')
@@ -31,6 +32,9 @@ def generate_launch_description():
     launch_tts = LaunchConfiguration('launch_tts')
     captured_image_file = LaunchConfiguration('captured_image_file')
     source_capture_file = LaunchConfiguration('source_capture_file')
+    fallback_candidate_topic = LaunchConfiguration('fallback_candidate_topic')
+    fallback_candidate_dir = LaunchConfiguration('fallback_candidate_dir')
+    fallback_candidate_max_frames = LaunchConfiguration('fallback_candidate_max_frames')
     ding_enable = LaunchConfiguration('ding_enable')
     no_auth = LaunchConfiguration('no_auth')
 
@@ -44,6 +48,11 @@ def generate_launch_description():
             'trigger_value',
             default_value='-1',
             description='Int32 value on /sign4return that captures one image.',
+        ),
+        DeclareLaunchArgument(
+            'fallback_trigger_value',
+            default_value='88',
+            description='Int32 value on /sign4return that infers from the best cached fan-sector frame.',
         ),
         DeclareLaunchArgument(
             'infer_trigger_value',
@@ -69,6 +78,21 @@ def generate_launch_description():
             'source_capture_file',
             default_value='',
             description='Optional second copy of the captured image.',
+        ),
+        DeclareLaunchArgument(
+            'fallback_candidate_topic',
+            default_value='/visual_lidar_path_follower/image_capture_candidate',
+            description='String metadata topic that requests 5Hz fan-sector candidate-frame caching.',
+        ),
+        DeclareLaunchArgument(
+            'fallback_candidate_dir',
+            default_value='/root/D_Robot/test/dev_ws/captures/image_capture_candidates',
+            description='Directory retaining per-session fan-sector fallback images.',
+        ),
+        DeclareLaunchArgument(
+            'fallback_candidate_max_frames',
+            default_value='80',
+            description='Maximum cached fan-sector images retained for one session.',
         ),
         DeclareLaunchArgument(
             'launch_camera',
@@ -188,11 +212,17 @@ def generate_launch_description():
             output='screen',
             parameters=[{
                 'trigger_value': ParameterValue(trigger_value, value_type=int),
+                'fallback_trigger_value': ParameterValue(
+                    fallback_trigger_value, value_type=int),
                 'infer_trigger_value': ParameterValue(infer_trigger_value, value_type=int),
                 'infer_on_capture': ParameterValue(infer_on_capture, value_type=bool),
                 'camera_topic': camera_topic,
                 'captured_image_file': captured_image_file,
                 'source_capture_file': source_capture_file,
+                'fallback_candidate_topic': fallback_candidate_topic,
+                'fallback_candidate_dir': fallback_candidate_dir,
+                'fallback_candidate_max_frames': ParameterValue(
+                    fallback_candidate_max_frames, value_type=int),
                 'ding_enable': ParameterValue(ding_enable, value_type=bool),
                 'start_notice': LaunchConfiguration('start_notice'),
                 'error_notice': LaunchConfiguration('error_notice'),

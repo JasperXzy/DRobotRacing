@@ -20,13 +20,13 @@ lidar_location:
     tf_lookup_timeout: 0.2
 
     # 默认从地图原点、相对map正X轴逆时针45°启动；也可以在
-    # RViz/Foxglove向 /initialpose 发布新初始位姿。
+    # RViz/Foxglove向 /initialpose 发布新初始位姿。 0.7853981634=45°发车  0=正X轴发车
     set_initial_pose: true
     reset_pose_on_map: false
     initial_pose:
       x: 0.0
       y: 0.0
-      yaw: 0.7853981634
+      yaw: 0.0
 
     # 扫描匹配参数。
     occupied_threshold: 65

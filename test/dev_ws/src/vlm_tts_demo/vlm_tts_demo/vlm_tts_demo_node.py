@@ -32,11 +32,19 @@ class VlmTtsDemoNode(Node):
 
         self.declare_parameter('trigger_topic', '/sign4return')
         self.declare_parameter('trigger_value', -1)
+        self.declare_parameter('fallback_trigger_value', 88)
         self.declare_parameter('infer_trigger_value', 0)
         self.declare_parameter('infer_on_capture', False)
         self.declare_parameter('camera_topic', '/camera/image')
         self.declare_parameter('captured_image_file', '/tmp/vlm_tts_demo_capture.jpg')
         self.declare_parameter('source_capture_file', '')
+        self.declare_parameter(
+            'fallback_candidate_topic',
+            '/visual_lidar_path_follower/image_capture_candidate')
+        self.declare_parameter(
+            'fallback_candidate_dir',
+            '/root/D_Robot/test/dev_ws/captures/image_capture_candidates')
+        self.declare_parameter('fallback_candidate_max_frames', 80)
         self.declare_parameter('tts_topic', '/tts_text')
         self.declare_parameter('result_topic', '/vlm_api_text')
         self.declare_parameter('ding_enable', False)
@@ -61,11 +69,19 @@ class VlmTtsDemoNode(Node):
 
         self.trigger_topic = self.get_parameter('trigger_topic').value
         self.trigger_value = self.get_parameter('trigger_value').value
+        self.fallback_trigger_value = (
+            self.get_parameter('fallback_trigger_value').value)
         self.infer_trigger_value = self.get_parameter('infer_trigger_value').value
         self.infer_on_capture = self.get_parameter('infer_on_capture').value
         self.camera_topic = self.get_parameter('camera_topic').value
         self.captured_image_file = self.get_parameter('captured_image_file').value
         self.source_capture_file = self.get_parameter('source_capture_file').value
+        self.fallback_candidate_topic = (
+            self.get_parameter('fallback_candidate_topic').value)
+        self.fallback_candidate_dir = Path(
+            self.get_parameter('fallback_candidate_dir').value).expanduser()
+        self.fallback_candidate_max_frames = max(
+            1, int(self.get_parameter('fallback_candidate_max_frames').value))
         self.tts_topic = self.get_parameter('tts_topic').value
         self.result_topic = self.get_parameter('result_topic').value
         self.ding_enable = self.get_parameter('ding_enable').value
@@ -109,10 +125,22 @@ class VlmTtsDemoNode(Node):
         self._api_busy = False
         self._api_thread = None
         self._last_success_text = self._load_last_success_text()
+        self._fallback_candidate_session = ''
+        self._fallback_candidate_count = 0
+        self._fallback_candidate_paths = []
+        self._best_fallback_candidate_score = None
+        self._best_fallback_candidate_image_data = None
+        self._best_fallback_candidate_metadata = None
 
         self.tts_pub = self.create_publisher(String, self.tts_topic, 10)
         self.result_pub = self.create_publisher(String, self.result_topic, 10)
         self.create_subscription(Int32, self.trigger_topic, self._on_trigger, 10)
+        self.create_subscription(
+            String,
+            self.fallback_candidate_topic,
+            self._on_fallback_candidate,
+            20,
+        )
         self.create_subscription(
             CompressedImage,
             self.camera_topic,
@@ -121,11 +149,12 @@ class VlmTtsDemoNode(Node):
         )
 
         self.get_logger().info(
-            'API VLM TTS ready: camera=%s, trigger=%s:%d capture, infer=%d, model=%s'
+            'API VLM TTS ready: camera=%s, trigger=%s:%d capture, fallback=%d, infer=%d, model=%s'
             % (
                 self.camera_topic,
                 self.trigger_topic,
                 self.trigger_value,
+                self.fallback_trigger_value,
                 self.infer_trigger_value,
                 self.api_model,
             )
@@ -187,14 +216,21 @@ class VlmTtsDemoNode(Node):
     def _publish_failure_fallback(self):
         with self._lock:
             previous_text = self._last_success_text
-        fallback = '%s%s' % (self.failure_prefix, previous_text)
-        if not fallback:
-            return
+        fallback = ('%s%s' % (self.failure_prefix, previous_text)
+                    if previous_text else self.error_notice)
         self.get_logger().warn(
             'Publishing VLM failure fallback using last successful text.')
         self._publish_tts(fallback)
 
     def _on_trigger(self, msg):
+        if msg.data == self.fallback_trigger_value:
+            self.get_logger().info('Fallback-image infer trigger received.')
+            if not self._use_best_fallback_candidate() and not self._save_latest_image():
+                self.get_logger().warn(
+                    'No cached candidate or current camera frame; publishing speech fallback.')
+            self._start_api_inference()
+            return
+
         if msg.data == self.trigger_value:
             self.get_logger().info('Capture trigger received.')
             if self._save_latest_image():
@@ -214,6 +250,80 @@ class VlmTtsDemoNode(Node):
             return
 
         self.get_logger().debug('Ignore trigger value %d.' % msg.data)
+
+    def _on_fallback_candidate(self, msg):
+        """Persist one 5Hz fan-sector frame and retain the lowest pose score."""
+        try:
+            metadata = json.loads(msg.data)
+            score = float(metadata['score'])
+        except (TypeError, ValueError, KeyError, json.JSONDecodeError) as exc:
+            self.get_logger().warn('Ignore invalid fallback candidate metadata: %s' % exc)
+            return
+
+        with self._lock:
+            image_data = self._latest_image_data
+        if not image_data:
+            self.get_logger().debug('No camera frame available for fallback candidate yet.')
+            return
+
+        session = str(metadata.get('session') or 'unknown')
+        session = ''.join(
+            ch if ch.isalnum() or ch in '._-' else '_' for ch in session)[:96]
+        if not session:
+            session = 'unknown'
+        if session != self._fallback_candidate_session:
+            self._fallback_candidate_session = session
+            self._fallback_candidate_count = 0
+            self._fallback_candidate_paths = []
+            self._best_fallback_candidate_score = None
+            self._best_fallback_candidate_image_data = None
+            self._best_fallback_candidate_metadata = None
+
+        self._fallback_candidate_count += 1
+        path = self.fallback_candidate_dir / session / (
+            'candidate_%04d.jpg' % self._fallback_candidate_count)
+        try:
+            self._write_image_file(path, image_data)
+        except OSError as exc:
+            self.get_logger().warn('Could not save fallback candidate %s: %s' % (path, exc))
+            return
+        self._fallback_candidate_paths.append(path)
+        while len(self._fallback_candidate_paths) > self.fallback_candidate_max_frames:
+            expired = self._fallback_candidate_paths.pop(0)
+            try:
+                expired.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+        if (self._best_fallback_candidate_score is None or
+                score < self._best_fallback_candidate_score):
+            self._best_fallback_candidate_score = score
+            self._best_fallback_candidate_image_data = image_data
+            self._best_fallback_candidate_metadata = metadata
+            self.get_logger().info(
+                'Updated best fallback candidate: score=%.3f distance=%.3fm heading=%.1fdeg file=%s'
+                % (
+                    score,
+                    float(metadata.get('distance', 0.0)),
+                    float(metadata.get('heading_error_deg', 0.0)),
+                    path,
+                ))
+
+    def _use_best_fallback_candidate(self):
+        with self._lock:
+            image_data = self._best_fallback_candidate_image_data
+            metadata = self._best_fallback_candidate_metadata
+            score = self._best_fallback_candidate_score
+        if not image_data:
+            return False
+
+        self._write_image_file(self.captured_image_file, image_data)
+        with self._lock:
+            self._captured_image_data = image_data
+        self.get_logger().info(
+            'Using best fallback candidate for VLM: score=%.3f metadata=%s'
+            % (score, metadata))
+        return True
 
     def _on_camera_image(self, msg):
         with self._lock:

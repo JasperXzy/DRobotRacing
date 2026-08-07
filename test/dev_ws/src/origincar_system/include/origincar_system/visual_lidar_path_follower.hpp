@@ -243,6 +243,13 @@ private:
   double task2_waypoint_shift_target_clearance_{0.40};
   double task3_waypoint_shift_target_clearance_{0.40};
   double task1_waypoint_shift_min_y_{-0.10};
+  bool task1_wall_space_check_enabled_{true};
+  double task1_wall_min_clearance_{0.20};
+  double task1_wall_prediction_distance_{0.60};
+  double task1_lidar_min_angular_speed_{0.45};
+  double task1_wall_escape_reverse_speed_{0.12};
+  double task1_wall_escape_angular_speed_{0.60};
+  double task1_wall_escape_reverse_check_distance_{0.25};
   bool waypoint_shift_enable_local_rebuild_{true};
   double waypoint_shift_rebuild_min_progress_ratio_{0.15};
   double waypoint_shift_rebuild_plateau_half_length_{0.08};
@@ -433,6 +440,13 @@ private:
   double image_capture_recovery_rear_fov_deg_{100.0};
   double image_capture_recovery_rear_corridor_half_width_{0.30};
   int image_capture_trigger_value_{8};
+  bool image_capture_fallback_enabled_{true};
+  double image_capture_fallback_sample_hz_{5.0};
+  double image_capture_fallback_target_distance_{0.45};
+  double image_capture_fallback_heading_weight_{1.0};
+  int image_capture_fallback_trigger_value_{88};
+  std::string image_capture_fallback_sample_topic_{
+    "/visual_lidar_path_follower/image_capture_candidate"};
   std::string image_analysis_trigger_topic_{"/person_trigger"};
 
   // 运行状态
@@ -459,8 +473,10 @@ private:
   bool image_capture_stopping_{false};
   bool image_capture_recovery_active_{false};
   bool image_capture_recovery_used_{false};
+  bool image_capture_fallback_sampled_{false};
   std::size_t image_capture_waypoint_index_{0};
   std::chrono::steady_clock::time_point image_capture_stop_started_at_;
+  std::chrono::steady_clock::time_point image_capture_fallback_last_sample_at_;
   RobotPose image_capture_recovery_start_pose_;
   bool publish_stop_on_exit_{true};
   bool task3_route_available_{false};
@@ -542,7 +558,11 @@ private:
   // 终端人工冻结只允许在发车前撤销；一旦观测到电机带动车体运动，
   // 即锁住解冻，避免比赛行驶中误按数字键2破坏静态路线。
   bool logic3_manual_freeze_active_{false};
+  // 按1时若当前尚未形成完整READY快照，则仅登记请求；下一次READY完成后
+  // 才自动冻结，绝不把未稳定状态冻结为空障碍集。
+  bool logic3_manual_freeze_pending_{false};
   bool logic3_manual_unfreeze_locked_{false};
+  int logic3_manual_unfreeze_motion_confirm_count_{0};
   bool logic3_odom_reference_valid_{false};
   bool logic3_map_odom_plan_valid_{false};
   bool logic3_final_snapshot_published_{false};
@@ -581,6 +601,7 @@ private:
   tf2_ros::TransformListener tf_listener_;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_pub_;
   rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr image_analysis_trigger_pub_;
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr image_capture_fallback_sample_pub_;
   rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr visual_control_suspend_pub_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr tts_pub_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr logic3_snapshot_pub_;
@@ -650,6 +671,8 @@ private:
   bool apply_image_capture_recovery(
     const RobotPose & pose, geometry_msgs::msg::Twist & cmd);
   bool handle_image_capture_stop(const RobotPose & pose);
+  void maybe_publish_image_capture_fallback_sample(const RobotPose & pose);
+  void trigger_image_capture_fallback(const RobotPose & pose, const char * reason);
   void apply_image_capture_speed_limit(
     const RobotPose & pose, geometry_msgs::msg::Twist & cmd) const;
   void apply_turn_speed_limit(geometry_msgs::msg::Twist & cmd) const;
@@ -684,6 +707,9 @@ private:
   bool logic3_green_mask_contains(const Point2D & map_point) const;
   bool logic3_runtime_map_point_is_filtered(const Point2D & map_point) const;
   bool lidar_map_point_is_wall(const Point2D & map_point) const;
+  bool lidar_map_point_is_wall(const Point2D & map_point, double padding) const;
+  bool task1_lidar_direction_is_wall_safe(
+    const RobotPose & robot_pose, int direction, double angular_speed) const;
   LidarObstacle find_lidar_obstacle(
     double center_angle, double maximum_distance, double fov_deg,
     double corridor_half_width, const RobotPose & scan_to_base,
@@ -694,7 +720,8 @@ private:
     const RobotPose & robot_pose, geometry_msgs::msg::Twist & cmd);
   void update_qr_channel_approach_phase(const RobotPose & robot_pose);
   bool apply_channel_lidar_obstacle_avoidance(
-    geometry_msgs::msg::Twist & cmd, bool * observation_valid = nullptr,
+    const RobotPose & robot_pose, geometry_msgs::msg::Twist & cmd,
+    bool * observation_valid = nullptr,
     bool * obstacle_found = nullptr, bool stop_instead_of_turn = false);
   void reset_waypoint_shift_state();
   void update_waypoint_shifts(
@@ -738,7 +765,7 @@ private:
   void suspend_visual_control();
   void set_perception_mode(int value, const char * mode_name);
   void resume_visual_control(bool restore_full_perception = false);
-  void publish_image_analysis_trigger();
+  void publish_image_analysis_trigger(bool use_fallback_frame = false);
 
   std::vector<Waypoint> load_waypoints(
     const std::string & waypoints_file, const std::string & requested_direction,

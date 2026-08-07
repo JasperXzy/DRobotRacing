@@ -317,6 +317,12 @@ def generate_launch_description():
             'launch_tts': 'true',
             'camera_topic': vlm_camera_topic,
             'trigger_value': vlm_trigger_value,
+            'fallback_trigger_value': '88',
+            'fallback_candidate_topic':
+                '/visual_lidar_path_follower/image_capture_candidate',
+            'fallback_candidate_dir':
+                '/root/D_Robot/test/dev_ws/captures/image_capture_candidates',
+            'fallback_candidate_max_frames': '80',
             'infer_on_capture': 'true',
             'playback_device': 'plughw:1,0',
             'captured_image_file':
