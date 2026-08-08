@@ -61,7 +61,7 @@ class RouteSnapshotRenderer(Node):
         original = data.get('original', [])
         baseline = data.get('baseline', [])
         red = data.get('red', [])
-        red_identity_radius = float(data.get('red_identity_radius', 0.5))
+        red_identity_radius = float(data.get('red_identity_radius', 0.25))
 
         self._render_route_snapshot(
             data, event, output_dir, base, world_to_pixel, pixels_per_meter,
@@ -78,9 +78,9 @@ class RouteSnapshotRenderer(Node):
         orange_begin = max(0, min(orange_begin, len(green)))
         departure_green = green[:orange_begin]
         post_departure_orange = green[orange_begin:]
-        green_radius = float(data.get('green_radius', 0.5))
+        green_radius = float(data.get('green_radius', 0.65))
         green_identity_radius = float(
-            data.get('green_identity_radius', green_radius))
+            data.get('green_identity_radius', 0.25))
         frozen_revision = max(0, int(data.get('frozen_revision', 0)))
         if event == 'task1_frozen':
             image = base.copy()
@@ -144,7 +144,7 @@ class RouteSnapshotRenderer(Node):
         if red:
             self._draw_clusters(
                 image, red, world_to_pixel, pixels_per_meter,
-                red_identity_radius, (225, 35, 35), True)
+                green_radius, (225, 35, 35), True)
         self._draw_base_zone(image, data, world_to_pixel)
         self._draw_parking_zone(image, data, world_to_pixel)
         self._draw_snapshot_markers(image, data, world_to_pixel)
@@ -155,9 +155,9 @@ class RouteSnapshotRenderer(Node):
             f'{"Task1" if task1_dynamic else "Final"} dynamic route / '
             f'green at departure, orange learned after departure, '
             f'red actual lidar avoidance '
-            f'(mask/draw R={green_radius:.2f}m, '
-            f'association R={green_identity_radius:.2f}m, '
-            f'red history R={red_identity_radius:.2f}m)')
+            f'(filter/all draw R={green_radius:.2f}m, '
+            f'green/orange identity R={green_identity_radius:.2f}m, '
+            f'red identity R={red_identity_radius:.2f}m)')
         output_path = output_dir / (
             '02_Task1_dynamic_route.png'
             if task1_dynamic else '04_Final_dynamic_route.png')
