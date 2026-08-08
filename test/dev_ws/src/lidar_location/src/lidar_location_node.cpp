@@ -117,6 +117,11 @@ public:
         1, declare_parameter<std::int64_t>("min_valid_beams", 20)));
     min_match_score_ =
       std::clamp(declare_parameter<double>("min_match_score", 0.05), 0.0, 1.0);
+    correction_translation_deadband_ = std::max(
+      0.0, declare_parameter<double>("correction_translation_deadband", 0.0));
+    correction_rotation_deadband_ = std::max(
+      0.0, declare_parameter<double>("correction_rotation_deadband_deg", 0.0)) *
+      kPi / 180.0;
     match_score_terminal_rate_ = std::max(
       0.0, declare_parameter<double>("match_score_terminal_rate", 1.0));
     min_laser_range_ =
@@ -673,8 +678,32 @@ private:
     }
 
     const MatchResult match = match_scan(predicted_pose, points);
+    const double correction_translation = std::hypot(
+      match.pose.x - predicted_pose.x, match.pose.y - predicted_pose.y);
+    const double correction_rotation = normalize_angle(
+      match.pose.yaw - predicted_pose.yaw);
+    bool translation_deadband_applied = false;
+    bool rotation_deadband_applied = false;
     if (match.score >= min_match_score_) {
       pose_ = match.pose;
+      // Do not apply correction deadbands to the first successful match: the
+      // initial map pose still needs to converge without an existing
+      // map->odom estimate. After initialization, suppress the translation and
+      // rotation components independently so a valid correction on one axis
+      // does not reintroduce jitter on the other.
+      if (has_map_to_odom_ && correction_translation_deadband_ > 0.0 &&
+        correction_translation <= correction_translation_deadband_)
+      {
+        pose_.x = predicted_pose.x;
+        pose_.y = predicted_pose.y;
+        translation_deadband_applied = correction_translation > 0.0;
+      }
+      if (has_map_to_odom_ && correction_rotation_deadband_ > 0.0 &&
+        std::abs(correction_rotation) <= correction_rotation_deadband_)
+      {
+        pose_.yaw = predicted_pose.yaw;
+        rotation_deadband_applied = std::abs(correction_rotation) > 0.0;
+      }
     } else {
       pose_ = predicted_pose;
       RCLCPP_WARN_THROTTLE(
@@ -697,8 +726,12 @@ private:
     RCLCPP_DEBUG(
       get_logger(),
       "pose=(%.3f, %.3f, %.1f deg), score=%.3f, iterations=%d, "
+      "correction=(%.4f m, %.3f deg) deadband=(%s,%s), "
       "deskew=%s motion=(%.4f m, %.3f deg)",
       pose_.x, pose_.y, pose_.yaw * 180.0 / kPi, match.score, match.iterations,
+      correction_translation, correction_rotation * 180.0 / kPi,
+      translation_deadband_applied ? "translation" : "no",
+      rotation_deadband_applied ? "rotation" : "no",
       deskew_applied ? "yes" : "no", scan_translation, scan_rotation * 180.0 / kPi);
   }
 
@@ -766,6 +799,8 @@ private:
   int max_beams_{180};
   int min_valid_beams_{20};
   double min_match_score_{0.05};
+  double correction_translation_deadband_{0.0};
+  double correction_rotation_deadband_{0.0};
   double match_score_terminal_rate_{1.0};
   double min_laser_range_{0.0};
   double max_laser_range_{0.0};

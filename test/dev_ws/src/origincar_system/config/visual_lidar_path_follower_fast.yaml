@@ -157,10 +157,10 @@ visual_lidar_path_follower:
     logic3_static_confirmation_window_seconds: 2.0  # [发车前静态绿色] 状态1前候选身份确认使用的滚动窗口，单位s
     logic3_static_confirmation_min_hits: 10  # [发车前静态绿色] 候选在滚动窗口内至少命中该帧数才分配正式ID
     logic3_static_collection_stable_seconds: 0.50  # [发车前静态绿色] 正式ID数量和位置连续不变这么久后，整体才进入状态1
-    logic3_static_stability_radius: 0.10  # [发车前静态绿色] 近距离稳定观察、采样及READY持续监视半径，单位m
-    logic3_static_far_stability_radius: 0.20  # [发车前静态绿色] 远距离稀疏回波使用的最大稳定半径，单位m
-    logic3_static_stability_near_distance: 1.0  # [发车前静态绿色] 障碍物不超过该雷达距离时使用0.10m，单位m
-    logic3_static_stability_far_distance: 3.0  # [发车前静态绿色] 超过该雷达距离时使用0.20m，中间线性插值
+    logic3_static_stability_radius: 0.17  # [发车前静态绿色] 近距离稳定观察、采样及READY持续监视半径，单位m
+    logic3_static_far_stability_radius: 0.25  # [发车前静态绿色] 远距离稀疏回波使用的最大稳定半径，单位m
+    logic3_static_stability_near_distance: 1.0  # [发车前静态绿色] 障碍物不超过该雷达距离时使用0.17m，单位m
+    logic3_static_stability_far_distance: 3.0  # [发车前静态绿色] 超过该雷达距离时使用0.25m，中间线性插值
     logic3_static_best_score_samples: 10  # [发车前静态绿色] 每个正式ID持续保留match_score最高的这么多帧簇中心并取平均
     logic3_static_min_match_score: 0.70  # [发车前静态绿色] 雷达帧达到该整帧地图匹配分数才有资格进入最高分样本池
     logic3_static_loss_grace_seconds: 1.0  # [发车前静态绿色] 仅状态1后启用；判定失联后等待重捕的最长时间，单位s
@@ -242,8 +242,8 @@ visual_lidar_path_follower:
     qr_reverse_rear_fov_deg: 140.0  # [Task1→Task2条件倒车] 后方扇形总视野角，可手动设置，单位degree
     qr_reverse_rear_corridor_half_width: 0.3  # [Task1→Task2条件倒车] 后方矩形走廊半宽，可手动设置，单位m
     qr_reverse_linear_speed: 0.7  # [Task1→Task2条件倒车] 固定倒车线速度绝对值，单位m/s
-    qr_reverse_angular_speed: 1.00  # [Task1→Task2条件倒车] map.x不大于线性起点时的右后倒转向量
-    qr_reverse_angular_speed_max: 2.00  # [Task1→Task2条件倒车] map.x不小于线性终点时的右后倒转向量
+    qr_reverse_angular_speed: 1.50  # [Task1→Task2条件倒车] map.x不大于线性起点时的右后倒转向量
+    qr_reverse_angular_speed_max: 2.50  # [Task1→Task2条件倒车] map.x不小于线性终点时的右后倒转向量ysvv
     qr_reverse_angular_ramp_start_x: 2.50  # [Task1→Task2条件倒车] 转向量开始线性增加的map.x，单位m
     qr_reverse_angular_ramp_end_x: 4.50  # [Task1→Task2条件倒车] 转向量增加到1.00的map.x，单位m
     qr_reverse_max_count: 1  # [Task1→Task2条件倒车] 最多完成多少轮倒车；0表示完全禁用Task1结束后的条件倒车

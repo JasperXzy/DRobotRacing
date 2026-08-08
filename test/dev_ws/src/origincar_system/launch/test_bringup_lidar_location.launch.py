@@ -20,6 +20,7 @@ from launch_ros.substitutions import FindPackageShare
 def generate_launch_description():
     launch_dir = os.path.dirname(os.path.abspath(__file__))
     test_share = FindPackageShare('origincar_system')
+    lidar_location_share = FindPackageShare('lidar_location')
 
     camera_config_file = LaunchConfiguration('camera_config_file')
     chassis_config_file = LaunchConfiguration('chassis_config_file')
@@ -81,7 +82,7 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'localization_params_file',
             default_value=PathJoinSubstitution([
-                test_share, 'config', 'localization', 'lidar_location.yaml',
+                lidar_location_share, 'config', 'lidar_location.yaml',
             ]),
             description='Scan-matching localization config replacing AMCL.',
         ),

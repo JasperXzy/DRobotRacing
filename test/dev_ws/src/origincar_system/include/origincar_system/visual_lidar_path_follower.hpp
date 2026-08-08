@@ -329,8 +329,8 @@ private:
   double logic3_static_confirmation_window_seconds_{2.0};
   int logic3_static_confirmation_min_hits_{10};
   double logic3_static_collection_stable_seconds_{0.50};
-  double logic3_static_stability_radius_{0.10};
-  double logic3_static_far_stability_radius_{0.20};
+  double logic3_static_stability_radius_{0.17};
+  double logic3_static_far_stability_radius_{0.25};
   double logic3_static_stability_near_distance_{1.0};
   double logic3_static_stability_far_distance_{3.0};
   int logic3_static_best_score_samples_{10};
