@@ -44,7 +44,7 @@ lidar_location:
     max_iterations: 80
     max_beams: 180
     min_valid_beams: 20
-    min_match_score: 0.05
+    min_match_score: 0.01
     # 已完成首次定位后，忽略小于一个搜索格的map->odom微修正，避免静止时
     # 在相邻栅格之间来回跳动。平移和旋转分量分别判断。
     correction_translation_deadband: 0.03

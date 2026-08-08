@@ -304,6 +304,7 @@ private:
   double logic3_runtime_roi_height_{3.75};
   double logic3_runtime_channel_min_y_{-0.20};
   bool logic3_runtime_green_update_enabled_{true};
+  bool logic3_runtime_orange_only_update_enabled_{true};
   double logic3_runtime_green_min_match_score_{0.70};
   int logic3_runtime_green_confirm_scans_{3};
   int logic3_task1_runtime_cluster_min_points_{2};
@@ -322,7 +323,7 @@ private:
   double task1_static_min_y_{-0.15};
   double task1_static_avoid_min_x_{0.0};
   double task1_static_avoid_max_x_{0.60};
-  double task1_static_avoid_min_y_{0.0};
+  double task1_static_avoid_min_y_{-0.15};
   double task1_static_avoid_max_y_{0.50};
   double logic3_static_cluster_match_radius_{0.25};
   double logic3_static_same_frame_merge_radius_{0.20};
@@ -407,10 +408,10 @@ private:
   double return_base_max_x_{0.15};
   double return_base_min_y_{-0.05};
   double return_base_max_y_{0.20};
-  double return_stop_zone_min_x_{-0.23};
-  double return_stop_zone_max_x_{0.23};
+  double return_stop_zone_min_x_{-0.33};
+  double return_stop_zone_max_x_{0.15};
   double return_stop_zone_min_y_{-0.10};
-  double return_stop_zone_max_y_{0.25};
+  double return_stop_zone_max_y_{0.20};
   double return_stop_confirm_seconds_{0.0};
   double return_brake_reverse_speed_{0.30};
   int return_brake_reverse_cycles_{5};

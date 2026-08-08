@@ -64,7 +64,7 @@ visual_lidar_path_follower:
     transition_lidar_direction_lower_angle_deg: -8.0  # [Task1→Task2过渡] Task1→Task2过渡障碍方向下阈值，单位degree
 
     # Task2：高速通道巡点与图生文
-    task2_linear_speed: 1.30  # [Task2] Task2通道巡点正常线速度，单位m/s；Fast配置专用值
+    task2_linear_speed: 1.40  # [Task2] Task2通道巡点正常线速度，单位m/s；Fast配置专用值
     task2_turn_angular_gain: 1.80  # [Task2] Task2航向误差到前轮目标转角的比例增益
     task2_enable_turn_speed_slowdown: true  # [Task2] Task2转弯时是否按转角降低线速度
     task2_max_turn_speed_reduction_percent: 20.0  # [Task2] Task2转弯最大降速百分比
@@ -115,11 +115,11 @@ visual_lidar_path_follower:
     waypoint_shift_occupied_threshold: 50  # [全阶段静态偏移] race_keepout软禁行区的点云过滤占据阈值
     waypoint_shift_check_count: 100  # [全阶段静态偏移] waypoint_shift模式每帧从当前追踪点开始检查的航点数量
     waypoint_cloud_check_radius: 0.5  # [全阶段静态偏移] 点云距未来路线小于该距离才触发平移，单位 m；提前距离由check_count决定
-    task1_waypoint_shift_target_clearance: 0.40  # [Task1静态偏移] Task1偏移路线越过点云最外沿的目标净距，单位m（45cm）
+    task1_waypoint_shift_target_clearance: 0.41  # [Task1静态偏移] Task1偏移路线越过点云最外沿的目标净距，单位m（45cm）
     transition_waypoint_shift_target_clearance: 0.40  # [Final预规划] 预计算Task2冻结路线时越过点云最外沿的目标净距，单位m；A→C→B不执行该静态偏移
     transition_dynamic_avoid_only: true  # [Task1→Task2过渡] true=A→C→B（含B）静态偏移清零，冻结绿点也交给实时雷达；到B后仅恢复绿圈掩码，不切换路线
-    task2_waypoint_shift_target_clearance: 0.40  # [Task2静态偏移] Task2偏移路线越过点云最外沿的目标净距，单位m
-    task3_waypoint_shift_target_clearance: 0.40  # [Task3静态偏移] Task3偏移路线越过点云最外沿的目标净距，单位m
+    task2_waypoint_shift_target_clearance: 0.42  # [Task2静态偏移] Task2偏移路线越过点云最外沿的目标净距，单位m
+    task3_waypoint_shift_target_clearance: 0.42  # [Task3静态偏移] Task3偏移路线越过点云最外沿的目标净距，单位m
     task1_waypoint_shift_min_y: -0.20  # [Task1静态偏移] Task1偏移及局部重建后的所有路径点不得低于该map.y，单位m
     waypoint_shift_enable_local_rebuild: true  # [全阶段静态偏移] 圆弧内侧偏移反相时只重建最小连续危险点段；其余点保持直接偏移，B前基准圆滑区禁止偏移后重构
     waypoint_shift_rebuild_min_progress_ratio: 0.15  # [全阶段静态偏移] 1-kappa*d或离散前进比例不高于该值时提前触发重建
@@ -165,7 +165,7 @@ visual_lidar_path_follower:
     logic3_static_min_match_score: 0.70  # [发车前静态绿色] 雷达帧达到该整帧地图匹配分数才有资格进入最高分样本池
     logic3_static_loss_grace_seconds: 1.0  # [发车前静态绿色] 仅状态1后启用；判定失联后等待重捕的最长时间，单位s
     logic3_static_reacquire_radius: 0.25  # [发车前静态绿色] 状态1后失联ID相对固定锚点的严格重捕半径，单位m
-    logic3_old_cluster_radius: 0.65  # [永久绿/橙点] 雷达过滤掩码及绿/橙/红圆绘制半径；正常静态阶段圈内点不触发雷达避障，单位m
+    logic3_old_cluster_radius: 0.65  # [永久绿/橙点] 雷达过滤、圈内新增橙点拦截及绿/橙/红圆绘制半径，单位m
 
     # --------------------- 静态+动态方案：可信发车与位姿锚定 -----------------------
     logic3_odom_topic: /chassis/odom  # [可信发车] 可信发车检测使用的底盘里程计话题
@@ -190,6 +190,7 @@ visual_lidar_path_follower:
     # Task1矩形、过渡段动态专用、Task2全静态和Task3高度分界只决定当前路线是否采用该永久点。
     logic3_match_score_topic: /lidar_location/match_score  # [运行绿/橙点] lidar_location发布的整帧地图匹配分数
     logic3_runtime_green_update_enabled: true  # [运行绿/橙点] 是否允许高分帧新增/修正永久点并重算路线
+    logic3_runtime_orange_only_update_enabled: true  # [运行绿/橙点] true=冻结可信发车READY绿点坐标及既有静态偏移，只允许新增/更新橙点；false=绿点和橙点都可更新
     logic3_runtime_green_min_match_score: 0.70  # [运行绿/橙点] Fast实跑配置：整帧分数达到该值才接收
     logic3_runtime_green_confirm_scans: 3  # [运行绿/橙点] 同一障碍连续多少个高分雷达帧后才新增或修正
     logic3_task1_runtime_cluster_min_points: 2  # [Task1运行绿/橙点] 稳定位姿阶段允许至少2个雷达点形成远距离障碍候选
@@ -226,14 +227,14 @@ visual_lidar_path_follower:
     # 图2：作为冻结路线图和最终路线图背景；静态+动态方案偏移方向只由障碍相对路线的左右侧决定
     # 图3：仅过滤发车前的静态绿色候选；话题由logic3_static_restriction_map_topic指定
     # 图4：仅过滤发车后的动态红色候选；话题由logic3_runtime_restriction_map_topic指定
-    logic3_output_root: /root/D_Robot/test/dev_ws/src/origincar_system/path  # [路线图输出] 四张任务路线图及倒车重规划图片的输出根目录
+    logic3_output_root: /root/D_Robot/test/dev_ws/src/origincar_system/path  # [路线图输出] 按path/日期/完整时间戳组织四张路线图及倒车重规划图片
     logic3_restriction_map_yaml: /root/D_Robot/test/dev_ws/src/origincar_system/map/race_keepout.yaml  # [路线图输出] 图2背景地图YAML，用于偏移方向判断和路线图绘制
 
     # 扫到二维码后持续武装到waypoint_channel的雷达条件倒车；数值来自雷达实跑的 1.15 profile
     qr_reverse_y_threshold: 0.10  # [Task1→Task2条件倒车] map.y达到该后退硬边界时优先退出，不受最小倒车距离锁定，单位m
     qr_reverse_force_qr_x_threshold: 3.70  # [过渡入口X阈值强制倒车] 正式进入Task1→Task2时base_link.map.x严格大于该值则强制倒车一轮
     qr_reverse_x_limit: 4.50  # [Task1→Task2条件倒车] map.x达到该后退硬边界时优先退出，不受最小倒车距离锁定，单位m
-    qr_reverse_min_distance: 0.40  # [Task1→Task2条件倒车] 普通轮前方清空后仍需达到；入口X强制轮忽略前方状态并以此为锁定目标；后方障碍或x/y硬保护可提前截断，单位m
+    qr_reverse_min_distance: 0.35  # [Task1→Task2条件倒车] 普通轮前方清空后仍需达到；入口X强制轮忽略前方状态并以此为锁定目标；后方障碍或x/y硬保护可提前截断，单位m
     qr_reverse_max_distance: 0.80  # [Task1→Task2条件倒车] 单轮倒车净位移绝对上限；普通轮和入口X强制轮均生效，且程序保证不小于最小距离，单位m
     qr_reverse_front_obstacle_distance: 0.7  # [Task1→Task2条件倒车] 前方触发/退出判断的最大距离，单位m
     qr_reverse_front_fov_deg: 160.0  # [Task1→Task2条件倒车] 前方扇形总视野角，可手动设置，单位degree
@@ -268,17 +269,17 @@ visual_lidar_path_follower:
     return_base_max_x: 0.15  # [Task3返航停车] Task3图片中蓝色基地矩形最大map.x，单位m
     return_base_min_y: -0.05  # [Task3返航停车] Task3图片中蓝色基地矩形最小map.y，单位m
     return_base_max_y: 0.20  # [Task3返航停车] Task3图片中蓝色基地矩形最大map.y，单位m
-    # 紫色停车触发矩形相对蓝色基地：X两侧各外扩0.08m，Y两侧各外扩0.05m；虚拟牵引点自动取中心(0.00,0.075)。
-    return_stop_zone_min_x: -0.23  # [Task3返航停车] Task3紫色停车触发矩形最小map.x，单位m
-    return_stop_zone_max_x: 0.23  # [Task3返航停车] Task3紫色停车触发矩形最大map.x，单位m
+    # 紫色停车触发矩形右上角与蓝色基地右上角(0.15,0.20)对齐，X方向向左加长0.10m；虚拟牵引点自动取中心(-0.09,0.05)。
+    return_stop_zone_min_x: -0.33  # [Task3返航停车] 紫色停车区左边界向左加长0.10m，单位m
+    return_stop_zone_max_x: 0.15  # [Task3返航停车] 与蓝色基地右边界对齐，单位m
     return_stop_zone_min_y: -0.10  # [Task3返航停车] Task3紫色停车触发矩形最小map.y，单位m
-    return_stop_zone_max_y: 0.25  # [Task3返航停车] Task3紫色停车触发矩形最大map.y，单位m
+    return_stop_zone_max_y: 0.20  # [Task3返航停车] 与蓝色基地上边界对齐，单位m
     return_stop_confirm_seconds: 0.0  # [Task3返航停车] base_link进入紫色停车矩形的当前控制周期立即停车
     return_brake_reverse_speed: 0.50  # [Task3返航停车] 进入紫色停车矩形后主动制动的反向速度绝对值，单位m/s
     return_brake_reverse_cycles: 20  # [Task3返航停车] 按control_frequency连续发送反向速度的周期数；50Hz下20周期约0.40s
     return_brake_zero_cycles: 20  # [Task3返航停车] 反向制动后连续发送零速度的周期数；50Hz下20周期约0.40s
     # 返程障碍按“障碍簇中心Y”分类；该高度只分类障碍，绝不裁剪上方障碍的偏移航点窗口
-    return_obstacle_split_y: 0.50  # [Task3返航停车] 绿/橙永久点中心Y严格大于此值走静态偏移；小于等于此值走实时channel雷达避障
+    return_obstacle_split_y: 0.40  # [Task3返航停车] 绿/橙永久点中心Y严格大于此值走静态偏移；小于等于此值走实时channel雷达避障
     # QR 选路；Task1不再使用visual_control视觉巡线
     route_direction: auto  # [Task1→Task2二维码选路] 未通过二维码指定时的路线方向；auto 使用航点文件设置
     enable_qr_direction_select: true  # [Task1→Task2二维码选路] 是否根据二维码内容选择顺逆时针路线

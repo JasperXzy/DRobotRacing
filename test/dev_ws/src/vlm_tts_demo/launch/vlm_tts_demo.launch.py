@@ -74,7 +74,7 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'task_output_root',
             default_value='/root/D_Robot/test/dev_ws/src/origincar_system/path',
-            description='Root containing timestamped task output directories.',
+            description='Root containing daily folders and timestamped task output directories.',
         ),
         DeclareLaunchArgument(
             'launch_camera',

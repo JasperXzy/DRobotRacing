@@ -25,6 +25,7 @@ DEFAULT_PROMPT = (
     "禁止使用“立牌展示了”“画面中”“内容是”“这是一张”“可以看到”等开头。"
 )
 TASK_SESSION_PATTERN = re.compile(r'^\d{4}\.\d{2}\.\d{2}_\d{2}:\d{2}:\d{2}$')
+TASK_DAY_PATTERN = re.compile(r'^\d{4}\.\d{2}\.\d{2}$')
 
 
 class VlmTtsDemoNode(Node):
@@ -168,11 +169,22 @@ class VlmTtsDemoNode(Node):
         root = Path(self.task_output_root).expanduser()
         try:
             root.mkdir(parents=True, exist_ok=True)
+            sessions = []
+            for path in root.iterdir():
+                if not path.is_dir():
+                    continue
+                # 兼容整理前遗留的path/日期_时间目录。
+                if TASK_SESSION_PATTERN.fullmatch(path.name):
+                    sessions.append(path)
+                    continue
+                if not TASK_DAY_PATTERN.fullmatch(path.name):
+                    continue
+                sessions.extend(
+                    child for child in path.iterdir()
+                    if child.is_dir() and TASK_SESSION_PATTERN.fullmatch(child.name)
+                )
             return sorted(
-                (
-                    path for path in root.iterdir()
-                    if path.is_dir() and TASK_SESSION_PATTERN.fullmatch(path.name)
-                ),
+                sessions,
                 key=lambda path: path.name,
                 reverse=True,
             )

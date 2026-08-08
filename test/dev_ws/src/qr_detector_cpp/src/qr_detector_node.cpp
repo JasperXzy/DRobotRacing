@@ -138,6 +138,22 @@ private:
         return true;
     }
 
+    static bool is_day_directory_name(const std::string& name)
+    {
+        if (name.size() != 10 || name[4] != '.' || name[7] != '.') {
+            return false;
+        }
+        for (std::size_t index = 0; index < name.size(); ++index) {
+            if (index == 4 || index == 7) {
+                continue;
+            }
+            if (!std::isdigit(static_cast<unsigned char>(name[index]))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     void camera_image_callback(const sensor_msgs::msg::CompressedImage::ConstSharedPtr msg)
     {
         camera_frames_.push_back(msg);
@@ -156,6 +172,7 @@ private:
         }
 
         std::string latest_session;
+        std::filesystem::path latest_session_path;
         for (const auto& entry : std::filesystem::directory_iterator(output_root, error)) {
             if (error) {
                 return {};
@@ -167,9 +184,31 @@ private:
             const std::string name = entry.path().filename().string();
             if (is_session_directory_name(name) && name > latest_session) {
                 latest_session = name;
+                latest_session_path = entry.path();
+                continue;
+            }
+            if (!is_day_directory_name(name)) {
+                continue;
+            }
+            for (const auto& session_entry :
+                std::filesystem::directory_iterator(entry.path(), error)) {
+                if (error) {
+                    return {};
+                }
+                if (!session_entry.is_directory(error) || error) {
+                    error.clear();
+                    continue;
+                }
+                const std::string session_name =
+                    session_entry.path().filename().string();
+                if (is_session_directory_name(session_name) &&
+                    session_name > latest_session) {
+                    latest_session = session_name;
+                    latest_session_path = session_entry.path();
+                }
             }
         }
-        return latest_session.empty() ? output_root : output_root / latest_session;
+        return latest_session.empty() ? output_root : latest_session_path;
     }
 
     void save_detected_camera_frame(

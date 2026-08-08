@@ -370,6 +370,12 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   get_parameter(
     "logic3_runtime_green_update_enabled",
     logic3_runtime_green_update_enabled_);
+  declare_parameter<bool>(
+    "logic3_runtime_orange_only_update_enabled",
+    logic3_runtime_orange_only_update_enabled_);
+  get_parameter(
+    "logic3_runtime_orange_only_update_enabled",
+    logic3_runtime_orange_only_update_enabled_);
   declare_parameter<double>(
     "logic3_runtime_green_min_match_score",
     logic3_runtime_green_min_match_score_);
@@ -990,7 +996,7 @@ VisualLidarPathFollower::VisualLidarPathFollower()
     task1_static_avoid_max_x_ = 0.60;
   }
   if (!std::isfinite(task1_static_avoid_min_y_)) {
-    task1_static_avoid_min_y_ = 0.0;
+    task1_static_avoid_min_y_ = -0.15;
   }
   if (!std::isfinite(task1_static_avoid_max_y_)) {
     task1_static_avoid_max_y_ = 0.50;
@@ -2679,9 +2685,9 @@ bool VisualLidarPathFollower::original_route_normal_at(
 // 逐点法线偏移在圆弧内侧满足 kappa * d >= 1 时会退化成尖点并反相。
 // 这里先生成旧算法候选，再检测离散曲率、沿原路线进度和局部自交；只有
 // 检测到不可行的最小连续偏移点段才改用同侧局部曲线；同一障碍窗口内的
-// 其余点保留逐点法线偏移。内弯偏移超过曲率半径时，不再强迫路线经过
-// “来源点沿单一法向平移”的平台点，而是在危险圆弧两侧仍然有效的直接
-// 偏移支路之间架一条三次Bezier桥。这相当于切掉已经坍缩的内侧等距圆弧。
+// 其余点保留逐点法线偏移。局部曲线只允许改写危险点本身，并且每个原本
+// 要求偏移的点都必须保留完整偏移量；若无法同时消除反相/自交并满足该
+// 约束，就保留原始直接偏移（包括局部反相），绝不扩大融合或回退原路线。
 std::size_t VisualLidarPathFollower::rebuild_curvature_unsafe_shift_segments(
   std::vector<Waypoint> & shifted_route)
 {
@@ -2822,34 +2828,6 @@ std::size_t VisualLidarPathFollower::rebuild_curvature_unsafe_shift_segments(
       }
       return true;
     };
-  auto indexed_progress_valid = [&](const std::vector<Waypoint> & route,
-      std::size_t first, std::size_t last, std::string & invalid_reason) {
-      if (first >= last) {
-        return true;
-      }
-      for (std::size_t index = first; index < last; ++index) {
-        const Point2D original_segment{
-          original_waypoints_[index + 1].x - original_waypoints_[index].x,
-          original_waypoints_[index + 1].y - original_waypoints_[index].y};
-        const double original_length_squared =
-          original_segment.x * original_segment.x +
-          original_segment.y * original_segment.y;
-        if (original_length_squared < 1e-12) {
-          continue;
-        }
-        const Point2D candidate_segment{
-          route[index + 1].x - route[index].x,
-          route[index + 1].y - route[index].y};
-        const double progress_ratio =
-          (candidate_segment.x * original_segment.x +
-          candidate_segment.y * original_segment.y) / original_length_squared;
-        if (progress_ratio <= waypoint_shift_rebuild_min_progress_ratio_) {
-          invalid_reason = "局部减偏移路线仍沿原路线反向";
-          return false;
-        }
-      }
-      return true;
-    };
   auto fill_bezier = [&](std::vector<Waypoint> & route,
       std::size_t first, std::size_t last, const Point2D & start,
       const Point2D & finish, const Point2D & start_tangent,
@@ -2893,8 +2871,44 @@ std::size_t VisualLidarPathFollower::rebuild_curvature_unsafe_shift_segments(
         }
       }
     };
+  auto requested_offsets_preserved = [&](const std::vector<Waypoint> & route,
+      std::size_t first, std::size_t last, std::string & invalid_reason) {
+      for (std::size_t index = first; index <= last; ++index) {
+        const double requested_offset = std::abs(waypoint_shift_offsets_[index]);
+        if (requested_offset < 1e-9) {
+          continue;
+        }
+        Point2D requested_direction;
+        if (!normalize_vector(
+            waypoint_shift_world_directions_[index], requested_direction))
+        {
+          Point2D normal;
+          if (!original_route_normal_at(index, normal)) {
+            invalid_reason = "无法计算偏移量验收方向";
+            return false;
+          }
+          const double sign = waypoint_shift_offsets_[index] > 0.0 ? 1.0 : -1.0;
+          requested_direction = Point2D{sign * normal.x, sign * normal.y};
+        }
+        const Point2D displacement{
+          route[index].x - original_waypoints_[index].x,
+          route[index].y - original_waypoints_[index].y};
+        const double retained_offset =
+          displacement.x * requested_direction.x +
+          displacement.y * requested_direction.y;
+        if (retained_offset + 1e-6 < requested_offset) {
+          invalid_reason = "局部曲线削弱了前/后窗口设定的偏移量";
+          return false;
+        }
+      }
+      return true;
+    };
 
   std::size_t rebuilt_count = 0;
+  // 这些区间已经通过“沿自身接回弦严格前进 + 局部无折返/无自交”检查。
+  // 最终守门不能再拿同索引原路线切线否决合法的切弯 Bezier；否则内弯
+  // 虽然已经被安全切掉，仍会因为局部切线方向不同而被误判成反相。
+  std::vector<std::pair<std::size_t, std::size_t>> chord_validated_spans;
   std::size_t run_first = 0;
   while (run_first < route_size) {
     if (std::abs(waypoint_shift_offsets_[run_first]) < 1e-9) {
@@ -3062,8 +3076,8 @@ std::size_t VisualLidarPathFollower::rebuild_curvature_unsafe_shift_segments(
         continue;
       }
 
-      // 障碍来源点落在危险子段内时以它为局部平台中心；否则使用子段中
-      // 风险最大的点，避免把平台重新扩展到整个障碍影响窗口。
+      // 只处理真正发生反相/自交的危险点。真实障碍来源点若不在危险子段
+      // 内，不能为了让曲线经过它而把整段前/后偏移窗口一起拉成大圆弧。
       const std::size_t source_index =
         source_identity >= unsafe_first && source_identity <= unsafe_last ?
         source_identity : risk_index;
@@ -3095,21 +3109,18 @@ std::size_t VisualLidarPathFollower::rebuild_curvature_unsafe_shift_segments(
         continue;
       }
 
-      // before/after仍是实车严格调试后的绝对影响边界。先只取危险圆弧
-      // 两侧一个点作为接回锚点；若空间不够，再在同一障碍物实际取得的
-      // 1/4—3/4所有权窗口内逐点扩展。这样两个相邻圆角分别修复，中间
-      // 的直线重叠分配不会被一次跨窗口Bezier重新改写。
-      // 危险段正好贴住当前障碍所有权窗口边界时，窗口内部天然缺少一侧
-      // 锚点。允许只借用边界外最近的一个既有路线点作为固定接回锚点；
-      // 该点本身不被移动，因此不会篡改相邻障碍窗口的偏移结果。
+      // 两个接回锚点严格取危险子段的相邻点：锚点不改写，Bezier只覆盖
+      // unsafe_first..unsafe_last。若相邻点不足或这一最小局部桥不可行，
+      // 就保留原始直接偏移；不再向障碍中心或窗口外扩展几十个路径点。
+      const std::size_t repair_core_first = unsafe_first;
+      const std::size_t repair_core_last = unsafe_last;
       const std::size_t anchor_search_first =
-        unsafe_first == run_first && run_first > 0 ? run_first - 1 : run_first;
+        repair_core_first > 0 ? repair_core_first - 1 : repair_core_first;
       const std::size_t anchor_search_last =
-        unsafe_last == run_last && run_last + 1 < route_size ?
-        run_last + 1 : run_last;
+        std::min(repair_core_last + 1, route_size - 1);
       const std::size_t maximum_context = std::max(
-        unsafe_first - anchor_search_first,
-        anchor_search_last - unsafe_last);
+        repair_core_first - anchor_search_first,
+        anchor_search_last - repair_core_last);
       std::size_t accepted_anchor_first = unsafe_first;
       std::size_t accepted_anchor_last = unsafe_last;
       double accepted_handle_ratio = 0.0;
@@ -3117,12 +3128,6 @@ std::size_t VisualLidarPathFollower::rebuild_curvature_unsafe_shift_segments(
       const char * accepted_bridge_mode = "单段切角桥";
       std::string last_invalid_reason = "没有可用的双侧接回锚点";
       bool valid_rebuild = false;
-      bool has_reduced_clearance_candidate = false;
-      double best_reduced_clearance = -std::numeric_limits<double>::infinity();
-      std::size_t reduced_anchor_first = unsafe_first;
-      std::size_t reduced_anchor_last = unsafe_last;
-      double reduced_handle_ratio = 0.0;
-      std::vector<Waypoint> best_reduced_candidate;
       const double handle_ratios[] = {
         waypoint_shift_rebuild_bezier_handle_ratio_,
         0.75 * waypoint_shift_rebuild_bezier_handle_ratio_,
@@ -3135,10 +3140,10 @@ std::size_t VisualLidarPathFollower::rebuild_curvature_unsafe_shift_segments(
         context <= maximum_context && !valid_rebuild; ++context)
       {
         const std::size_t anchor_first =
-          unsafe_first > anchor_search_first + context ?
-          unsafe_first - context : anchor_search_first;
+          repair_core_first > anchor_search_first + context ?
+          repair_core_first - context : anchor_search_first;
         const std::size_t anchor_last =
-          std::min(anchor_search_last, unsafe_last + context);
+          std::min(anchor_search_last, repair_core_last + context);
         if (anchor_first == previous_anchor_first &&
           anchor_last == previous_anchor_last)
         {
@@ -3146,7 +3151,9 @@ std::size_t VisualLidarPathFollower::rebuild_curvature_unsafe_shift_segments(
         }
         previous_anchor_first = anchor_first;
         previous_anchor_last = anchor_last;
-        if (anchor_first >= unsafe_first || anchor_last <= unsafe_last) {
+        if (anchor_first >= repair_core_first || anchor_last <= repair_core_last ||
+          source_index <= anchor_first || source_index >= anchor_last)
+        {
           continue;
         }
 
@@ -3198,34 +3205,23 @@ std::size_t VisualLidarPathFollower::rebuild_curvature_unsafe_shift_segments(
               start_point, finish_point, candidate_invalid_reason) &&
             local_geometry_valid(
               rebuilt_candidate, anchor_first, anchor_last,
+              candidate_invalid_reason) &&
+            requested_offsets_preserved(
+              rebuilt_candidate, repair_core_first, repair_core_last,
               candidate_invalid_reason);
-          if (single_bridge_geometry_valid &&
-            source_clearance + 1e-6 >= target_offset)
+          if (single_bridge_geometry_valid)
           {
             valid_rebuild = true;
             accepted_anchor_first = anchor_first;
             accepted_anchor_last = anchor_last;
             accepted_handle_ratio = handle_ratio;
+            accepted_clearance = source_clearance;
             accepted_bridge_mode = "单段切角桥";
             accepted_candidate = std::move(rebuilt_candidate);
             break;
           }
-          if (single_bridge_geometry_valid && source_clearance >= -1e-6 &&
-            source_clearance > best_reduced_clearance)
-          {
-            // 先保存几何合法且仍位于障碍同侧的最大可用净偏移；只有所有
-            // 满偏移单/双桥都失败后才会采用，实现局部逐级减小偏移。
-            has_reduced_clearance_candidate = true;
-            best_reduced_clearance = std::max(0.0, source_clearance);
-            reduced_anchor_first = anchor_first;
-            reduced_anchor_last = anchor_last;
-            reduced_handle_ratio = handle_ratio;
-            best_reduced_candidate = rebuilt_candidate;
-          }
           if (!single_bridge_geometry_valid) {
             last_invalid_reason = candidate_invalid_reason;
-          } else if (source_clearance + 1e-6 < target_offset) {
-            last_invalid_reason = "Bezier桥在障碍来源点未达到目标同侧净偏移";
           }
 
           // 外弯的直接等距曲线本身不会发生曲率坍缩；单段切弦反而可能
@@ -3250,131 +3246,46 @@ std::size_t VisualLidarPathFollower::rebuild_curvature_unsafe_shift_segments(
               rebuilt_candidate, source_index, anchor_last,
               shifted_source, finish_point, last_invalid_reason) &&
             local_geometry_valid(
-              rebuilt_candidate, anchor_first, anchor_last, last_invalid_reason))
+              rebuilt_candidate, anchor_first, anchor_last, last_invalid_reason) &&
+            requested_offsets_preserved(
+              rebuilt_candidate, repair_core_first, repair_core_last,
+              last_invalid_reason))
           {
             valid_rebuild = true;
             accepted_anchor_first = anchor_first;
             accepted_anchor_last = anchor_last;
             accepted_handle_ratio = handle_ratio;
+            accepted_clearance = std::abs(waypoint_shift_offsets_[source_index]);
             accepted_bridge_mode = "双段外弯保净空桥";
             accepted_candidate = std::move(rebuilt_candidate);
             break;
           }
         }
       }
-      if (!valid_rebuild && has_reduced_clearance_candidate) {
-        valid_rebuild = true;
-        accepted_anchor_first = reduced_anchor_first;
-        accepted_anchor_last = reduced_anchor_last;
-        accepted_handle_ratio = reduced_handle_ratio;
-        accepted_clearance = best_reduced_clearance;
-        accepted_bridge_mode = "局部减偏移单段桥";
-        accepted_candidate = std::move(best_reduced_candidate);
-      }
+      // 最小局部桥若失败，原始直接偏移保持不动。允许巡点逻辑和到点容限
+      // 消化这一处局部反相/自交，绝不扩大曲线范围或恢复原路线。
       if (!valid_rebuild) {
-        // Bezier仍不可用时，不得继续保留已经确认会反向/自交的直接偏移。
-        // 先只对当前障碍窗口按75%→50%→25%→0逐级缩小；若与相邻偏移
-        // 的接缝仍不合法，再把相连的非零偏移块一起缩小，最终只回到该
-        // 局部原路线，不影响场地其他障碍的偏移。
-        std::size_t connected_first = run_first;
-        std::size_t connected_last = run_last;
-        while (connected_first > 0 &&
-          std::abs(waypoint_shift_offsets_[connected_first - 1]) > 1e-9)
-        {
-          --connected_first;
-        }
-        while (connected_last + 1 < route_size &&
-          std::abs(waypoint_shift_offsets_[connected_last + 1]) > 1e-9)
-        {
-          ++connected_last;
-        }
-        const std::pair<std::size_t, std::size_t> fallback_spans[] = {
-          {run_first, run_last}, {connected_first, connected_last}};
-        const double fallback_scales[] = {0.75, 0.50, 0.25, 0.0};
-        for (const auto & span : fallback_spans) {
-          if (valid_rebuild) {
-            break;
-          }
-          for (const double scale : fallback_scales) {
-            std::vector<Waypoint> fallback_candidate = shifted_route;
-            for (std::size_t index = span.first; index <= span.second; ++index) {
-              fallback_candidate[index].x = original_waypoints_[index].x + scale *
-                (shifted_route[index].x - original_waypoints_[index].x);
-              fallback_candidate[index].y = original_waypoints_[index].y + scale *
-                (shifted_route[index].y - original_waypoints_[index].y);
-            }
-            const std::size_t validation_first =
-              span.first > 0 ? span.first - 1 : span.first;
-            const std::size_t validation_last =
-              std::min(span.second + 1, route_size - 1);
-            std::string fallback_invalid_reason;
-            if (!indexed_progress_valid(
-                fallback_candidate, validation_first, validation_last,
-                fallback_invalid_reason) ||
-              !local_geometry_valid(
-                fallback_candidate, span.first, span.second,
-                fallback_invalid_reason))
-            {
-              last_invalid_reason = fallback_invalid_reason;
-              continue;
-            }
-            const Point2D fallback_source_displacement{
-              fallback_candidate[source_index].x -
-              original_waypoints_[source_index].x,
-              fallback_candidate[source_index].y -
-              original_waypoints_[source_index].y};
-            valid_rebuild = true;
-            accepted_anchor_first = span.first;
-            accepted_anchor_last = span.second;
-            accepted_handle_ratio = 0.0;
-            accepted_clearance = std::max(
-              0.0, fallback_source_displacement.x * fixed_direction.x +
-              fallback_source_displacement.y * fixed_direction.y);
-            accepted_bridge_mode = scale > 0.0 ?
-              "局部等比减偏移" : "局部回退原路线";
-            accepted_candidate = std::move(fallback_candidate);
-            break;
-          }
-        }
-      }
-      // 所有Bezier候选都必须通过前进比例、局部转角和自交检查。旧实现
-      // 会无条件提交最后一个零控制柄候选，正是圆角处出现前进后折返的
-      // 原因。若连局部减偏移都无法通过，强制把这个相连偏移块恢复为
-      // 原路线；不能把已经确认会倒退的直接偏移交给追点器。
-      if (!valid_rebuild) {
-        std::size_t fallback_first = run_first;
-        std::size_t fallback_last = run_last;
-        while (fallback_first > 0 &&
-          std::abs(waypoint_shift_offsets_[fallback_first - 1]) > 1e-9)
-        {
-          --fallback_first;
-        }
-        while (fallback_last + 1 < route_size &&
-          std::abs(waypoint_shift_offsets_[fallback_last + 1]) > 1e-9)
-        {
-          ++fallback_last;
-        }
-        for (std::size_t index = fallback_first; index <= fallback_last; ++index) {
-          shifted_route[index] = original_waypoints_[index];
-        }
         RCLCPP_ERROR_THROTTLE(
           get_logger(), *get_clock(), 2000,
           "waypoint_shift：危险子段%zu-%zu在所属直接偏移窗口%zu-%zu内仍无法"
-          "生成严格前进且无自交的独立同侧曲线（最后原因：%s）；"
-          "已强制将相连偏移块%zu-%zu恢复为原路线。",
+          "生成保持完整净距、严格前进且无自交的独立同侧曲线（最后原因：%s）；"
+          "保留前/后窗口的原始完整偏移及该处局部反相/自交，不扩大融合、不回退原路线。",
           unsafe_first + 1, unsafe_last + 1, run_first + 1, run_last + 1,
-          last_invalid_reason.c_str(), fallback_first + 1, fallback_last + 1);
+          last_invalid_reason.c_str());
         unsafe_first = unsafe_last + 1;
         continue;
       }
       shifted_route = std::move(accepted_candidate);
+      chord_validated_spans.emplace_back(
+        accepted_anchor_first, accepted_anchor_last);
       ++rebuilt_count;
       RCLCPP_WARN_THROTTLE(
         get_logger(), *get_clock(), 2000,
         "waypoint_shift：检测到圆弧内侧偏移不可行（危险点%zu-%zu，"
         "所属直接偏移窗口%zu-%zu，最小进度/可行因子=%.3f），"
         "仅在点%zu-%zu内用%s独立重建危险圆弧，来源点=%zu，"
-        "目标/实际偏移=%.3f/%.3fm，Bezier控制柄比例=%.3f。",
+        "危险段最大设定偏移/来源点实际偏移=%.3f/%.3fm，"
+        "且危险段逐点偏移验收通过；Bezier控制柄比例=%.3f。",
         unsafe_first + 1, unsafe_last + 1, run_first + 1, run_last + 1,
         minimum_risk_factor, accepted_anchor_first + 1, accepted_anchor_last + 1,
         accepted_bridge_mode, source_index + 1, target_offset,
@@ -3384,13 +3295,22 @@ std::size_t VisualLidarPathFollower::rebuild_curvature_unsafe_shift_segments(
     run_first = run_last + 1;
   }
 
-  // 最终整条路线再做一次守门：禁止静态偏移新引入明确的反向线段、急剧
-  // 折返或非相邻线段自交。发现问题时只撤销涉及索引附近的相连偏移块，
-  // 再重新检查；原始路线本来就存在的几何关系不归偏移修复器处理。
+  // 最终整条路线只做诊断：上面的最小局部算法已经尝试处理反向、折返和
+  // 自交；若仍有问题，按要求保留完整直接偏移和局部几何，不再扩大范围。
   auto route_safety_issue = [&](const std::vector<Waypoint> & route,
       std::vector<std::size_t> & involved_indices, std::string & reason) {
       involved_indices.clear();
       for (std::size_t index = 0; index + 1 < route_size; ++index) {
+        const bool belongs_to_validated_chord = std::any_of(
+          chord_validated_spans.begin(), chord_validated_spans.end(),
+          [&](const auto & span) {
+            return index >= span.first && index + 1 <= span.second;
+          });
+        if (belongs_to_validated_chord) {
+          // 该段已经按Bezier自身的起终弦验证为严格前进。切弯后局部切线
+          // 本来就可能不同于同索引原圆弧切线，不能重复按原切线判反相。
+          continue;
+        }
         const Point2D original_segment{
           original_waypoints_[index + 1].x - original_waypoints_[index].x,
           original_waypoints_[index + 1].y - original_waypoints_[index].y};
@@ -3478,64 +3398,18 @@ std::size_t VisualLidarPathFollower::rebuild_curvature_unsafe_shift_segments(
 
   std::vector<std::size_t> unsafe_final_indices;
   std::string final_invalid_reason;
-  for (std::size_t repair_round = 0; repair_round < route_size &&
-    route_safety_issue(
-      shifted_route, unsafe_final_indices, final_invalid_reason); ++repair_round)
+  if (route_safety_issue(
+      shifted_route, unsafe_final_indices, final_invalid_reason))
   {
-    bool restored_any = false;
-    for (const std::size_t unsafe_index : unsafe_final_indices) {
-      std::size_t shifted_index = std::min(unsafe_index, route_size - 1);
-      if (std::abs(waypoint_shift_offsets_[shifted_index]) <= 1e-9) {
-        bool found_nearby_shift = false;
-        for (std::size_t radius = 1; radius <= 2 && !found_nearby_shift; ++radius) {
-          if (shifted_index >= radius &&
-            std::abs(waypoint_shift_offsets_[shifted_index - radius]) > 1e-9)
-          {
-            shifted_index -= radius;
-            found_nearby_shift = true;
-          } else if (shifted_index + radius < route_size &&
-            std::abs(waypoint_shift_offsets_[shifted_index + radius]) > 1e-9)
-          {
-            shifted_index += radius;
-            found_nearby_shift = true;
-          }
-        }
-        if (!found_nearby_shift) {
-          continue;
-        }
-      }
-      std::size_t restore_first = shifted_index;
-      std::size_t restore_last = shifted_index;
-      while (restore_first > 0 &&
-        std::abs(waypoint_shift_offsets_[restore_first - 1]) > 1e-9)
-      {
-        --restore_first;
-      }
-      while (restore_last + 1 < route_size &&
-        std::abs(waypoint_shift_offsets_[restore_last + 1]) > 1e-9)
-      {
-        ++restore_last;
-      }
-      for (std::size_t index = restore_first; index <= restore_last; ++index) {
-        if (point_distance(shifted_route[index], original_waypoints_[index]) > 1e-9) {
-          shifted_route[index] = original_waypoints_[index];
-          restored_any = true;
-        }
-      }
-    }
-    if (!restored_any) {
-      RCLCPP_ERROR(
-        get_logger(),
-        "waypoint_shift最终安全检查仍失败且无法定位局部偏移块：%s；"
-        "整条偏移路线回退为原路线。",
-        final_invalid_reason.c_str());
-      shifted_route = original_waypoints_;
-      break;
-    }
+    const auto unsafe_bounds = std::minmax_element(
+      unsafe_final_indices.begin(), unsafe_final_indices.end());
     RCLCPP_ERROR_THROTTLE(
       get_logger(), *get_clock(), 2000,
-      "waypoint_shift最终安全检查发现%s；已撤销相关局部偏移并重新检查。",
-      final_invalid_reason.c_str());
+      "waypoint_shift最终检查仍发现%s（涉及点%zu-%zu）；"
+      "局部最小重建已失败或不适用，按要求保留前/后窗口的全部原始偏移"
+      "和该处局部几何，不扩大融合、不降低偏移量、不恢复原路线。",
+      final_invalid_reason.c_str(),
+      *unsafe_bounds.first + 1, *unsafe_bounds.second + 1);
   }
   return rebuilt_count;
 }
@@ -4787,6 +4661,49 @@ void VisualLidarPathFollower::update_logic3_static_cluster_tracks(
       }
     }
     if (best_track == logic3_static_cluster_tracks_.size()) {
+      // 一个障碍在同一帧仍可能残留两个碎片。若最近ID已经被本帧第一个
+      // 碎片占用，旧代码会跳过它并为第二个碎片创建新ID。这里允许第二个
+      // 碎片在身份半径内并回本帧已匹配ID，但同一雷达帧仍只计一次命中。
+      std::size_t matched_track = logic3_static_cluster_tracks_.size();
+      double matched_distance = logic3_static_cluster_match_radius_;
+      for (std::size_t index = 0; index < logic3_static_cluster_tracks_.size(); ++index) {
+        if (!track_matched[index]) {
+          continue;
+        }
+        const auto & current_center = logic3_static_cluster_tracks_[index].cluster.center;
+        const double distance = std::hypot(
+          cluster.center.x - current_center.x,
+          cluster.center.y - current_center.y);
+        if (distance <= matched_distance) {
+          matched_distance = distance;
+          matched_track = index;
+        }
+      }
+      if (matched_track < logic3_static_cluster_tracks_.size()) {
+        auto & track = logic3_static_cluster_tracks_[matched_track];
+        const Point2D existing_center = track.cluster.center;
+        track.cluster.points.insert(
+          track.cluster.points.end(), cluster.points.begin(), cluster.points.end());
+        track.cluster.center = Point2D();
+        if (track.cluster.points.empty()) {
+          track.cluster.center.x = 0.5 * (existing_center.x + cluster.center.x);
+          track.cluster.center.y = 0.5 * (existing_center.y + cluster.center.y);
+        } else {
+          for (const auto & point : track.cluster.points) {
+            track.cluster.center.x += point.x;
+            track.cluster.center.y += point.y;
+          }
+          const double point_count = static_cast<double>(track.cluster.points.size());
+          track.cluster.center.x /= point_count;
+          track.cluster.center.y /= point_count;
+        }
+        track.last_seen_seconds = now_seconds;
+        if (!track.rolling_hit_centers.empty()) {
+          track.rolling_hit_centers.back() = track.cluster.center;
+        }
+        continue;
+      }
+
       Logic3StaticClusterTrack track;
       track.cluster = cluster;
       track.stability_anchor = cluster.center;
@@ -4920,6 +4837,196 @@ void VisualLidarPathFollower::update_logic3_static_cluster_tracks(
         logic3_static_cluster_tracks_.begin() + static_cast<std::ptrdiff_t>(index - 1));
       track_matched.erase(
         track_matched.begin() + static_cast<std::ptrdiff_t>(index - 1));
+    }
+  }
+
+  // 第三道硬保护：已有静态轨迹也必须满足身份半径内唯一。绿色坐标是
+  // 最高分样本平均值，两个早期相距较远的碎片ID可能在稳定后收敛到一起；
+  // 因此不能只在“新建ID”瞬间检查，还要在每帧READY计算前两两去重。
+  auto representative_center = [](const Logic3StaticClusterTrack & track) {
+      if (track.ready) {
+        return track.ready_obstacle.cluster.center;
+      }
+      if (!track.best_score_samples.empty()) {
+        Point2D center;
+        for (const auto & sample : track.best_score_samples) {
+          center.x += sample.cluster.center.x;
+          center.y += sample.cluster.center.y;
+        }
+        const double count = static_cast<double>(track.best_score_samples.size());
+        center.x /= count;
+        center.y /= count;
+        return center;
+      }
+      if (!track.rolling_hit_centers.empty()) {
+        return track.rolling_hit_centers.back();
+      }
+      return track.cluster.center;
+    };
+  for (std::size_t first = 0; first < logic3_static_cluster_tracks_.size(); ++first) {
+    std::size_t second = first + 1;
+    while (second < logic3_static_cluster_tracks_.size()) {
+      const Point2D first_center = representative_center(
+        logic3_static_cluster_tracks_[first]);
+      const Point2D second_center = representative_center(
+        logic3_static_cluster_tracks_[second]);
+      const double duplicate_distance = std::hypot(
+        first_center.x - second_center.x, first_center.y - second_center.y);
+      if (duplicate_distance > logic3_static_cluster_match_radius_) {
+        ++second;
+        continue;
+      }
+
+      auto & first_track = logic3_static_cluster_tracks_[first];
+      auto & second_track = logic3_static_cluster_tracks_[second];
+      const bool second_is_better_keeper =
+        (!first_track.confirmed && second_track.confirmed) ||
+        (first_track.confirmed == second_track.confirmed &&
+        first_track.identity_id != 0 && second_track.identity_id != 0 &&
+        second_track.identity_id < first_track.identity_id);
+      if (second_is_better_keeper) {
+        std::swap(first_track, second_track);
+        std::swap(track_matched[first], track_matched[second]);
+      }
+
+      auto & keeper = logic3_static_cluster_tracks_[first];
+      auto & duplicate = logic3_static_cluster_tracks_[second];
+      const bool duplicate_was_formal = duplicate.confirmed;
+      const bool either_matched = track_matched[first] || track_matched[second];
+
+      if (duplicate.last_seen_seconds > keeper.last_seen_seconds ||
+        (std::abs(duplicate.last_seen_seconds - keeper.last_seen_seconds) <= 1e-9 &&
+        duplicate.cluster.points.size() > keeper.cluster.points.size()))
+      {
+        keeper.cluster = duplicate.cluster;
+      }
+      keeper.last_seen_seconds = std::max(
+        keeper.last_seen_seconds, duplicate.last_seen_seconds);
+
+      std::vector<std::pair<double, Point2D>> combined_hits;
+      combined_hits.reserve(
+        keeper.rolling_hit_times.size() + duplicate.rolling_hit_times.size());
+      for (std::size_t index = 0;
+        index < keeper.rolling_hit_times.size() &&
+        index < keeper.rolling_hit_centers.size(); ++index)
+      {
+        combined_hits.emplace_back(
+          keeper.rolling_hit_times[index], keeper.rolling_hit_centers[index]);
+      }
+      for (std::size_t index = 0;
+        index < duplicate.rolling_hit_times.size() &&
+        index < duplicate.rolling_hit_centers.size(); ++index)
+      {
+        combined_hits.emplace_back(
+          duplicate.rolling_hit_times[index], duplicate.rolling_hit_centers[index]);
+      }
+      std::sort(
+        combined_hits.begin(), combined_hits.end(),
+        [](const auto & lhs, const auto & rhs) {return lhs.first < rhs.first;});
+      keeper.rolling_hit_times.clear();
+      keeper.rolling_hit_centers.clear();
+      for (const auto & hit : combined_hits) {
+        if (!keeper.rolling_hit_times.empty() &&
+          std::abs(hit.first - keeper.rolling_hit_times.back()) <= 1e-6)
+        {
+          auto & center = keeper.rolling_hit_centers.back();
+          center.x = 0.5 * (center.x + hit.second.x);
+          center.y = 0.5 * (center.y + hit.second.y);
+          continue;
+        }
+        if (hit.first >= window_start) {
+          keeper.rolling_hit_times.push_back(hit.first);
+          keeper.rolling_hit_centers.push_back(hit.second);
+        }
+      }
+
+      std::vector<Logic3StaticScoredSample> combined_samples =
+        keeper.best_score_samples;
+      combined_samples.insert(
+        combined_samples.end(), duplicate.best_score_samples.begin(),
+        duplicate.best_score_samples.end());
+      std::sort(
+        combined_samples.begin(), combined_samples.end(),
+        [](const Logic3StaticScoredSample & lhs,
+        const Logic3StaticScoredSample & rhs) {
+          if (std::abs(lhs.match_score - rhs.match_score) > 1e-9) {
+            return lhs.match_score > rhs.match_score;
+          }
+          return lhs.scan_sequence > rhs.scan_sequence;
+        });
+      keeper.best_score_samples.clear();
+      for (const auto & sample : combined_samples) {
+        const bool duplicate_scan = std::any_of(
+          keeper.best_score_samples.begin(), keeper.best_score_samples.end(),
+          [&](const Logic3StaticScoredSample & selected) {
+            return selected.scan_sequence == sample.scan_sequence;
+          });
+        if (duplicate_scan) {
+          continue;
+        }
+        keeper.best_score_samples.push_back(sample);
+        if (keeper.best_score_samples.size() >=
+          static_cast<std::size_t>(logic3_static_best_score_samples_))
+        {
+          break;
+        }
+      }
+
+      keeper.confirmed = keeper.confirmed || duplicate.confirmed;
+      keeper.entered_state1 = keeper.entered_state1 || duplicate.entered_state1;
+      keeper.loss_pending = either_matched ? false :
+        (keeper.loss_pending && duplicate.loss_pending);
+      if (!keeper.loss_pending) {
+        keeper.loss_started_seconds = 0.0;
+      }
+      track_matched[first] = either_matched;
+
+      if (keeper.best_score_samples.size() >=
+        static_cast<std::size_t>(logic3_static_best_score_samples_))
+      {
+        ScanPointCluster averaged_cluster;
+        for (const auto & sample : keeper.best_score_samples) {
+          averaged_cluster.center.x += sample.cluster.center.x;
+          averaged_cluster.center.y += sample.cluster.center.y;
+        }
+        const double sample_count =
+          static_cast<double>(keeper.best_score_samples.size());
+        averaged_cluster.center.x /= sample_count;
+        averaged_cluster.center.y /= sample_count;
+        const auto strongest_sample = std::max_element(
+          keeper.best_score_samples.begin(), keeper.best_score_samples.end(),
+          [](const Logic3StaticScoredSample & lhs,
+          const Logic3StaticScoredSample & rhs) {
+            if (std::abs(lhs.match_score - rhs.match_score) > 1e-9) {
+              return lhs.match_score < rhs.match_score;
+            }
+            return lhs.scan_sequence < rhs.scan_sequence;
+          });
+        averaged_cluster.points = strongest_sample->cluster.points;
+        if (averaged_cluster.points.empty()) {
+          averaged_cluster.points.push_back(averaged_cluster.center);
+        } else {
+          const double translate_x =
+            averaged_cluster.center.x - strongest_sample->cluster.center.x;
+          const double translate_y =
+            averaged_cluster.center.y - strongest_sample->cluster.center.y;
+          for (auto & point : averaged_cluster.points) {
+            point.x += translate_x;
+            point.y += translate_y;
+          }
+        }
+        keeper.ready_obstacle = Logic3StaticObstacle{averaged_cluster};
+        keeper.ready = true;
+      } else if (!keeper.ready && duplicate.ready) {
+        keeper.ready_obstacle = duplicate.ready_obstacle;
+        keeper.ready = true;
+      }
+
+      formal_collection_changed = formal_collection_changed || duplicate_was_formal;
+      logic3_static_cluster_tracks_.erase(
+        logic3_static_cluster_tracks_.begin() + static_cast<std::ptrdiff_t>(second));
+      track_matched.erase(
+        track_matched.begin() + static_cast<std::ptrdiff_t>(second));
     }
   }
 
@@ -5265,9 +5372,9 @@ bool VisualLidarPathFollower::update_logic3_runtime_green_tracks(
       }
       return best_index;
     };
-  auto find_current_permanent_center = [&](const Point2D & center) {
+  auto find_current_permanent_coverage = [&](const Point2D & center) {
       std::size_t best_index = logic3_green_clusters_.size();
-      double best_distance = logic3_runtime_green_match_radius_;
+      double best_distance = logic3_old_cluster_radius_;
       for (std::size_t index = 0; index < logic3_green_clusters_.size(); ++index) {
         const auto & current_center = logic3_green_clusters_[index].center;
         const double distance = std::hypot(
@@ -5369,18 +5476,19 @@ bool VisualLidarPathFollower::update_logic3_runtime_green_tracks(
       } else {
         // READY锚点只负责约束既有绿色身份不能被连续小步拖走。判断一个
         // 候选能否成为“新增橙点”时，必须再与所有绿/橙永久点的当前更新
-        // 中心比较。这样候选即使已超出旧READY锚点，只要仍在更新后中心
-        // 配置身份半径内，就只视为同一障碍的抖动，既不新增橙点，也不把原ID
-        // 拉出READY身份半径。
+        // 中心比较。0.25m只负责严格身份关联；无法关联身份后，只要候选仍在
+        // 任一永久点0.65m过滤覆盖范围内，就视为该永久障碍的点云抖动，禁止
+        // 新增橙点，也不把原ID拉出固定身份锚点。
         const std::size_t current_center_index =
-          find_current_permanent_center(track.cluster.center);
+          find_current_permanent_coverage(track.cluster.center);
         if (current_center_index < logic3_green_clusters_.size()) {
           RCLCPP_INFO_THROTTLE(
             get_logger(), *get_clock(), 2000,
-            "运行绿/橙点候选map(%.3f, %.3f)位于永久点%zu当前中心%.2fm内，"
-            "判为同一障碍抖动，不新增橙点。",
+            "运行绿/橙点候选map(%.3f, %.3f)无法通过%.2fm身份半径关联，"
+            "但位于永久点%zu当前中心%.2fm过滤覆盖内，不新增橙点。",
             track.cluster.center.x, track.cluster.center.y,
-            current_center_index + 1, logic3_runtime_green_match_radius_);
+            logic3_runtime_green_match_radius_, current_center_index + 1,
+            logic3_old_cluster_radius_);
           continue;
         }
         track.green_index = logic3_green_clusters_.size();
@@ -5400,6 +5508,18 @@ bool VisualLidarPathFollower::update_logic3_runtime_green_tracks(
     }
 
     const std::size_t green_index = track.green_index;
+    const std::size_t departure_green_count =
+      logic3_orange_green_boundary_locked_ ?
+      std::min(logic3_orange_green_begin_index_, logic3_green_clusters_.size()) :
+      logic3_green_clusters_.size();
+    if (logic3_runtime_orange_only_update_enabled_ &&
+      green_index < departure_green_count)
+    {
+      // 橙点专用更新模式：可信发车时的READY绿色身份、坐标和点云保持冻结。
+      // 它们发车时已经产生的静态绕行及0.65m雷达掩码继续有效；这里只禁止
+      // 运行高分观测移动绿色中心并触发新的绿色路线偏移。
+      continue;
+    }
     logic3_green_clusters_[green_index] = track.cluster;
     const bool has_planned_center =
       green_index < logic3_green_last_planned_centers_.size();
@@ -6100,35 +6220,62 @@ void VisualLidarPathFollower::update_waypoint_shifts(
     robot_pose, minimum_cluster_points, use_logic3_static_restriction_map,
     filter_logic3_green_mask);
 
-  // 远距离时同一障碍物的1~3个回波可能被无效量程切成多个单点段。
-  // 仅在静态+动态方案静止阶段用独立的当前帧0.20m半径合并候选；跨帧ID关联
-  // 仍使用logic3_static_cluster_match_radius，不使用绿色冻结圆。
+  // 远距离时同一障碍物的1~3个回波可能被无效量程或地图过滤切成多个
+  // 单点段。静止阶段先按0.20m做传递连通合并：A靠近B、B靠近C时三者
+  // 必须属于同一分量，不能受输入顺序或逐次更新质心影响而残留第二个簇。
+  // 跨帧ID关联仍使用logic3_static_cluster_match_radius，不使用绿色冻结圆。
   if (!logic3_planning_pose_anchored_ && !replay_frozen_clusters)
   {
+    std::vector<bool> consumed(clusters.size(), false);
     std::vector<ScanPointCluster> merged_clusters;
-    for (const auto & cluster : clusters) {
-      auto merged = std::find_if(
-        merged_clusters.begin(), merged_clusters.end(),
-        [&](const ScanPointCluster & candidate) {
-          return std::hypot(
-            candidate.center.x - cluster.center.x,
-            candidate.center.y - cluster.center.y) <=
-          logic3_static_same_frame_merge_radius_;
-        });
-      if (merged == merged_clusters.end()) {
-        merged_clusters.push_back(cluster);
+    merged_clusters.reserve(clusters.size());
+    for (std::size_t seed = 0; seed < clusters.size(); ++seed) {
+      if (consumed[seed]) {
         continue;
       }
-      merged->points.insert(
-        merged->points.end(), cluster.points.begin(), cluster.points.end());
-      merged->center = Point2D();
-      for (const auto & point : merged->points) {
-        merged->center.x += point.x;
-        merged->center.y += point.y;
+      consumed[seed] = true;
+      std::vector<std::size_t> component{seed};
+      for (std::size_t cursor = 0; cursor < component.size(); ++cursor) {
+        const std::size_t current = component[cursor];
+        for (std::size_t candidate = 0; candidate < clusters.size(); ++candidate) {
+          if (consumed[candidate]) {
+            continue;
+          }
+          if (std::hypot(
+              clusters[current].center.x - clusters[candidate].center.x,
+              clusters[current].center.y - clusters[candidate].center.y) >
+            logic3_static_same_frame_merge_radius_)
+          {
+            continue;
+          }
+          consumed[candidate] = true;
+          component.push_back(candidate);
+        }
       }
-      const double point_count = static_cast<double>(merged->points.size());
-      merged->center.x /= point_count;
-      merged->center.y /= point_count;
+
+      ScanPointCluster merged;
+      for (const std::size_t index : component) {
+        merged.points.insert(
+          merged.points.end(), clusters[index].points.begin(), clusters[index].points.end());
+      }
+      if (merged.points.empty()) {
+        for (const std::size_t index : component) {
+          merged.center.x += clusters[index].center.x;
+          merged.center.y += clusters[index].center.y;
+        }
+        const double component_count = static_cast<double>(component.size());
+        merged.center.x /= component_count;
+        merged.center.y /= component_count;
+      } else {
+        for (const auto & point : merged.points) {
+          merged.center.x += point.x;
+          merged.center.y += point.y;
+        }
+        const double point_count = static_cast<double>(merged.points.size());
+        merged.center.x /= point_count;
+        merged.center.y /= point_count;
+      }
+      merged_clusters.push_back(std::move(merged));
     }
     clusters = std::move(merged_clusters);
   }

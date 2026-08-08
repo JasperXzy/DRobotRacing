@@ -52,7 +52,13 @@ class RouteSnapshotRenderer(Node):
             raise ValueError('invalid snapshot event/session')
 
         output_root = Path(str(data['output_root'])).expanduser()
-        output_dir = output_root / session
+        if re.fullmatch(r'\d{4}\.\d{2}\.\d{2}_\d{2}:\d{2}:\d{2}', session):
+            day = session[:10]
+        else:
+            day = f'{session[:4]}.{session[4:6]}.{session[6:8]}'
+        # 每天一个一级目录；二级目录继续保留完整发车时间戳，确保同一天
+        # 多次发车互不覆盖，并让二维码/图生文节点能锁定同一批次。
+        output_dir = output_root / day / session
         output_dir.mkdir(parents=True, exist_ok=True)
 
         base, world_to_pixel, pixels_per_meter = self._load_map(
