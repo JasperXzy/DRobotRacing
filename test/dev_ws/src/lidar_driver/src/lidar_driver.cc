@@ -141,8 +141,6 @@ namespace lidar_driver
 				angle_able_max = angle_disable_min;
 			}
 		}
-		count_num = 0;
-
 		scan_points_.resize(6000);
 
         // N10 Parameters
@@ -503,12 +501,14 @@ namespace lidar_driver
 				else
 					continue;
 	
-				if ((scan_points_[idx].degree < last_degree && scan_points_[idx].degree < 5 && last_degree > 355) || idx >= points_size_)
+				const bool angle_wrapped =
+					scan_points_[idx].degree < last_degree &&
+					scan_points_[idx].degree < 5 && last_degree > 355;
+				if (angle_wrapped || idx >= points_size_)
 				{
-					last_degree = scan_points_[idx].degree;
-					count_num = idx;
-					idx = 0;
-					for (long unsigned int k = 0; k < scan_points_.size(); k++)
+					const ScanPoint first_point_of_next_scan = scan_points_[idx];
+					const std::size_t completed_count = static_cast<std::size_t>(idx);
+					for (std::size_t k = 0; k < completed_count; ++k)
 					{
 						if (scan_points_[k].range < min_range || scan_points_[k].range > max_range)
 							scan_points_[k].range = 0;
@@ -518,18 +518,30 @@ namespace lidar_driver
 					// The first angle wrap after startup is usually a partial revolution.
 					// Use it only to establish the scan start time, then publish complete scans.
 					const bool has_complete_scan = time_.nanoseconds() != 0;
-					scan_points_bak_.resize(scan_points_.size());
-					scan_points_bak_.assign(scan_points_.begin(), scan_points_.end());
+					scan_points_bak_.assign(
+						scan_points_.begin(), scan_points_.begin() + completed_count);
 					for (long unsigned int k = 0; k < scan_points_.size(); k++)
 					{
-						scan_points_[k].range = 0;
-						scan_points_[k].degree = 0;
-						scan_points_[k].intensity = 0;
+						scan_points_[k] = ScanPoint{};
 					}
 					pre_time_ = time_;
 					time_ = scan_end_time;
 					lock.unlock();
-					if (has_complete_scan)
+
+					// The point that detected the angular wrap is the first ray of the next scan.
+					if (angle_wrapped)
+					{
+						scan_points_[0] = first_point_of_next_scan;
+						idx = 1;
+						last_degree = first_point_of_next_scan.degree;
+					}
+					else
+					{
+						idx = 0;
+						last_degree = 0.0;
+					}
+
+					if (has_complete_scan && completed_count >= 2)
 						pubscan_cond_.notify_one();
 				}
 				else
@@ -560,93 +572,93 @@ namespace lidar_driver
 				wait_for_wake = false;
 			}
             
-            // N10 Processing Logic (Single Echo)
-            if (pubScan)
-            {
-                auto scan = sensor_msgs::msg::LaserScan::UniquePtr(new sensor_msgs::msg::LaserScan());
-                int scan_num = ceil((angle_able_max - angle_able_min) / 360 * count_num) + 1;
+			std::vector<ScanPoint> points;
+			rclcpp::Time start_time;
+			float scan_time;
+			this->getScan(points, start_time, scan_time);
+			const std::size_t scan_num = points.size();
+			if (scan_num < 2 || scan_time <= 0.0F)
+			{
+				wait_for_wake = true;
+				continue;
+			}
 
-                std::vector<ScanPoint> points;
-                rclcpp::Time start_time;
-                float scan_time;
-                this->getScan(points, start_time, scan_time);
-                scan->header.frame_id = frame_id;
+			const double first_degree = points.front().degree;
+			const double angle_increment = -2.0 * M_PI / static_cast<double>(scan_num);
+			const double time_increment =
+				static_cast<double>(scan_time) / static_cast<double>(scan_num);
+
+	            // N10 Processing Logic (Single Echo)
+	            if (pubScan)
+	            {
+	                auto scan = sensor_msgs::msg::LaserScan::UniquePtr(new sensor_msgs::msg::LaserScan());
+	                scan->header.frame_id = frame_id;
                 // LaserScan timestamps represent the acquisition time of the first ray.
                 // Using publish time makes an entire revolution look current and causes
                 // visible map/scan misalignment while the robot is turning.
                 scan->header.stamp = start_time;
 
-                if (angle_able_max > 360)
-                {
-                    scan->angle_min = 2 * M_PI * (angle_able_min - 360) / 360;
-                    scan->angle_max = 2 * M_PI * (angle_able_max - 360) / 360;
-                }
-                else
-                {
-                    scan->angle_min = 2 * M_PI * angle_able_min / 360;
-                    scan->angle_max = 2 * M_PI * angle_able_max / 360;
-                }
-                scan->angle_increment = 2 * M_PI / (double)(count_num - 1);
+	                // N10 raw angles increase in acquisition order, while the ROS angle is
+	                // the negated raw angle. A negative increment keeps index and time order
+	                // aligned, which is required for per-ray motion compensation.
+	                scan->angle_min = -first_degree * M_PI / 180.0;
+	                scan->angle_increment = angle_increment;
+	                scan->angle_max = scan->angle_min +
+	                    static_cast<double>(scan_num - 1) * scan->angle_increment;
 
-                scan->range_min = min_range;
-                scan->range_max = max_range;
-                scan->ranges.reserve(scan_num);
-                scan->ranges.assign(scan_num, std::numeric_limits<float>::infinity());
-                scan->intensities.reserve(scan_num);
-                scan->intensities.assign(scan_num, std::numeric_limits<float>::infinity());
-                scan->scan_time = scan_time;
-                scan->time_increment = scan_time / (double)(count_num - 1);
+	                scan->range_min = min_range;
+	                scan->range_max = max_range;
+	                scan->ranges.assign(scan_num, std::numeric_limits<float>::infinity());
+	                scan->intensities.assign(scan_num, 0.0F);
+	                scan->scan_time = scan_time;
+	                scan->time_increment = time_increment;
 
-                int start_num = floor(angle_able_min * count_num / 360);
-                int end_num = floor(angle_able_max * count_num / 360);
+	                for (std::size_t i = 0; i < scan_num; ++i)
+	                {
+	                    double degree = 360.0 - points[i].degree;
+	                    if (degree >= 360.0)
+	                        degree -= 360.0;
 
-                for (int i = 0; i < count_num; i++)
-                {
-                    int point_idx = round((360 - points[i].degree) * count_num / 360);
-                    if (point_idx < (end_num - count_num))
-                        point_idx += count_num;
-                    point_idx = point_idx - start_num;
-                    if (point_idx < 0 || point_idx >= scan_num)
-                        continue;
-                    if (points[i].range == 0.0)
-                    {
-                        scan->ranges[point_idx] = std::numeric_limits<float>::infinity();
-                    }
-                    else
-                    {
-                        double dist = points[i].range;
-                        scan->ranges[point_idx] = (float)dist;
-                    }
-                    scan->intensities[point_idx] = points[i].intensity;
-                    
-                if(truncated_mode_){
-                    int len=sizeof(scan_crop_max) / sizeof(scan_crop_max[0]) ;
-                    for(int j=0;j<len;++j){
-                        if((point_idx>=(scan_crop_min[j]*count_num / 360)) && (point_idx<=(scan_crop_max[j]*count_num / 360))){
-                            scan->ranges[point_idx] = std::numeric_limits<float>::infinity();
-                            scan->intensities[point_idx] = 0;
-                            }
-                        }
-                    }	
-                }
+	                    bool pass_point = false;
+	                    if (angle_able_max < 360)
+	                        pass_point = degree < angle_able_min || degree > angle_able_max;
+	                    else
+	                        pass_point = degree < angle_able_min &&
+	                            degree > (angle_able_max - 360);
+
+	                    if (truncated_mode_)
+	                    {
+	                        const int len = sizeof(scan_crop_max) / sizeof(scan_crop_max[0]);
+	                        for (int j = 0; j < len; ++j)
+	                        {
+	                            if (degree >= scan_crop_min[j] && degree <= scan_crop_max[j])
+	                            {
+	                                pass_point = true;
+	                                break;
+	                            }
+	                        }
+	                    }
+
+	                    if (!pass_point && points[i].range > 0.0)
+	                    {
+	                        scan->ranges[i] = static_cast<float>(points[i].range);
+	                        scan->intensities[i] = static_cast<float>(points[i].intensity);
+	                    }
+	                }
                 
 
                 scan_pub->publish(std::move(scan));
             }
             if (pubPointCloud2)
             {
-                std::vector<ScanPoint> points;
-                rclcpp::Time start_time;
-                float scan_time;
-                this->getScan(points, start_time, scan_time);
-                VPointCloud::Ptr point_cloud(new VPointCloud());
+	                VPointCloud::Ptr point_cloud(new VPointCloud());
                 
                 double timestamp = start_time.seconds();
                 point_cloud->header.stamp = static_cast<uint64_t>(timestamp * 1e6);
                 point_cloud->header.frame_id = frame_id;
                 point_cloud->height = 1;
-                for (uint16_t i = 0; i < count_num; i++)
-                {
+	                for (std::size_t i = 0; i < scan_num; ++i)
+	                {
                     double degree = 360.0 - points[i].degree;
                     bool pass_point = false;
                     if (angle_able_max < 360)
@@ -664,8 +676,8 @@ namespace lidar_driver
                     if (!pass_point)
                     {
                         VPoint point;
-                        int point_idx = round(degree * count_num / 360);
-                        point.timestamp = timestamp - point_idx * (scan_time / count_num);
+	                        point.timestamp = timestamp +
+	                            static_cast<double>(i) * time_increment;
                         point.x = points[i].range * cos(M_PI / 180 * points[i].degree);
                         point.y = -points[i].range * sin(M_PI / 180 * points[i].degree);
                         point.z = 0;
@@ -678,9 +690,7 @@ namespace lidar_driver
                 pcl::toROSMsg(*point_cloud, pc_msg);
                 point_cloud_pub->publish(pc_msg);
             }
-			
-			count_num = 0;
-			wait_for_wake = true;
+				wait_for_wake = true;
 		}
 	}
 

@@ -15,3 +15,12 @@
     lateral_position_scale: 1.0
     positive_angular_scale: 1.1958  # Left turn calibration
     negative_angular_scale: 1.1578  # Right turn calibration
+
+    # 静止时标定 MPU6050 的 Z 轴陀螺零偏：约 50 Hz 下采集 150 点约需 3 秒。
+    # 启动后请保持车辆静止，完成后再推车或发车。
+    gyro_bias_compensation_enabled: true
+    gyro_bias_calibration_samples: 150
+    gyro_bias_sample_limit: 0.02
+    gyro_stationary_linear_threshold: 0.005
+    gyro_stationary_angular_threshold: 0.005
+    gyro_bias_update_alpha: 0.002

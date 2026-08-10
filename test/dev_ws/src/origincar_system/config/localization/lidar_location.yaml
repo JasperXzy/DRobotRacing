@@ -44,3 +44,11 @@ lidar_location:
       x: 0.05
       y: 0.05
       yaw: 0.03
+
+    # 已接入逐点时序与去畸变实现；当前竞赛配置保持关闭，先只启用匹配质量诊断。
+    deskew_enabled: false
+    deskew_min_translation: 0.002
+    deskew_min_rotation_deg: 0.05
+    deskew_max_scan_duration: 0.2
+    publish_deskewed_cloud: false
+    match_score_terminal_rate: 1.0  # 终端1每秒输出一次最新匹配度；设为0可关闭

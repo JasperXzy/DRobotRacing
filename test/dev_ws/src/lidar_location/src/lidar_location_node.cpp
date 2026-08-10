@@ -12,6 +12,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <functional>
 #include <memory>
 #include <string>
@@ -25,6 +26,9 @@
 #include <opencv2/imgproc.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <sensor_msgs/point_cloud2_iterator.hpp>
+#include <std_msgs/msg/bool.hpp>
 #include <std_msgs/msg/float32.hpp>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/LinearMath/Quaternion.h>
@@ -79,6 +83,17 @@ public:
     tf_lookup_timeout_ =
       std::max(0.01, declare_parameter<double>("tf_lookup_timeout", 0.2));
 
+    deskew_enabled_ = declare_parameter<bool>("deskew_enabled", true);
+    deskew_min_translation_ =
+      std::max(0.0, declare_parameter<double>("deskew_min_translation", 0.002));
+    deskew_min_rotation_ =
+      std::max(0.0, declare_parameter<double>("deskew_min_rotation_deg", 0.05)) *
+      kPi / 180.0;
+    deskew_max_scan_duration_ =
+      std::max(0.01, declare_parameter<double>("deskew_max_scan_duration", 0.2));
+    publish_deskewed_cloud_ =
+      declare_parameter<bool>("publish_deskewed_cloud", true);
+
     set_initial_pose_ = declare_parameter<bool>("set_initial_pose", true);
     reset_pose_on_map_ = declare_parameter<bool>("reset_pose_on_map", false);
     initial_pose_.x = declare_parameter<double>("initial_pose.x", 0.0);
@@ -102,6 +117,8 @@ public:
         1, declare_parameter<std::int64_t>("min_valid_beams", 20)));
     min_match_score_ =
       std::clamp(declare_parameter<double>("min_match_score", 0.05), 0.0, 1.0);
+    match_score_terminal_rate_ = std::max(
+      0.0, declare_parameter<double>("match_score_terminal_rate", 1.0));
     min_laser_range_ =
       std::max(0.0, declare_parameter<double>("min_laser_range", 0.0));
     max_laser_range_ =
@@ -132,11 +149,33 @@ public:
       pose_topic_, rclcpp::QoS(10));
     match_score_pub_ =
       create_publisher<std_msgs::msg::Float32>("~/match_score", rclcpp::QoS(10));
+    deskew_applied_pub_ =
+      create_publisher<std_msgs::msg::Bool>("~/deskew_applied", rclcpp::QoS(10));
+    if (publish_deskewed_cloud_) {
+      deskewed_cloud_pub_ = create_publisher<sensor_msgs::msg::PointCloud2>(
+        "~/deskewed_points", rclcpp::SensorDataQoS().keep_last(1));
+    }
 
     const auto tf_period = std::chrono::duration_cast<std::chrono::nanoseconds>(
       std::chrono::duration<double>(1.0 / tf_publish_rate_));
     tf_timer_ = create_wall_timer(
       tf_period, std::bind(&LidarLocationNode::broadcast_map_to_odom, this));
+    if (match_score_terminal_rate_ > 0.0) {
+      const auto score_terminal_period =
+        std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::duration<double>(1.0 / match_score_terminal_rate_));
+      match_score_terminal_timer_ = create_wall_timer(
+        score_terminal_period, [this]() {
+          if (!latest_match_score_valid_) {
+            return;
+          }
+          // 总系统在终端1以WARN级别启动本节点；直接写stdout，确保固定频率
+          // 的匹配度不会被ROS日志等级过滤，也不额外发布rosout消息。
+          std::printf(
+            "[lidar_location] match_score=%.3f\n", latest_match_score_);
+          std::fflush(stdout);
+        });
+    }
 
     RCLCPP_INFO(
       get_logger(),
@@ -398,14 +437,46 @@ private:
     }
   }
 
+  bool lookup_transform_at_strict(
+    const std::string & target, const std::string & source,
+    const rclcpp::Time & stamp, tf2::Transform & result)
+  {
+    if (target == source) {
+      result.setIdentity();
+      return true;
+    }
+
+    try {
+      const auto transform = tf_buffer_->lookupTransform(
+        target, source, stamp, rclcpp::Duration::from_seconds(tf_lookup_timeout_));
+      tf2::fromMsg(transform.transform, result);
+      return true;
+    } catch (const tf2::TransformException & exception) {
+      RCLCPP_DEBUG(
+        get_logger(), "Exact TF unavailable for deskew %s -> %s at %.6f: %s",
+        target.c_str(), source.c_str(), stamp.seconds(), exception.what());
+      return false;
+    }
+  }
+
   std::vector<cv::Point2f> scan_points_in_base(
-    const sensor_msgs::msg::LaserScan & scan, const tf2::Transform & scan_to_base) const
+    const sensor_msgs::msg::LaserScan & scan, const tf2::Transform & scan_to_base,
+    const tf2::Transform & odom_to_base_start,
+    const tf2::Transform & odom_to_base_reference,
+    const bool apply_deskew, const std::size_t beam_limit) const
   {
     std::vector<cv::Point2f> points;
-    const std::size_t stride = std::max<std::size_t>(
-      1, (scan.ranges.size() + static_cast<std::size_t>(max_beams_) - 1) /
-      static_cast<std::size_t>(max_beams_));
-    points.reserve(std::min<std::size_t>(scan.ranges.size(), max_beams_));
+    const std::size_t stride = beam_limit > 0 ? std::max<std::size_t>(
+      1, (scan.ranges.size() + beam_limit - 1) / beam_limit) : 1;
+    points.reserve(
+      beam_limit > 0 ? std::min(scan.ranges.size(), beam_limit) : scan.ranges.size());
+
+    const Pose2D start_pose = transform_to_pose(odom_to_base_start);
+    const Pose2D reference_pose = transform_to_pose(odom_to_base_reference);
+    const double yaw_delta = normalize_angle(reference_pose.yaw - start_pose.yaw);
+    const tf2::Transform reference_to_odom = odom_to_base_reference.inverse();
+    const double denominator =
+      scan.ranges.size() > 1 ? static_cast<double>(scan.ranges.size() - 1) : 1.0;
 
     const double accepted_min =
       min_laser_range_ > 0.0 ?
@@ -426,11 +497,50 @@ private:
         static_cast<double>(scan.angle_min) +
         static_cast<double>(index) * static_cast<double>(scan.angle_increment);
       const tf2::Vector3 scan_point(range * std::cos(angle), range * std::sin(angle), 0.0);
-      const tf2::Vector3 base_point = scan_to_base * scan_point;
+      tf2::Vector3 base_point = scan_to_base * scan_point;
+      if (apply_deskew) {
+        const double alpha = std::clamp(static_cast<double>(index) / denominator, 0.0, 1.0);
+        Pose2D beam_pose;
+        beam_pose.x = start_pose.x + alpha * (reference_pose.x - start_pose.x);
+        beam_pose.y = start_pose.y + alpha * (reference_pose.y - start_pose.y);
+        beam_pose.yaw = normalize_angle(start_pose.yaw + alpha * yaw_delta);
+        base_point = reference_to_odom * pose_to_transform(beam_pose) * base_point;
+      }
       points.emplace_back(
         static_cast<float>(base_point.x()), static_cast<float>(base_point.y()));
     }
     return points;
+  }
+
+  void publish_deskewed_cloud(
+    const std::vector<cv::Point2f> & points, const rclcpp::Time & reference_stamp)
+  {
+    if (!deskewed_cloud_pub_) {
+      return;
+    }
+
+    sensor_msgs::msg::PointCloud2 cloud;
+    cloud.header.stamp = reference_stamp;
+    cloud.header.frame_id = base_frame_;
+    cloud.height = 1;
+    cloud.width = static_cast<std::uint32_t>(points.size());
+    cloud.is_dense = true;
+
+    sensor_msgs::PointCloud2Modifier modifier(cloud);
+    modifier.setPointCloud2FieldsByString(1, "xyz");
+    modifier.resize(points.size());
+    sensor_msgs::PointCloud2Iterator<float> x_iterator(cloud, "x");
+    sensor_msgs::PointCloud2Iterator<float> y_iterator(cloud, "y");
+    sensor_msgs::PointCloud2Iterator<float> z_iterator(cloud, "z");
+    for (const auto & point : points) {
+      *x_iterator = point.x;
+      *y_iterator = point.y;
+      *z_iterator = 0.0F;
+      ++x_iterator;
+      ++y_iterator;
+      ++z_iterator;
+    }
+    deskewed_cloud_pub_->publish(cloud);
   }
 
   static tf2::Transform pose_to_transform(const Pose2D & pose)
@@ -479,7 +589,76 @@ private:
     if (!lookup_transform(base_frame_, scan_frame, scan_to_base)) {
       return;
     }
-    const auto points = scan_points_in_base(*msg, scan_to_base);
+
+    const rclcpp::Time scan_stamp(msg->header.stamp, get_clock()->get_clock_type());
+    rclcpp::Time reference_stamp = scan_stamp;
+    tf2::Transform odom_to_base_start;
+    tf2::Transform odom_to_base_reference;
+    bool have_exact_start = false;
+    bool have_reference_pose = false;
+    bool deskew_applied = false;
+    double scan_translation = 0.0;
+    double scan_rotation = 0.0;
+
+    const double beam_time_increment = static_cast<double>(msg->time_increment);
+    const double acquisition_duration = msg->ranges.size() > 1 ?
+      static_cast<double>(msg->ranges.size() - 1) * beam_time_increment : 0.0;
+    const bool valid_deskew_timing =
+      msg->ranges.size() > 1 && std::isfinite(beam_time_increment) &&
+      beam_time_increment > 0.0 && std::isfinite(acquisition_duration) &&
+      acquisition_duration > 0.0 && acquisition_duration <= deskew_max_scan_duration_;
+
+    if (deskew_enabled_ && valid_deskew_timing) {
+      reference_stamp = scan_stamp + rclcpp::Duration::from_seconds(acquisition_duration);
+      have_exact_start = lookup_transform_at_strict(
+        odom_frame_, base_frame_, scan_stamp, odom_to_base_start);
+      const bool have_exact_reference = lookup_transform_at_strict(
+        odom_frame_, base_frame_, reference_stamp, odom_to_base_reference);
+      if (have_exact_start && have_exact_reference) {
+        have_reference_pose = true;
+        const Pose2D start_pose = transform_to_pose(odom_to_base_start);
+        const Pose2D reference_pose = transform_to_pose(odom_to_base_reference);
+        scan_translation = std::hypot(
+          reference_pose.x - start_pose.x, reference_pose.y - start_pose.y);
+        scan_rotation = std::abs(normalize_angle(reference_pose.yaw - start_pose.yaw));
+        deskew_applied =
+          scan_translation >= deskew_min_translation_ ||
+          scan_rotation >= deskew_min_rotation_;
+      } else {
+        RCLCPP_WARN_THROTTLE(
+          get_logger(), *get_clock(), 3000,
+          "Exact EKF TF unavailable across scan; using rigid scan without deskew");
+      }
+    } else if (deskew_enabled_) {
+      RCLCPP_WARN_THROTTLE(
+        get_logger(), *get_clock(), 3000,
+        "Invalid LaserScan timing for deskew: beams=%zu time_increment=%.9f duration=%.6f",
+        msg->ranges.size(), beam_time_increment, acquisition_duration);
+    }
+
+    if (!have_reference_pose) {
+      reference_stamp = scan_stamp;
+      if (!have_exact_start && !lookup_transform_at(
+          odom_frame_, base_frame_, scan_stamp, odom_to_base_start))
+      {
+        return;
+      }
+      odom_to_base_reference = odom_to_base_start;
+    }
+
+    const auto points = scan_points_in_base(
+      *msg, scan_to_base, odom_to_base_start, odom_to_base_reference,
+      deskew_applied, static_cast<std::size_t>(max_beams_));
+    if (publish_deskewed_cloud_) {
+      const auto display_points = scan_points_in_base(
+        *msg, scan_to_base, odom_to_base_start, odom_to_base_reference,
+        deskew_applied, 0);
+      publish_deskewed_cloud(display_points, reference_stamp);
+    }
+    std_msgs::msg::Bool deskew_message;
+    deskew_message.data = deskew_applied;
+    deskew_applied_pub_->publish(deskew_message);
+
     if (points.size() < static_cast<std::size_t>(min_valid_beams_)) {
       RCLCPP_WARN_THROTTLE(
         get_logger(), *get_clock(), 3000,
@@ -488,15 +667,9 @@ private:
       return;
     }
 
-    tf2::Transform odom_to_base;
-    const rclcpp::Time scan_stamp(msg->header.stamp, get_clock()->get_clock_type());
-    if (!lookup_transform_at(odom_frame_, base_frame_, scan_stamp, odom_to_base)) {
-      return;
-    }
-
     Pose2D predicted_pose = pose_;
     if (has_map_to_odom_) {
-      predicted_pose = transform_to_pose(map_to_odom_ * odom_to_base);
+      predicted_pose = transform_to_pose(map_to_odom_ * odom_to_base_reference);
     }
 
     const MatchResult match = match_scan(predicted_pose, points);
@@ -510,18 +683,23 @@ private:
         match.score, min_match_score_);
     }
 
-    map_to_odom_ = pose_to_transform(pose_) * odom_to_base.inverse();
+    map_to_odom_ = pose_to_transform(pose_) * odom_to_base_reference.inverse();
     has_map_to_odom_ = true;
 
     publish_pose();
     std_msgs::msg::Float32 score_message;
     score_message.data = static_cast<float>(match.score);
+    latest_match_score_ = match.score;
+    latest_match_score_valid_ = std::isfinite(latest_match_score_);
     match_score_pub_->publish(score_message);
     broadcast_map_to_odom();
 
     RCLCPP_DEBUG(
-      get_logger(), "pose=(%.3f, %.3f, %.1f deg), score=%.3f, iterations=%d",
-      pose_.x, pose_.y, pose_.yaw * 180.0 / kPi, match.score, match.iterations);
+      get_logger(),
+      "pose=(%.3f, %.3f, %.1f deg), score=%.3f, iterations=%d, "
+      "deskew=%s motion=(%.4f m, %.3f deg)",
+      pose_.x, pose_.y, pose_.yaw * 180.0 / kPi, match.score, match.iterations,
+      deskew_applied ? "yes" : "no", scan_translation, scan_rotation * 180.0 / kPi);
   }
 
   void publish_pose()
@@ -573,6 +751,11 @@ private:
   double tf_publish_rate_{30.0};
   double transform_tolerance_{0.3};
   double tf_lookup_timeout_{0.2};
+  bool deskew_enabled_{true};
+  double deskew_min_translation_{0.002};
+  double deskew_min_rotation_{0.05 * kPi / 180.0};
+  double deskew_max_scan_duration_{0.2};
+  bool publish_deskewed_cloud_{true};
   bool set_initial_pose_{true};
   bool reset_pose_on_map_{false};
   int occupied_threshold_{65};
@@ -583,6 +766,7 @@ private:
   int max_beams_{180};
   int min_valid_beams_{20};
   double min_match_score_{0.05};
+  double match_score_terminal_rate_{1.0};
   double min_laser_range_{0.0};
   double max_laser_range_{0.0};
   double covariance_x_{0.05};
@@ -608,7 +792,12 @@ private:
     initial_pose_sub_;
   rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pose_pub_;
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr match_score_pub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr deskew_applied_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr deskewed_cloud_pub_;
   rclcpp::TimerBase::SharedPtr tf_timer_;
+  rclcpp::TimerBase::SharedPtr match_score_terminal_timer_;
+  double latest_match_score_{0.0};
+  bool latest_match_score_valid_{false};
 };
 
 int main(int argc, char ** argv)
