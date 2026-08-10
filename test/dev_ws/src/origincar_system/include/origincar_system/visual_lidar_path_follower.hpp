@@ -11,6 +11,7 @@
 
 #include "ai_msgs/msg/perception_targets.hpp"
 #include "geometry_msgs/msg/twist.hpp"
+#include "geometry_msgs/msg/vector3_stamped.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
@@ -200,6 +201,29 @@ private:
     double lidar_direction_lower_angle_deg{-8.0};
   };
 
+  struct Logic3SteeringCommandSample
+  {
+    std::int64_t stamp_nanoseconds{0};
+    double steering_angle{0.0};
+  };
+
+  struct Logic3RuntimeGreenGateLogStats
+  {
+    bool window_started{false};
+    std::chrono::steady_clock::time_point window_started_at{};
+    std::uint64_t scan_count{0};
+    std::uint64_t steering_valid_count{0};
+    std::uint64_t motion_within_limits_count{0};
+    std::uint64_t steering_reject_count{0};
+    std::uint64_t yaw_reject_count{0};
+    std::uint64_t both_reject_count{0};
+    std::uint64_t steering_invalid_count{0};
+    double steering_span_sum{0.0};
+    double steering_span_max{0.0};
+    double yaw_correction_abs_deg_sum{0.0};
+    double yaw_correction_abs_deg_max{0.0};
+  };
+
   // 参数与路线状态
   std::string task1_waypoints_file_;
   std::string route_waypoints_clockwise_file_;
@@ -215,6 +239,8 @@ private:
   std::string logic3_runtime_restriction_map_topic_{
     "/logic3_runtime_restriction_map"};
   std::string logic3_match_score_topic_{"/lidar_location/match_score"};
+  std::string logic3_match_diagnostics_topic_{
+    "/lidar_location/match_diagnostics"};
   std::string qr_topic_{"/qr_info"};
   std::string tts_topic_{"/tts_text"};
   std::string visual_control_suspend_topic_{"/sign4return"};
@@ -239,6 +265,29 @@ private:
   double route_projection_max_distance_{1.00};
   double segment_advance_t_{0.85};
 
+  // 正向普通路线可在旧动态前瞻与曲率前馈横向PID之间切换；
+  // 倒车、二维码脱困和特殊返航动作始终保留原控制逻辑。
+  std::string tracking_controller_mode_{"legacy_lookahead"};
+  double path_pid_yaw_scale_left_{0.675};
+  double path_pid_yaw_scale_right_{0.675};
+  double path_pid_heading_kp_{1.50};
+  double path_pid_lateral_kp_{1.00};
+  double path_pid_lateral_ki_{0.00};
+  double path_pid_lateral_kd_{0.00};
+  double path_pid_integral_limit_{0.25};
+  double path_pid_derivative_filter_alpha_{0.20};
+  double path_pid_preview_base_{0.10};
+  double path_pid_preview_time_{0.15};
+  double path_pid_preview_max_{0.35};
+  double path_pid_curvature_window_length_{0.16};
+  double path_pid_max_curvature_{2.857};
+  double path_pid_max_lateral_accel_{1.50};
+  double path_pid_max_accel_{0.60};
+  double path_pid_max_decel_{1.00};
+  double path_pid_min_tracking_speed_{0.25};
+  double path_pid_absolute_angular_limit_{4.50};
+  double path_pid_max_angular_rate_{0.0};
+
   double turn_angular_gain_{1.4};
   bool enable_turn_speed_slowdown_{true};
   double turn_speed_full_steering_angle_{0.55};
@@ -262,6 +311,17 @@ private:
   double task2_waypoint_shift_target_clearance_{0.40};
   double task3_waypoint_shift_target_clearance_{0.40};
   double task1_waypoint_shift_min_y_{-0.20};
+  // legacy_offset完整保留旧逐点偏移；circle_envelope把每个连续命中段
+  // 重画为禁入圆外的五次Hermite-圆弧-Hermite局部曲线。
+  std::string route_deformation_mode_{"legacy_offset"};
+  double circle_envelope_target_clearance_{0.41};
+  double circle_envelope_numeric_margin_{0.01};
+  double circle_envelope_min_transition_length_{0.90};
+  double circle_envelope_max_transition_length_{1.80};
+  double circle_envelope_extension_step_{0.05};
+  double circle_envelope_merge_gap_{0.10};
+  double circle_envelope_max_curvature_{2.40};
+  int circle_envelope_smoothing_iterations_{8};
   bool waypoint_shift_enable_local_rebuild_{true};
   double waypoint_shift_rebuild_min_progress_ratio_{0.15};
   double waypoint_shift_rebuild_plateau_half_length_{0.08};
@@ -306,6 +366,10 @@ private:
   bool logic3_runtime_green_update_enabled_{true};
   bool logic3_runtime_orange_only_update_enabled_{true};
   double logic3_runtime_green_min_match_score_{0.70};
+  bool logic3_runtime_green_motion_gate_enabled_{true};
+  double logic3_runtime_green_max_steering_span_{0.08};
+  double logic3_runtime_green_max_map_odom_yaw_correction_deg_{2.0};
+  double logic3_runtime_green_gate_log_rate_hz_{1.0};
   int logic3_runtime_green_confirm_scans_{3};
   int logic3_task1_runtime_cluster_min_points_{2};
   int logic3_task1_runtime_green_confirm_scans_{4};
@@ -465,6 +529,8 @@ private:
   std::vector<int> waypoint_shift_dynamic_directions_;
   std::vector<Point2D> waypoint_shift_world_directions_;
   std::vector<std::size_t> waypoint_shift_source_indices_;
+  std::vector<Point2D> waypoint_shift_obstacle_centers_;
+  std::vector<double> waypoint_shift_forbidden_radii_;
   std::size_t current_index_{0};
   bool first_waypoint_reached_{false};
   bool waiting_for_qr_start_{false};
@@ -488,8 +554,14 @@ private:
   std::uint64_t scan_sequence_{0};
   std::uint64_t processed_waypoint_shift_scan_sequence_{0};
   std::uint64_t latest_match_score_scan_sequence_{0};
+  std::uint64_t latest_match_diagnostics_scan_sequence_{0};
+  std::int64_t latest_match_diagnostics_stamp_nanoseconds_{0};
   double latest_lidar_match_score_{0.0};
   bool latest_lidar_match_score_valid_{false};
+  double latest_map_odom_yaw_correction_{0.0};
+  bool latest_match_diagnostics_valid_{false};
+  std::deque<Logic3SteeringCommandSample> logic3_steering_command_history_;
+  Logic3RuntimeGreenGateLogStats logic3_runtime_green_gate_log_stats_;
   QrEscapeState qr_escape_state_{QrEscapeState::IDLE};
   bool qr_channel_approach_active_{false};
   bool channel_entry_route_rebuild_pending_{false};
@@ -596,6 +668,8 @@ private:
   std::vector<double> logic3_frozen_base_offsets_;
   std::vector<Point2D> logic3_frozen_base_shift_directions_;
   std::vector<std::size_t> logic3_frozen_base_source_indices_;
+  std::vector<Point2D> logic3_frozen_base_obstacle_centers_;
+  std::vector<double> logic3_frozen_base_forbidden_radii_;
   bool logic3_replay_frozen_clusters_{false};
   bool logic3_force_full_route_{false};
   bool logic3_force_confirm_{false};
@@ -607,6 +681,16 @@ private:
   std::uint64_t logic3_static_next_identity_id_{1};
   bool logic3_static_status_log_started_{false};
   double logic3_last_static_status_log_seconds_{0.0};
+
+  // 曲率前馈横向PID的跨周期状态；停车、阶段、路线和控制器切换时清零。
+  bool path_pid_state_valid_{false};
+  double path_pid_lateral_integral_{0.0};
+  double path_pid_last_lateral_error_{0.0};
+  double path_pid_filtered_lateral_derivative_{0.0};
+  double path_pid_last_linear_command_{0.0};
+  double path_pid_last_angular_command_{0.0};
+  // 只在路线重建时刷新，避免50Hz控制循环重复累计整条路线弧长。
+  std::vector<double> path_pid_route_s_cache_;
 
   // ROS 通信对象
   tf2_ros::Buffer tf_buffer_;
@@ -628,6 +712,10 @@ private:
     logic3_runtime_restriction_map_sub_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr qr_sub_;
   rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr logic3_match_score_sub_;
+  rclcpp::Subscription<geometry_msgs::msg::Vector3Stamped>::SharedPtr
+    logic3_match_diagnostics_sub_;
+  rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr
+    logic3_cmd_vel_history_sub_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr logic3_odom_sub_;
   rclcpp::Subscription<ai_msgs::msg::PerceptionTargets>::SharedPtr
     return_visual_detection_sub_;
@@ -680,6 +768,10 @@ private:
 
   geometry_msgs::msg::Twist compute_tracking_command(
     const RobotPose & pose, const TargetPoint & target) const;
+  bool compute_path_pid_tracking_command(
+    const RobotPose & pose, geometry_msgs::msg::Twist & cmd);
+  void reset_path_pid_state();
+  void rebuild_path_pid_route_cache();
 
   bool lookup_pose(
     const std::string & target_frame, const std::string & source_frame,
@@ -688,6 +780,9 @@ private:
   bool original_route_normal_at(std::size_t waypoint_index, Point2D & normal) const;
   std::size_t rebuild_curvature_unsafe_shift_segments(
     std::vector<Waypoint> & shifted_route);
+  void rebuild_route_from_confirmed_shifts();
+  void apply_circle_envelope_deformation(std::vector<Waypoint> & shifted_route);
+  void validate_logic3_recorded_obstacle_route_clearance();
   bool is_static_map_point(const RobotPose & robot_pose, const Point2D & base_point) const;
   bool is_static_map_point(
     const RobotPose & robot_pose, const Point2D & base_point,
@@ -700,6 +795,13 @@ private:
   bool fit_cone_circle(LidarCluster & cluster) const;
   std::vector<LidarCluster> collect_cone_clusters(const RobotPose & robot_pose) const;
   bool latest_lidar_scan_is_fresh() const;
+  void latch_logic3_match_diagnostics_to_latest_scan();
+  bool logic3_runtime_green_steering_is_stable(
+    const sensor_msgs::msg::LaserScan & scan, double * steering_span = nullptr) const;
+  void record_logic3_runtime_green_gate_log_sample(
+    double steering_span, bool steering_measurement_valid,
+    double map_odom_yaw_correction_abs_deg,
+    bool steering_within_limit, bool yaw_within_limit);
   bool prepare_lidar_scan(
     RobotPose & scan_to_base, RobotPose & scan_to_map,
     bool require_map_transform = false,
@@ -729,6 +831,7 @@ private:
   void record_logic3_lidar_avoidance_obstacle(
     const LidarObstacle & obstacle, const RobotPose & scan_to_base,
     const RobotPose & scan_to_map);
+  void prune_logic3_red_history_inside_recorded_masks();
   void update_logic3_static_cluster_tracks(
     const std::vector<ScanPointCluster> & clusters, const RobotPose & robot_pose,
     double match_score, std::uint64_t score_scan_sequence);

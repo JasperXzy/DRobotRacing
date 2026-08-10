@@ -45,6 +45,7 @@ lidar_location:
     max_beams: 180
     min_valid_beams: 20
     min_match_score: 0.01
+    match_diagnostics_topic: /lidar_location/match_diagnostics  # 与/scan同时间戳：x=匹配分数，y=实际平移修正(m)，z=实际map->odom航向修正(rad)
     match_score_terminal_rate: 1.0  # 终端1每秒输出一次最新匹配度；设为0可关闭
     min_laser_range: 0.1
     max_laser_range: 7.1

@@ -61,8 +61,8 @@ Thumbs.db
 costmap_converter/
 *.gguf
 *.hbm
-*.png
-!test/dev_ws/src/origincar_system/map/task1_schematic_background.png
+test/final/
+
 
 test/zhy_car
 
