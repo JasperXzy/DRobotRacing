@@ -4066,9 +4066,10 @@ void VisualLidarPathFollower::validate_logic3_recorded_obstacle_route_clearance(
         const double center_y = partner.center.y - candidate.center.y;
         const double center_distance_squared =
           center_x * center_x + center_y * center_y;
+        const double overlap_radius =
+          candidate.forbidden_radius + partner.forbidden_radius;
         if (center_distance_squared < 1.0e-12 ||
-          std::sqrt(center_distance_squared) + 1.0e-9 >=
-          2.0 * circle_envelope_target_clearance_)
+          std::sqrt(center_distance_squared) + 1.0e-9 >= overlap_radius)
         {
           continue;
         }
@@ -4322,7 +4323,15 @@ void VisualLidarPathFollower::apply_circle_envelope_deformation(
             center_normal * center_normal);
           const double radius_squared =
             constraint.radius * constraint.radius;
-          if (tangent_squared > radius_squared) {
+          const double center_distance_squared =
+            center_x * center_x + center_y * center_y;
+          // 只替换原路线真正落入安全圆的连续点段。旧判断只看
+          // “该点的无限长法线是否穿圆”，会让距离障碍很远的弯道点
+          // 也受到假约束。正式路线点距约为0.02m，因此按原航点是否
+          // 位于圆内即可稳定覆盖与圆相交的路线段。
+          if (center_distance_squared > radius_squared ||
+            tangent_squared > radius_squared)
+          {
             return false;
           }
           const double half_chord = std::sqrt(std::max(
@@ -4461,8 +4470,11 @@ void VisualLidarPathFollower::apply_circle_envelope_deformation(
         const double center_distance = std::hypot(
           lower_circle.center.x - upper_circle.center.x,
           lower_circle.center.y - upper_circle.center.y);
-        if (center_distance + 1.0e-9 >=
-          2.0 * circle_envelope_target_clearance_)
+        // 相交判断必须使用实际参与几何夹紧的半径。该半径包含
+        // numeric_margin；若仍使用2*target_clearance，会把0.70~0.80m
+        // 之间实际已经相交的约束误判成非相交，并在相邻航点间换边成尖峰。
+        const double overlap_radius = lower_circle.radius + upper_circle.radius;
+        if (center_distance + 1.0e-9 >= overlap_radius)
         {
           continue;
         }
@@ -4537,9 +4549,9 @@ void VisualLidarPathFollower::apply_circle_envelope_deformation(
         const double center_y = partner.center.y - constraint.center.y;
         const double center_distance_squared =
           center_x * center_x + center_y * center_y;
+        const double overlap_radius = constraint.radius + partner.radius;
         if (center_distance_squared < 1.0e-12 ||
-          std::sqrt(center_distance_squared) + 1.0e-9 >=
-          2.0 * circle_envelope_target_clearance_)
+          std::sqrt(center_distance_squared) + 1.0e-9 >= overlap_radius)
         {
           continue;
         }
@@ -4550,9 +4562,12 @@ void VisualLidarPathFollower::apply_circle_envelope_deformation(
         if (between_ratio < -1.0e-6 || between_ratio > 1.0 + 1.0e-6) {
           continue;
         }
+        const double partner_required_radius = std::max(
+          0.0, partner.radius - circle_envelope_numeric_margin_);
         if (std::hypot(
             point.x - partner.center.x,
-            point.y - partner.center.y) <= partner.radius + 1.0e-7)
+            point.y - partner.center.y) <=
+          partner_required_radius + 1.0e-7)
         {
           return true;
         }
@@ -4568,12 +4583,14 @@ void VisualLidarPathFollower::apply_circle_envelope_deformation(
         constraint_index < active_constraints.size(); ++constraint_index)
       {
         const auto & constraint = active_constraints[constraint_index];
+        const double required_radius = std::max(
+          0.0, constraint.radius - circle_envelope_numeric_margin_);
         for (std::size_t index = 0; index + 1 < candidate.size(); ++index) {
           const Point2D closest = closest_point_on_segment(
             constraint.center, candidate[index], candidate[index + 1]);
           const double margin = std::hypot(
             closest.x - constraint.center.x,
-            closest.y - constraint.center.y) - constraint.radius;
+            closest.y - constraint.center.y) - required_radius;
           if (margin < 0.0 && overlap_corridor_allows(
               closest, constraint_index, active_constraints))
           {

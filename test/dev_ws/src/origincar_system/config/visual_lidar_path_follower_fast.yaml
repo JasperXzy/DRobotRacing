@@ -24,20 +24,20 @@ visual_lidar_path_follower:
     path_pid_yaw_scale_left: 0.675  # [smac_pid] 左弯曲率前馈比例
     path_pid_yaw_scale_right: 0.675  # [smac_pid] 右弯曲率前馈比例
     path_pid_heading_kp: 1.50  # [smac_pid] 路线切向航向误差P增益
-    path_pid_lateral_kp: 1.00  # [smac_pid] 横向误差P增益
+    path_pid_lateral_kp: 1.20  # [smac_pid] 横向误差P增益
     path_pid_lateral_ki: 0.00  # [smac_pid] 横向误差I增益；初始关闭
     path_pid_lateral_kd: 0.00  # [smac_pid] 横向误差D增益；初始关闭
     path_pid_integral_limit: 0.25  # [smac_pid] 横向积分绝对值上限
     path_pid_derivative_filter_alpha: 0.20  # [smac_pid] D项一阶滤波新样本权重
     path_pid_preview_base: 0.10  # [smac_pid] 曲率采样基础前视距离，单位m
-    path_pid_preview_time: 0.15  # [smac_pid] 曲率采样随速度增加的前视时间，单位s
-    path_pid_preview_max: 0.35  # [smac_pid] 曲率采样最大前视距离，单位m
-    path_pid_curvature_window_length: 0.16  # [smac_pid] 三点曲率采样窗口长度，单位m
-    path_pid_max_curvature: 2.857  # [smac_pid] 路线曲率绝对值上限，单位1/m
+    path_pid_preview_time: 0.10 # [smac_pid] 曲率采样随速度增加的前视时间，单位s
+    path_pid_preview_max: 0.30  # [smac_pid] 曲率采样最大前视距离，单位m
+    path_pid_curvature_window_length: 0.10  # [smac_pid] 三点曲率采样窗口长度，单位m
+    path_pid_max_curvature: 2.80  # [smac_pid] 路线曲率绝对值上限，单位1/m
     path_pid_max_lateral_accel: 1.50  # [smac_pid] 曲率限速使用的最大横向加速度，单位m/s^2
     path_pid_max_accel: 1.00  # [smac_pid] 每秒最大加速量，单位m/s^2
     path_pid_max_decel: 1.00  # [smac_pid] 每秒最大减速量，单位m/s^2
-    path_pid_min_tracking_speed: 1.00  # [smac_pid] 曲率限速下限；仍会受二维码和雷达最终限速
+    path_pid_min_tracking_speed: 0.80  # [smac_pid] 曲率限速下限；仍会受二维码和雷达最终限速
     path_pid_absolute_angular_limit: 4.50  # [smac_pid] 最终角速度绝对上限，单位rad/s
     path_pid_max_angular_rate: 0.00  # [smac_pid] 角速度变化率上限；0表示关闭
 
@@ -139,15 +139,15 @@ visual_lidar_path_follower:
     waypoint_cloud_check_radius: 0.5  # [全阶段静态偏移] 点云距未来路线小于该距离才触发平移，单位 m；提前距离由check_count决定
     task1_waypoint_shift_target_clearance: 0.41  # [Task1静态偏移] Task1偏移路线越过点云最外沿的目标净距，单位m（45cm）
     transition_waypoint_shift_target_clearance: 0.40  # [Final预规划] 预计算Task2冻结路线时越过点云最外沿的目标净距，单位m；A→C→B不执行该静态偏移
-    transition_dynamic_avoid_only: true  # [仅legacy_offset] true=A→C→B（含B）静态偏移清零；circle_envelope+smac_pid仍让已记录点进入路线
+    transition_dynamic_avoid_only: true  # [仅legacy_offset] true=A→C→B（含B）静态偏移清零；circle_envelope+smac_pid仍为已记录点画圆滑路线，同时将掩码外新障碍交给实时雷达
     task2_waypoint_shift_target_clearance: 0.42  # [Task2静态偏移] Task2偏移路线越过点云最外沿的目标净距，单位m
     task3_waypoint_shift_target_clearance: 0.42  # [Task3静态偏移] Task3偏移路线越过点云最外沿的目标净距，单位m
     task1_waypoint_shift_min_y: -0.20  # [Task1静态偏移] Task1偏移及局部重建后的所有路径点不得低于该map.y，单位m
     route_deformation_mode: legacy_offset  # legacy_offset=普通偏移； circle_envelope=全部独立障碍先定方向/距离，再对原路线一次性圆滑并自动使用smac_pid
-    circle_envelope_target_clearance: 0.35  # [圆滑路线全阶段共享] 以点云中心为圆心的安全圆半径，单位m；两圆相交时走中间通道
-    circle_envelope_numeric_margin: 0.01  # 离散路线相对连续禁入圆额外保留的数值余量，单位m
-    circle_envelope_min_transition_length: 0.90  # 障碍中心每侧最短接入长度；比旧0.60m更早起偏、更晚回线
-    circle_envelope_max_transition_length: 1.80  # 曲率偏大时每侧允许扩展到的最大长度，单位m
+    circle_envelope_target_clearance: 0.40  # [圆滑路线全阶段共享] 以点云中心为圆心的安全圆半径，单位m；两圆相交时走中间通道
+    circle_envelope_numeric_margin: 0.05  # 离散路线相对连续禁入圆额外保留的数值余量，单位m
+    circle_envelope_min_transition_length: 0.80  # 障碍中心每侧最短接入长度；比旧0.60m更早起偏、更晚回线
+    circle_envelope_max_transition_length: 1.60  # 曲率偏大时每侧允许扩展到的最大长度，单位m
     circle_envelope_extension_step: 0.05  # 每轮曲率优化增加的单侧接入长度，单位m
     circle_envelope_merge_gap: 0.10  # 兼容参数名：只给每个独立偏移峰增加圆滑衔接长度，不合并障碍物，单位m
     circle_envelope_max_curvature: 2.20  # 一次性圆滑路线的曲率软目标，单位1/m；独立方向、禁入圆净距和前进性优先
@@ -247,7 +247,7 @@ visual_lidar_path_follower:
     task1_timeout_qr_text: "4399"  # [Task1] 计时超时或末点等待结束时缓存的兜底二维码；进入过渡并生成Final冻结路线后按真实二维码方式播报
     task1_endpoint_qr_wait_seconds: 1.0  # [Task1] Task1末点先停车等待二维码；期间扫到即执行，超时则默认顺时针
     task1_endpoint_arrival_radius: 0.18  # [Task1] Task1末点(4.10,1.60)专用精准到达半径；禁止投影和前瞻提前完成
-    task1_transition_min_x: 3.70  # [Task1] 二维码可提前缓存；仅base_link.x严格大于该值才允许Task1进入过渡
+    task1_transition_min_x: 3.50  # [Task1] 二维码可提前缓存；仅base_link.x严格大于该值才允许Task1进入过渡
 
     # ---------------------- 静态+动态方案：规划专用稳定坐标 ------------------------
     logic3_planning_pose_source: live_lidar_location  # [全阶段规划位姿] 发车后仍完全沿用AMCL/lidar_location实时map定位
@@ -268,7 +268,7 @@ visual_lidar_path_follower:
 
     # 扫到二维码后持续武装到waypoint_channel的雷达条件倒车；数值来自雷达实跑的 1.15 profile
     qr_reverse_y_threshold: 0.10  # [Task1→Task2条件倒车] map.y达到该后退硬边界时优先退出，不受最小倒车距离锁定，单位m
-    qr_reverse_force_qr_x_threshold: 3.70  # [过渡入口X阈值强制倒车] 正式进入Task1→Task2时base_link.map.x严格大于该值则强制倒车一轮
+    qr_reverse_force_qr_x_threshold: 3.50  # [过渡入口X阈值强制倒车] 正式进入Task1→Task2时base_link.map.x严格大于该值则强制倒车一轮
     qr_reverse_x_limit: 4.50  # [Task1→Task2条件倒车] map.x达到该后退硬边界时优先退出，不受最小倒车距离锁定，单位m
     qr_reverse_min_distance: 0.35  # [Task1→Task2条件倒车] 普通轮前方清空后仍需达到；入口X强制轮忽略前方状态并以此为锁定目标；后方障碍或x/y硬保护可提前截断，单位m
     qr_reverse_max_distance: 0.80  # [Task1→Task2条件倒车] 单轮倒车净位移绝对上限；普通轮和入口X强制轮均生效，且程序保证不小于最小距离，单位m
