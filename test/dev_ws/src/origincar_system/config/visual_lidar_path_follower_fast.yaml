@@ -23,7 +23,7 @@ visual_lidar_path_follower:
     #   路线保持原始航点；
     # enable_lidar_avoidance: false 时关闭实时雷达扇形/走廊动态避障（降速转向），遇到障碍直接按航点行驶；
     # 两者都关闭 = 纯航点追线（无任何避障）。
-    enable_static_avoidance: false  # [全阶段共享] 静态避障总开关：静态绿色快照 + waypoint_shift 路径偏移
+    enable_static_avoidance: true  # [全阶段共享] 静态避障总开关：静态绿色快照 + waypoint_shift 路径偏移
     enable_lidar_avoidance: true  # [全阶段共享] 实时雷达避障总开关：扇形/走廊动态避障
 
     # ========================================================================
@@ -34,7 +34,7 @@ visual_lidar_path_follower:
     task1_lookahead_distance: 0.65  # [Task1] Task1路径前瞻距离，单位m
     task1_turn_angular_gain: 2.00  # [Task1] Task1航向误差到前轮目标转角的比例增益
     task1_enable_turn_speed_slowdown: true  # [Task1] Task1转弯时是否按转角降低线速度
-    task1_max_turn_speed_reduction_percent: 10.0  # [Task1] Task1转弯最大降速百分比
+    task1_max_turn_speed_reduction_percent: 25.0  # [Task1] Task1转弯最大降速百分比
     task1_pass_radius: 0.60  # [Task1] Task1普通航点到达判定半径，单位m
     task1_route_projection_max_distance: 0.60  # [Task1] Task1允许车辆投影到路线并推进索引的最大横向距离，单位m
     task1_segment_advance_t: 0.60  # [Task1] Task1在线段投影比例超过该值时允许推进到下一航点
@@ -67,7 +67,7 @@ visual_lidar_path_follower:
     transition_lookahead_distance: 0.65  # [Task1→Task2过渡] Task1→Task2过渡阶段路径前瞻距离，单位m
     transition_turn_angular_gain: 2.00  # [Task1→Task2过渡] Task1→Task2过渡阶段航向误差到前轮目标转角的比例增益
     transition_enable_turn_speed_slowdown: true  # [Task1→Task2过渡] Task1→Task2过渡阶段转弯时是否降低线速度
-    transition_max_turn_speed_reduction_percent: 10.0  # [Task1→Task2过渡] Task1→Task2过渡阶段转弯最大降速百分比
+    transition_max_turn_speed_reduction_percent: 20.0  # [Task1→Task2过渡] Task1→Task2过渡阶段转弯最大降速百分比
     transition_pass_radius: 0.60  # [Task1→Task2过渡] Task1→Task2过渡阶段航点到达判定半径，单位m
     transition_route_projection_max_distance: 0.60  # [Task1→Task2过渡] Task1→Task2过渡阶段路线投影最大横向距离，单位m
     transition_segment_advance_t: 0.60  # [Task1→Task2过渡] Task1→Task2过渡阶段线段投影推进阈值
@@ -84,7 +84,7 @@ visual_lidar_path_follower:
     task2_lookahead_distance: 0.65  # [Task2] Task2通道巡点路径前瞻距离，单位m
     task2_turn_angular_gain: 2.00  # [Task2] Task2航向误差到前轮目标转角的比例增益
     task2_enable_turn_speed_slowdown: true  # [Task2] Task2转弯时是否按转角降低线速度
-    task2_max_turn_speed_reduction_percent: 10.0  # [Task2] Task2转弯最大降速百分比
+    task2_max_turn_speed_reduction_percent: 20.0  # [Task2] Task2转弯最大降速百分比
     task2_pass_radius: 0.60  # [Task2] Task2普通航点到达判定半径，单位m
     task2_route_projection_max_distance: 0.60  # [Task2] Task2路线投影最大横向距离，单位m
     task2_segment_advance_t: 0.60  # [Task2] Task2线段投影推进阈值
@@ -101,7 +101,7 @@ visual_lidar_path_follower:
     task3_lookahead_distance: 0.50  # [Task3] Task3返航路径前瞻距离，单位m
     task3_turn_angular_gain: 2.00  # [Task3] Task3航向误差到前轮目标转角的比例增益
     task3_enable_turn_speed_slowdown: true  # [Task3] Task3转弯时是否按转角降低线速度
-    task3_max_turn_speed_reduction_percent: 10.0  # [Task3] Task3转弯最大降速百分比
+    task3_max_turn_speed_reduction_percent: 20.0  # [Task3] Task3转弯最大降速百分比
     task3_pass_radius: 0.60  # [Task3] Task3普通航点到达判定半径，单位m；最终停车仍只看停车矩形
     task3_route_projection_max_distance: 0.60  # [Task3] Task3路线投影最大横向距离，单位m
     task3_segment_advance_t: 0.60  # [Task3] Task3线段投影推进阈值
