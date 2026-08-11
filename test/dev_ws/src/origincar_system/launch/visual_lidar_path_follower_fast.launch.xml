@@ -1,12 +1,9 @@
 <launch>
-  <!-- 快速版：复用标准启动流程，仅切换追点参数文件 -->
-  <arg
-    name="params_file"
-    default="$(find-pkg-share origincar_system)/config/visual_lidar_path_follower_fast.yaml"/>
+  <!-- 快速版：复用标准启动流程，仅切换追点参数文件。 -->
   <include
     file="$(find-pkg-share origincar_system)/launch/visual_lidar_path_follower.launch.xml">
     <arg
       name="params_file"
-      value="$(var params_file)"/>
+      value="$(find-pkg-share origincar_system)/config/visual_lidar_path_follower_fast.yaml"/>
   </include>
 </launch>

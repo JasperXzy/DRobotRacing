@@ -21,6 +21,7 @@
 
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
+#include <geometry_msgs/msg/vector3_stamped.hpp>
 #include <nav_msgs/msg/occupancy_grid.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
@@ -75,6 +76,8 @@ public:
     initial_pose_topic_ =
       declare_parameter<std::string>("initial_pose_topic", "/initialpose");
     pose_topic_ = declare_parameter<std::string>("pose_topic", "/amcl_pose");
+    match_diagnostics_topic_ = declare_parameter<std::string>(
+      "match_diagnostics_topic", "~/match_diagnostics");
 
     tf_broadcast_ = declare_parameter<bool>("tf_broadcast", true);
     tf_publish_rate_ = std::max(1.0, declare_parameter<double>("tf_publish_rate", 30.0));
@@ -117,6 +120,11 @@ public:
         1, declare_parameter<std::int64_t>("min_valid_beams", 20)));
     min_match_score_ =
       std::clamp(declare_parameter<double>("min_match_score", 0.05), 0.0, 1.0);
+    correction_translation_deadband_ = std::max(
+      0.0, declare_parameter<double>("correction_translation_deadband", 0.0));
+    correction_rotation_deadband_ = std::max(
+      0.0, declare_parameter<double>("correction_rotation_deadband_deg", 0.0)) *
+      kPi / 180.0;
     match_score_terminal_rate_ = std::max(
       0.0, declare_parameter<double>("match_score_terminal_rate", 1.0));
     min_laser_range_ =
@@ -149,6 +157,9 @@ public:
       pose_topic_, rclcpp::QoS(10));
     match_score_pub_ =
       create_publisher<std_msgs::msg::Float32>("~/match_score", rclcpp::QoS(10));
+    match_diagnostics_pub_ =
+      create_publisher<geometry_msgs::msg::Vector3Stamped>(
+      match_diagnostics_topic_, rclcpp::QoS(10));
     deskew_applied_pub_ =
       create_publisher<std_msgs::msg::Bool>("~/deskew_applied", rclcpp::QoS(10));
     if (publish_deskewed_cloud_) {
@@ -673,8 +684,32 @@ private:
     }
 
     const MatchResult match = match_scan(predicted_pose, points);
+    const double correction_translation = std::hypot(
+      match.pose.x - predicted_pose.x, match.pose.y - predicted_pose.y);
+    const double correction_rotation = normalize_angle(
+      match.pose.yaw - predicted_pose.yaw);
+    bool translation_deadband_applied = false;
+    bool rotation_deadband_applied = false;
     if (match.score >= min_match_score_) {
       pose_ = match.pose;
+      // Do not apply correction deadbands to the first successful match: the
+      // initial map pose still needs to converge without an existing
+      // map->odom estimate. After initialization, suppress the translation and
+      // rotation components independently so a valid correction on one axis
+      // does not reintroduce jitter on the other.
+      if (has_map_to_odom_ && correction_translation_deadband_ > 0.0 &&
+        correction_translation <= correction_translation_deadband_)
+      {
+        pose_.x = predicted_pose.x;
+        pose_.y = predicted_pose.y;
+        translation_deadband_applied = correction_translation > 0.0;
+      }
+      if (has_map_to_odom_ && correction_rotation_deadband_ > 0.0 &&
+        std::abs(correction_rotation) <= correction_rotation_deadband_)
+      {
+        pose_.yaw = predicted_pose.yaw;
+        rotation_deadband_applied = std::abs(correction_rotation) > 0.0;
+      }
     } else {
       pose_ = predicted_pose;
       RCLCPP_WARN_THROTTLE(
@@ -682,6 +717,14 @@ private:
         "Low scan-match score %.3f < %.3f; using odometry prediction",
         match.score, min_match_score_);
     }
+
+    // This is the correction that is actually applied after score rejection and
+    // optional deadbands. Its yaw component is also the per-scan map->odom yaw
+    // change, because predicted_pose was generated from the previous map->odom.
+    const double applied_correction_translation = std::hypot(
+      pose_.x - predicted_pose.x, pose_.y - predicted_pose.y);
+    const double applied_correction_rotation = normalize_angle(
+      pose_.yaw - predicted_pose.yaw);
 
     map_to_odom_ = pose_to_transform(pose_) * odom_to_base_reference.inverse();
     has_map_to_odom_ = true;
@@ -692,13 +735,25 @@ private:
     latest_match_score_ = match.score;
     latest_match_score_valid_ = std::isfinite(latest_match_score_);
     match_score_pub_->publish(score_message);
+    geometry_msgs::msg::Vector3Stamped diagnostics_message;
+    diagnostics_message.header = msg->header;
+    // Vector3Stamped keeps the scan timestamp without introducing a custom
+    // message: x=match score, y=applied translation (m), z=applied yaw (rad).
+    diagnostics_message.vector.x = match.score;
+    diagnostics_message.vector.y = applied_correction_translation;
+    diagnostics_message.vector.z = applied_correction_rotation;
+    match_diagnostics_pub_->publish(diagnostics_message);
     broadcast_map_to_odom();
 
     RCLCPP_DEBUG(
       get_logger(),
       "pose=(%.3f, %.3f, %.1f deg), score=%.3f, iterations=%d, "
+      "correction=(%.4f m, %.3f deg) deadband=(%s,%s), "
       "deskew=%s motion=(%.4f m, %.3f deg)",
       pose_.x, pose_.y, pose_.yaw * 180.0 / kPi, match.score, match.iterations,
+      correction_translation, correction_rotation * 180.0 / kPi,
+      translation_deadband_applied ? "translation" : "no",
+      rotation_deadband_applied ? "rotation" : "no",
       deskew_applied ? "yes" : "no", scan_translation, scan_rotation * 180.0 / kPi);
   }
 
@@ -746,6 +801,7 @@ private:
   std::string scan_topic_;
   std::string initial_pose_topic_;
   std::string pose_topic_;
+  std::string match_diagnostics_topic_;
 
   bool tf_broadcast_{true};
   double tf_publish_rate_{30.0};
@@ -766,6 +822,8 @@ private:
   int max_beams_{180};
   int min_valid_beams_{20};
   double min_match_score_{0.05};
+  double correction_translation_deadband_{0.0};
+  double correction_rotation_deadband_{0.0};
   double match_score_terminal_rate_{1.0};
   double min_laser_range_{0.0};
   double max_laser_range_{0.0};
@@ -792,6 +850,8 @@ private:
     initial_pose_sub_;
   rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pose_pub_;
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr match_score_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr
+    match_diagnostics_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr deskew_applied_pub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr deskewed_cloud_pub_;
   rclcpp::TimerBase::SharedPtr tf_timer_;
