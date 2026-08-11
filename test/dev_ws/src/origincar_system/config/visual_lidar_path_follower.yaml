@@ -2,9 +2,9 @@
 visual_lidar_path_follower:
   ros__parameters:
     # 航点、坐标系与输出
-    task1_waypoints_file: /root/D_Robot/test/dev_ws/src/origincar_system/config/waypoints_task1.yaml  # [Task1] Task1发车后寻找二维码所用的原始航点文件
-    route_waypoints_clockwise_file: /root/D_Robot/test/dev_ws/src/origincar_system/config/waypoints_channel_clockwise.yaml  # [Task2+Task3选路] 扫码后顺时针独立路线
-    route_waypoints_counterclockwise_file: /root/D_Robot/test/dev_ws/src/origincar_system/config/waypoints_channel_counterclockwise.yaml  # [Task2+Task3选路] 扫码后逆时针独立路线
+    task1_waypoints_file: src/origincar_system/config/waypoints_task1.yaml  # [Task1] 相对工作区的原始航点文件
+    route_waypoints_clockwise_file: src/origincar_system/config/waypoints_channel_clockwise.yaml  # [Task2+Task3选路] 相对工作区的顺时针路线
+    route_waypoints_counterclockwise_file: src/origincar_system/config/waypoints_channel_counterclockwise.yaml  # [Task2+Task3选路] 相对工作区的逆时针路线
     frame_id: map  # [全阶段共享] 航点所在的地图坐标系
     base_frame_id: base_link  # [全阶段共享] 车辆本体坐标系
     cmd_vel_topic: /cmd_vel  # [全阶段共享] 速度指令发布话题
@@ -204,8 +204,8 @@ visual_lidar_path_follower:
     # 图2：作为冻结路线图和最终路线图背景；静态+动态方案偏移方向只由障碍相对路线的左右侧决定
     # 图3：仅过滤发车前的静态绿色候选；话题由logic3_static_restriction_map_topic指定
     # 图4：仅过滤发车后的动态红色候选；话题由logic3_runtime_restriction_map_topic指定
-    logic3_output_root: /root/D_Robot/test/dev_ws/src/origincar_system/path  # [路线图输出] 四张任务路线图及倒车重规划图片的输出根目录
-    logic3_restriction_map_yaml: /root/D_Robot/test/dev_ws/src/origincar_system/map/race_keepout.yaml  # [路线图输出] 图2背景地图YAML，用于偏移方向判断和路线图绘制
+    logic3_output_root: src/origincar_system/path  # [路线图输出] 相对工作区的路线图输出根目录
+    logic3_restriction_map_yaml: src/origincar_system/map/race_keepout.yaml  # [路线图输出] 相对工作区的限制地图
 
     # 扫到二维码后持续武装到waypoint_channel的雷达条件倒车；数值来自雷达实跑的 1.15 profile
     qr_reverse_y_threshold: 0.10  # [Task1→Task2条件倒车] 不再参与触发；仅在倒车中map.y<=该值时作为或关系退出保护，单位m

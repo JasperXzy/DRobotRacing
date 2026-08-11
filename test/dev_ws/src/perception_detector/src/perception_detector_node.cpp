@@ -139,7 +139,7 @@ private:
 
     declare_parameter<std::string>(
       "model_path",
-      "/root/D_Robot/test/dev_ws/models/yolo26m_detect_nashe_640x640_nv12_resize_default.hbm");
+      "models/yolo26m_detect_nashe_640x640_nv12_resize_default.hbm");
     declare_parameter<int>("model_input_width", 640);
     declare_parameter<int>("model_input_height", 640);
     declare_parameter<std::string>("preprocess_type", "letterbox");

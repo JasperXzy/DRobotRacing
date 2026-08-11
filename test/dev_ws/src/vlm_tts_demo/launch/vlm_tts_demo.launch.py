@@ -86,7 +86,7 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'fallback_candidate_dir',
-            default_value='/root/D_Robot/test/dev_ws/captures/image_capture_candidates',
+            default_value='captures/image_capture_candidates',
             description='Directory retaining per-session fan-sector fallback images.',
         ),
         DeclareLaunchArgument(
@@ -121,7 +121,7 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'last_success_text_file',
-            default_value='/root/D_Robot/test/dev_ws/captures/last_successful_vlm_text.txt',
+            default_value='captures/last_successful_vlm_text.txt',
             description='Persistent cache of the last successful VLM speech text.',
         ),
         DeclareLaunchArgument(

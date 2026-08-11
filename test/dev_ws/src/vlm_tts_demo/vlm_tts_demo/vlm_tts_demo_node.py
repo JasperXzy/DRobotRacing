@@ -43,7 +43,7 @@ class VlmTtsDemoNode(Node):
             '/visual_lidar_path_follower/image_capture_candidate')
         self.declare_parameter(
             'fallback_candidate_dir',
-            '/root/D_Robot/test/dev_ws/captures/image_capture_candidates')
+            'captures/image_capture_candidates')
         self.declare_parameter('fallback_candidate_max_frames', 80)
         self.declare_parameter('tts_topic', '/tts_text')
         self.declare_parameter('result_topic', '/vlm_api_text')
@@ -52,7 +52,7 @@ class VlmTtsDemoNode(Node):
         self.declare_parameter('error_notice', '识别失败，请检查网络或接口配置')
         self.declare_parameter(
             'last_success_text_file',
-            '/root/D_Robot/test/dev_ws/captures/last_successful_vlm_text.txt')
+            'captures/last_successful_vlm_text.txt')
         self.declare_parameter('failure_prefix', '一')
         self.declare_parameter('user_prompt', DEFAULT_PROMPT)
         self.declare_parameter('env_file', '')

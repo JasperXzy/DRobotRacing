@@ -56,6 +56,14 @@ CONTROL_POINT_VARIANTS = {
     'zyr': ZYR_CONTROL_POINTS,
 }
 
+# 各变体输出文件的后缀（与现有配置/launch 引用保持兼容：
+# waypoints_task1.yaml / waypoints_task1_backup_45deg.yaml / waypoints_task1_ZYR.yaml）
+VARIANT_NAME_SUFFIX = {
+    'default': '',
+    'backup_45deg': '_backup_45deg',
+    'zyr': '_ZYR',
+}
+
 
 def interpolate_polyline(control_points, spacing):
     points = [control_points[0]]
@@ -200,11 +208,58 @@ def render_schematic_preview(points, map_yaml, background, output):
     result.save(output, format='PNG', optimize=True)
 
 
+def generate_variant(
+        variant, spacing, map_yaml, schematic_background,
+        output=None, preview_output=None, schematic_preview_output=None):
+    """Generate one variant: waypoint YAML + map/schematic previews.
+
+    Output paths default to the variant's standard files under
+    config/ and map/; pass explicit paths to override them.
+    """
+    control_points = CONTROL_POINT_VARIANTS[variant]
+    points = interpolate_polyline(control_points, spacing)
+    suffix = VARIANT_NAME_SUFFIX[variant]
+    output = output or (
+        PACKAGE_DIR / 'config' / f'waypoints_task1{suffix}.yaml')
+    preview_output = preview_output or (
+        PACKAGE_DIR / 'map' /
+        f'waypoints_task1{suffix}_on_restriction_map.png')
+    schematic_preview_output = schematic_preview_output or (
+        PACKAGE_DIR / 'map' / f'waypoints_task1{suffix}_on_schematic.png')
+    output.parent.mkdir(parents=True, exist_ok=True)
+    waypoint_prefix = (
+        'task1' if variant == 'default' else f'task1_{variant}')
+    payload = {
+        'route_direction': 'task1',
+        'route_variant': variant,
+        'control_points': [list(point) for point in control_points],
+        'waypoints': [
+            {
+                'name': f'{waypoint_prefix}_{index:03d}',
+                'x': round(x, 6),
+                'y': round(y, 6),
+            }
+            for index, (x, y) in enumerate(points)
+        ],
+    }
+    with output.open('w', encoding='utf-8') as stream:
+        yaml.safe_dump(payload, stream, sort_keys=False, allow_unicode=True)
+    render_map_preview(points, map_yaml, preview_output)
+    render_schematic_preview(
+        points, map_yaml, schematic_background, schematic_preview_output)
+    return len(points), output, preview_output, schematic_preview_output
+
+
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description='Generate Task1 waypoints. Default: regenerate all '
+                    'variants (default/backup_45deg/zyr) in sequence.')
     parser.add_argument(
-        '--variant', choices=sorted(CONTROL_POINT_VARIANTS), default='default',
-        help='Task1 control-point variant to generate.')
+        '--variant',
+        choices=['all'] + sorted(CONTROL_POINT_VARIANTS),
+        default='all',
+        help='Task1 control-point variant to generate; '
+             "'all' regenerates every variant (default).")
     parser.add_argument(
         '--output',
         default=str(
@@ -218,7 +273,7 @@ def main():
         help='Occupancy-map YAML used as the PNG preview background.')
     parser.add_argument(
         '--preview-output', type=Path, default=DEFAULT_PREVIEW_OUTPUT,
-        help='Task1 PNG preview file to overwrite.')
+        help='Task1 PNG preview file to overwrite (single-variant mode only).')
     parser.add_argument(
         '--schematic-background',
         type=Path,
@@ -228,42 +283,47 @@ def main():
         '--schematic-preview-output',
         type=Path,
         default=DEFAULT_SCHEMATIC_PREVIEW_OUTPUT,
-        help='Task1-on-schematic PNG preview file to overwrite.')
+        help='Task1-on-schematic PNG preview file to overwrite '
+             '(single-variant mode only).')
     args = parser.parse_args()
     if not math.isfinite(args.spacing) or args.spacing <= 0.0:
         raise ValueError('--spacing must be a positive finite number')
 
-    control_points = CONTROL_POINT_VARIANTS[args.variant]
-    points = interpolate_polyline(control_points, args.spacing)
+    default_output = Path(__file__).resolve().parents[1] / 'config' / 'waypoints_task1.yaml'
+    if args.variant == 'all':
+        for variant in sorted(CONTROL_POINT_VARIANTS):
+            count, output, preview_output, schematic_preview_output = (
+                generate_variant(
+                    variant,
+                    args.spacing,
+                    args.map_yaml.expanduser(),
+                    args.schematic_background.expanduser()))
+            print(
+                f'Generated {count} Task1 waypoints '
+                f'(variant={variant}) at {output} '
+                f'(spacing <= {args.spacing:.3f} m)\n'
+                f'Task1 map preview: {preview_output}\n'
+                f'Task1 schematic preview: {schematic_preview_output}')
+        return
+
     output = Path(args.output).expanduser()
-    output.parent.mkdir(parents=True, exist_ok=True)
-    waypoint_prefix = (
-        'task1' if args.variant == 'default' else f'task1_{args.variant}')
-    payload = {
-        'route_direction': 'task1',
-        'route_variant': args.variant,
-        'control_points': [list(point) for point in control_points],
-        'waypoints': [
-            {
-                'name': f'{waypoint_prefix}_{index:03d}',
-                'x': round(x, 6),
-                'y': round(y, 6),
-            }
-            for index, (x, y) in enumerate(points)
-        ],
-    }
-    with output.open('w', encoding='utf-8') as stream:
-        yaml.safe_dump(payload, stream, sort_keys=False, allow_unicode=True)
-    preview_output = args.preview_output.expanduser()
-    render_map_preview(points, args.map_yaml.expanduser(), preview_output)
-    schematic_preview_output = args.schematic_preview_output.expanduser()
-    render_schematic_preview(
-        points,
+    preview_output = Path(args.preview_output).expanduser()
+    schematic_preview_output = Path(
+        args.schematic_preview_output).expanduser()
+    if output == default_output:
+        output = None
+    if preview_output == DEFAULT_PREVIEW_OUTPUT:
+        preview_output = None
+    if schematic_preview_output == DEFAULT_SCHEMATIC_PREVIEW_OUTPUT:
+        schematic_preview_output = None
+    count, output, preview_output, schematic_preview_output = generate_variant(
+        args.variant,
+        args.spacing,
         args.map_yaml.expanduser(),
         args.schematic_background.expanduser(),
-        schematic_preview_output)
+        output, preview_output, schematic_preview_output)
     print(
-        f'Generated {len(points)} Task1 waypoints '
+        f'Generated {count} Task1 waypoints '
         f'(variant={args.variant}) at {output} '
         f'(spacing <= {args.spacing:.3f} m)\n'
         f'Task1 map preview: {preview_output}\n'

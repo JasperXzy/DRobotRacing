@@ -280,9 +280,9 @@ private:
   std::string logic3_odom_frame_id_{"odom"};
   std::string logic3_planning_pose_source_{"filtered_map_odom"};
   std::string logic3_output_root_{
-    "/root/D_Robot/test/dev_ws/src/origincar_system/path"};
+    "src/origincar_system/path"};
   std::string logic3_restriction_map_yaml_{
-    "/root/D_Robot/test/dev_ws/src/origincar_system/map/race_keepout.yaml"};
+    "src/origincar_system/map/race_keepout.yaml"};
   double logic3_motion_speed_threshold_{0.03};
   double logic3_motion_displacement_threshold_{0.01};
   int logic3_motion_confirm_messages_{2};

@@ -88,7 +88,7 @@ private:
     declare_parameter<std::string>("camera_frame_id", "usb_cam");
     declare_parameter<std::string>(
       "model_path",
-      "/root/D_Robot/test/dev_ws/models/line_detector_resnet18_nashe_224x224_nv12.hbm");
+      "models/line_detector_resnet18_nashe_224x224_nv12.hbm");
 
     declare_parameter<int>("source_width", 1920);
     declare_parameter<int>("source_height", 1080);
