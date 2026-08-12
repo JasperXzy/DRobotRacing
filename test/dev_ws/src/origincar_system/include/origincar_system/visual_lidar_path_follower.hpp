@@ -307,6 +307,7 @@ private:
   double waypoint_cloud_check_radius_{0.25};
   double task1_waypoint_shift_target_clearance_{0.45};
   double transition_waypoint_shift_target_clearance_{0.40};
+  // true只让过渡段实时雷达覆盖全部障碍；A→C→B仍参与完整路线静态偏移。
   bool transition_dynamic_avoid_only_{true};
   double task2_waypoint_shift_target_clearance_{0.40};
   double task3_waypoint_shift_target_clearance_{0.40};
@@ -448,6 +449,7 @@ private:
   double channel_entry_via_x_{1.95};
   double channel_entry_via_y_{1.60};
   double channel_handoff_waypoint_distance_{0.30};
+  double channel_via_corner_smoothing_length_{0.08};
   double channel_entry_corner_smoothing_length_{0.20};
   double channel_lidar_avoid_distance_{0.65};
   double channel_lidar_avoid_fov_deg_{120.0};
@@ -568,7 +570,7 @@ private:
   bool channel_entry_route_rebuild_after_reverse_{false};
   std::size_t channel_entry_waypoint_index_{0};
   // [channel_entry_smoothing_first_index_, channel_entry_waypoint_index_]
-  // 是偏移前已圆滑的B前末段；waypoint_shift只做原始直接偏移，
+  // 是偏移前已圆滑的C/B局部段；waypoint_shift只做原始直接偏移，
   // 不允许偏移后的曲率兜底再重构该段。与B相等表示本次未圆滑。
   std::size_t channel_entry_smoothing_first_index_{0};
   std::size_t channel_completed_reverse_count_{0};

@@ -22,6 +22,7 @@
 
   <!-- Runtime packages launched by the lidar_location/AMCL test bringups. -->
   <exec_depend>camera_driver</exec_depend>
+  <exec_depend>bmi088_driver</exec_depend>
   <exec_depend>chassis_driver</exec_depend>
   <exec_depend>lidar_driver</exec_depend>
   <exec_depend>line_detector</exec_depend>

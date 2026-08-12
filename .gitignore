@@ -66,8 +66,6 @@ test/final/
 
 test/zhy_car
 
-test/dev_ws/simulation_logs
+test/dev_ws/simulation_logs 
 
 test/dev_ws/debug_log
-
-test/dev_ws/src/bmi088_driver

@@ -29,6 +29,7 @@ def generate_launch_description():
     chassis_config_file = LaunchConfiguration('chassis_config_file')
     lidar_config_file = LaunchConfiguration('lidar_config_file')
     ekf_config_file = LaunchConfiguration('ekf_config_file')
+    imu_topic = LaunchConfiguration('imu_topic')
     nav2_params_file = LaunchConfiguration('nav2_params_file')
     localization_params_file = LaunchConfiguration('localization_params_file')
     map_yaml_file = LaunchConfiguration('map_yaml_file')
@@ -66,6 +67,14 @@ def generate_launch_description():
                 test_share, 'config', 'localization', 'ekf.yaml',
             ]),
             description='EKF config maintained in the test workspace.',
+        ),
+        DeclareLaunchArgument(
+            'imu_topic',
+            default_value='/chassis/imu/data_raw',
+            description=(
+                'IMU topic fused by the EKF. The lidar_location comparison '
+                'flow defaults to the chassis MPU6050.'
+            ),
         ),
         DeclareLaunchArgument(
             'nav2_params_file',
@@ -145,6 +154,16 @@ def generate_launch_description():
         }.items(),
     )
 
+    bmi088_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([
+                FindPackageShare('bmi088_driver'),
+                'launch',
+                'bmi088.launch.py',
+            ])
+        ),
+    )
+
     lidar_node = LifecycleNode(
         package='lidar_driver',
         executable='lidar_driver_node',
@@ -177,6 +196,7 @@ def generate_launch_description():
         ),
         launch_arguments={
             'ekf_config_file': ekf_config_file,
+            'imu_topic': imu_topic,
         }.items(),
     )
 
@@ -266,6 +286,7 @@ def generate_launch_description():
 
         # t=0s: hardware, sensor TF, camera and visualization.
         chassis_launch,
+        bmi088_launch,
         lidar_node,
         laser_static_tf,
         camera_launch,

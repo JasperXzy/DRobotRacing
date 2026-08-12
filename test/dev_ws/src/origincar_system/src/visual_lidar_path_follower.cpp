@@ -744,6 +744,12 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   get_parameter(
     "channel_handoff_waypoint_distance", channel_handoff_waypoint_distance_);
   declare_parameter<double>(
+    "channel_via_corner_smoothing_length",
+    channel_via_corner_smoothing_length_);
+  get_parameter(
+    "channel_via_corner_smoothing_length",
+    channel_via_corner_smoothing_length_);
+  declare_parameter<double>(
     "channel_entry_corner_smoothing_length",
     channel_entry_corner_smoothing_length_);
   get_parameter(
@@ -1287,6 +1293,8 @@ VisualLidarPathFollower::VisualLidarPathFollower()
   }
   channel_handoff_waypoint_distance_ = std::max(
     0.01, channel_handoff_waypoint_distance_);
+  channel_via_corner_smoothing_length_ = std::max(
+    0.0, channel_via_corner_smoothing_length_);
   channel_entry_corner_smoothing_length_ = std::max(
     0.0, channel_entry_corner_smoothing_length_);
   auto normalize_stage_profile =
@@ -1897,13 +1905,8 @@ void VisualLidarPathFollower::control_once()
   }
 
   // Task2顶部直道不再追逐独立拍照点，也不做整段限速。位置和航向合格后
-  // 只停车一次，停车计时结束的零速周期保存最新帧；离开走廊后调用一次API。
-  if (update_image_capture_corridor(pose)) {
-    publish_debug_visualization(pose);
-    set_control_state(next_control_state_);
-    publish_stop();
-    return;
-  }
+  // 只停车一次；停车期间继续运行巡线和雷达避障，最终只覆盖平移速度。
+  const bool image_capture_hold_translation = update_image_capture_corridor(pose);
 
   const double lookahead_distance = std::min(
     lookahead_max_,
@@ -1942,6 +1945,12 @@ void VisualLidarPathFollower::control_once()
   // 只在Task1二维码尚未有效解码时，根据当前检测框高度封顶最终线速度。
   // 放在雷达控制之后，确保雷达分支不会把0.20m/s限制重新抬高。
   apply_qr_code_speed_limit(cmd);
+  if (image_capture_hold_translation) {
+    // 拍照停车只禁止车身平移，保留巡线或雷达避障最终算出的angular.z。
+    // 不调用publish_stop()，避免舵机回中和巡线PID状态被拍照逻辑重置。
+    cmd.linear.x = 0.0;
+    cmd.linear.y = 0.0;
+  }
   publish_debug_visualization(pose);
 
   set_control_state(next_control_state_);
@@ -2742,8 +2751,8 @@ void VisualLidarPathFollower::reset_image_capture_corridor()
   image_capture_stop_started_at_ = std::chrono::steady_clock::time_point{};
 }
 
-// 返回true表示本控制周期必须保持零速。候选触发只让VLM在内存中保存
-// 最新静止帧；离开走廊时才写盘并调用一次API。
+// 返回true表示本控制周期必须禁止平移，但转向仍由巡线或雷达避障控制。
+// 候选触发只让VLM在内存中保存最新静止帧；离开走廊时才写盘并调用一次API。
 bool VisualLidarPathFollower::update_image_capture_corridor(
   const VisualLidarPathFollower::RobotPose & pose)
 {
@@ -3563,7 +3572,7 @@ std::size_t VisualLidarPathFollower::rebuild_curvature_unsafe_shift_segments(
       }
 
       // B前的轻微圆滑已经是偏移前基准路线的一部分。这一小段若再进入
-      // 偏移后曲率兜底，就会破坏1/4—3/4直接偏移分配；仅跳过与B重叠的
+      // 偏移后曲率兜底，就会破坏1/2—1/2直接偏移分配；仅跳过与B重叠的
       // 危险子段，不再连带跳过或重建同一障碍窗口的其他点。
       const std::size_t repair_context_first =
         unsafe_first > 0 ? unsafe_first - 1 : unsafe_first;
@@ -4136,12 +4145,10 @@ void VisualLidarPathFollower::apply_circle_envelope_deformation(
     normal_valid[index] = original_route_normal_at(index, left_normals[index]);
   }
 
-  const bool protect_channel_entry =
-    tracking_controller_mode_ != "smac_pid" && transition_dynamic_avoid_only_ &&
-    channel_entry_waypoint_index_ > 0 &&
-    channel_entry_waypoint_index_ + 1 < route_size;
-  const std::size_t first_deformable_index = protect_channel_entry ?
-    channel_entry_waypoint_index_ + 1 : 0;
+  // A→C→B已经在original_waypoints_中接到Task2首点B之前。静态偏移必须
+  // 把这条组合路线视为一个整体，允许B附近障碍的before窗口自然跨过B，
+  // 不能因为过渡段同时启用实时雷达就把A→C→B排除在可偏移范围之外。
+  const std::size_t first_deformable_index = 0;
   const std::size_t last_deformable_index =
     task3_route_available_ && route_size > 1 ? route_size - 2 : route_size - 1;
   if (first_deformable_index > last_deformable_index) {
@@ -4226,6 +4233,108 @@ void VisualLidarPathFollower::apply_circle_envelope_deformation(
       }
       return first.center.y < second.center.y;
     });
+
+  // 同一物理通道可能在路线序列中正向、反向各经过一次。同一个障碍会因此
+  // 生成两个source相距很远、但世界坐标几乎重合且法向相反的独立约束。
+  // 若仍各自沿s轴画接线，两套曲线会在通道分叉处略有错位并形成尖峰。
+  // 这里只配对“同中心 + 同位置 + 反向共线”的重复经过；不同障碍、普通
+  // 交叉点以及同方向近邻路线都不参与，仍保持原来的独立约束语义。
+  struct SharedPassGeometry
+  {
+    std::vector<std::pair<std::size_t, std::size_t>> waypoint_pairs;
+  };
+  std::vector<SharedPassGeometry> shared_pass_geometries;
+  constexpr double shared_center_tolerance = 0.03;
+  constexpr double shared_source_tolerance = 0.05;
+  constexpr double shared_waypoint_tolerance = 0.015;
+  constexpr double opposite_normal_cosine = -0.80;
+  for (std::size_t first_index = 0;
+    first_index < constraints.size(); ++first_index)
+  {
+    for (std::size_t second_index = first_index + 1;
+      second_index < constraints.size(); ++second_index)
+    {
+      auto & first = constraints[first_index];
+      auto & second = constraints[second_index];
+      if (std::hypot(
+          first.center.x - second.center.x,
+          first.center.y - second.center.y) > shared_center_tolerance)
+      {
+        continue;
+      }
+      const auto & first_source = original_waypoints_[first.source];
+      const auto & second_source = original_waypoints_[second.source];
+      if (std::hypot(
+          first_source.x - second_source.x,
+          first_source.y - second_source.y) > shared_source_tolerance)
+      {
+        continue;
+      }
+      const double normal_alignment =
+        left_normals[first.source].x * left_normals[second.source].x +
+        left_normals[first.source].y * left_normals[second.source].y;
+      if (normal_alignment > opposite_normal_cosine) {
+        continue;
+      }
+
+      SharedPassGeometry shared;
+      shared.waypoint_pairs.emplace_back(first.source, second.source);
+      for (std::size_t step = 1;
+        first.source + step < route_size && second.source >= step; ++step)
+      {
+        const std::size_t first_waypoint = first.source + step;
+        const std::size_t second_waypoint = second.source - step;
+        if (std::hypot(
+            original_waypoints_[first_waypoint].x -
+            original_waypoints_[second_waypoint].x,
+            original_waypoints_[first_waypoint].y -
+            original_waypoints_[second_waypoint].y) > shared_waypoint_tolerance)
+        {
+          break;
+        }
+        shared.waypoint_pairs.emplace_back(first_waypoint, second_waypoint);
+      }
+      for (std::size_t step = 1;
+        first.source >= step && second.source + step < route_size; ++step)
+      {
+        const std::size_t first_waypoint = first.source - step;
+        const std::size_t second_waypoint = second.source + step;
+        if (std::hypot(
+            original_waypoints_[first_waypoint].x -
+            original_waypoints_[second_waypoint].x,
+            original_waypoints_[first_waypoint].y -
+            original_waypoints_[second_waypoint].y) > shared_waypoint_tolerance)
+        {
+          break;
+        }
+        shared.waypoint_pairs.emplace_back(first_waypoint, second_waypoint);
+      }
+      // 单点交叉不属于共用通道。至少连续匹配3个航点，才统一世界方向
+      // 并让两次经过复用同一条几何线。
+      if (shared.waypoint_pairs.size() < 3) {
+        continue;
+      }
+
+      const Point2D shared_world_direction{
+        static_cast<double>(first.direction) * left_normals[first.source].x,
+        static_cast<double>(first.direction) * left_normals[first.source].y};
+      const double second_alignment =
+        shared_world_direction.x * left_normals[second.source].x +
+        shared_world_direction.y * left_normals[second.source].y;
+      second.direction = second_alignment >= 0.0 ? 1 : -1;
+      const double shared_radius = std::max(first.radius, second.radius);
+      const double shared_peak = std::max(first.peak_offset, second.peak_offset);
+      first.radius = shared_radius;
+      second.radius = shared_radius;
+      first.peak_offset = shared_peak;
+      second.peak_offset = shared_peak;
+      shared_pass_geometries.push_back(std::move(shared));
+    }
+  }
+  std::size_t shared_pass_waypoint_pair_count = 0;
+  for (const auto & shared : shared_pass_geometries) {
+    shared_pass_waypoint_pair_count += shared.waypoint_pairs.size();
+  }
 
   // 先在每个独立锚点上求自己的最低有符号偏移量。这里读取的几何始终
   // 是original_waypoints_，不会拿前一个障碍物已经偏移后的路线判断后一个。
@@ -4532,6 +4641,21 @@ void VisualLidarPathFollower::apply_circle_envelope_deformation(
         candidate[index].x += offsets[index] * left_normals[index].x;
         candidate[index].y += offsets[index] * left_normals[index].y;
       }
+
+      // 共用通道的两次经过最终写成同一组世界坐标。两边各自的路线顺序、
+      // PID进度和分叉外接线保持不变；这里只消除重合段上的双线与尖峰。
+      for (const auto & shared : shared_pass_geometries) {
+        for (const auto & pair : shared.waypoint_pairs) {
+          const double shared_x =
+            0.5 * (candidate[pair.first].x + candidate[pair.second].x);
+          const double shared_y =
+            0.5 * (candidate[pair.first].y + candidate[pair.second].y);
+          candidate[pair.first].x = shared_x;
+          candidate[pair.first].y = shared_y;
+          candidate[pair.second].x = shared_x;
+          candidate[pair.second].y = shared_y;
+        }
+      }
     };
 
   auto overlap_corridor_allows = [&](const Point2D & point,
@@ -4740,6 +4864,13 @@ void VisualLidarPathFollower::apply_circle_envelope_deformation(
   }
 
   shifted_route = std::move(best_route);
+  if (!shared_pass_geometries.empty()) {
+    RCLCPP_INFO_THROTTLE(
+      get_logger(), *get_clock(), 2000,
+      "circle_envelope共用通道：识别%zu组正反重复经过，"
+      "同步%zu对世界坐标航点。",
+      shared_pass_geometries.size(), shared_pass_waypoint_pair_count);
+  }
   if (best_quality.clearance_failures > 0) {
     RCLCPP_WARN_THROTTLE(
       get_logger(), *get_clock(), 2000,
@@ -5762,9 +5893,9 @@ bool VisualLidarPathFollower::apply_qr_reverse_maneuver(
   return true;
 }
 
-// 进入channel航点邻域后结束进场速度覆盖。A→C→B的基准路线在冻结规划时
-// 已被保护为零静态偏移；Task2参数可按原门限提前切换，但绿色掩码要等
-// 路线进度真正越过B后才恢复。
+// 进入channel航点邻域后结束进场速度覆盖。A→C→B已经与Task2一起完成
+// 静态偏移；Task2参数可按原门限提前切换，但过渡段全障碍雷达覆盖模式下，
+// 绿色掩码仍要等路线进度真正越过B后才恢复。
 void VisualLidarPathFollower::update_qr_channel_approach_phase(
   const VisualLidarPathFollower::RobotPose & robot_pose)
 {
@@ -5822,8 +5953,9 @@ void VisualLidarPathFollower::update_qr_channel_approach_phase(
 }
 
 // channel雷达避障：circle_envelope+smac_pid始终屏蔽全部已确认的
-// 绿/橙永久点，只让掩码外未记录新障碍进入实时控制；
-// legacy保留A→C→B动态专用行为。
+// 绿/橙永久点，只让掩码外未记录新障碍进入实时控制；legacy在配置
+// transition_dynamic_avoid_only时允许过渡段雷达覆盖全部障碍，但这只影响
+// 实时雷达过滤，不再清除已经在完整A→C→B→Task2路线中计算出的静态偏移。
 bool VisualLidarPathFollower::apply_channel_lidar_obstacle_avoidance(
   geometry_msgs::msg::Twist & cmd, bool * observation_valid,
   bool * obstacle_found)
@@ -7096,11 +7228,19 @@ bool VisualLidarPathFollower::update_logic3_runtime_green_tracks(
         logic3_green_identity_anchors_.push_back(track.cluster.center);
         recorded_mask_changed = true;
         route_replan_required = true;
+        const double seconds_since_trusted_departure =
+          task1_departure_timer_started_ ?
+          std::max(
+            0.0,
+            std::chrono::duration<double>(
+              std::chrono::steady_clock::now() - task1_departure_started_at_).count()) :
+          0.0;
         RCLCPP_WARN(
           get_logger(),
-          "运行中新增橙色永久点%zu：map(%.3f, %.3f)，match_score=%.3f，连续%d帧。",
-          track.green_index + 1, track.cluster.center.x, track.cluster.center.y,
-          latest_lidar_match_score_, track.consecutive_hits);
+          "@@@@@@@橙点：(%.3f，%.3f)@@@@@@@此时匹配score为：%.3f；"
+          "此时距离可信发车的时间为：%.3f秒。",
+          track.cluster.center.x, track.cluster.center.y,
+          latest_lidar_match_score_, seconds_since_trusted_departure);
         continue;
       }
     }
@@ -7199,24 +7339,6 @@ void VisualLidarPathFollower::rebuild_logic3_route_from_green_clusters(
   logic3_force_confirm_ = false;
   logic3_force_full_route_ = false;
   logic3_replay_frozen_clusters_ = false;
-
-  if (tracking_controller_mode_ != "smac_pid" &&
-    transition_dynamic_avoid_only_ && channel_entry_waypoint_index_ > 0 &&
-    original_waypoints_.size() == waypoints_.size())
-  {
-    // 即便Task2/Task3重算整条组合路线，已经走过的A→C→B仍保持其
-    // 动态避障专用基准坐标，不让新绿点改变这段的方案定义。
-    const std::size_t protected_last = std::min(
-      channel_entry_waypoint_index_, waypoints_.size() - 1);
-    for (std::size_t index = 0; index <= protected_last; ++index) {
-      waypoints_[index] = original_waypoints_[index];
-      waypoint_shift_offsets_[index] = 0.0;
-      waypoint_shift_world_directions_[index] = Point2D();
-      waypoint_shift_source_indices_[index] = waypoints_.size();
-      waypoint_shift_obstacle_centers_[index] = Point2D();
-      waypoint_shift_forbidden_radii_[index] = 0.0;
-    }
-  }
 
   logic3_frozen_base_offsets_ = waypoint_shift_offsets_;
   logic3_frozen_base_shift_directions_ = waypoint_shift_world_directions_;
@@ -7521,24 +7643,6 @@ void VisualLidarPathFollower::apply_logic3_frozen_clusters_to_current_route(
   logic3_force_confirm_ = false;
   logic3_force_full_route_ = false;
   logic3_replay_frozen_clusters_ = false;
-
-  if (tracking_controller_mode_ != "smac_pid" &&
-    snapshot_event == "final_frozen" && transition_dynamic_avoid_only_ &&
-    original_waypoints_.size() == waypoints_.size() && !waypoints_.empty())
-  {
-    // 正常计算整条冻结路线，但A→C→B（包含B）始终保持偏移前基准坐标。
-    // B之后继续沿用原静态偏移，且整条路线从规划到执行不再中途替换。
-    const std::size_t protected_last = std::min(
-      channel_entry_waypoint_index_, waypoints_.size() - 1);
-    for (std::size_t index = 0; index <= protected_last; ++index) {
-      waypoints_[index] = original_waypoints_[index];
-      waypoint_shift_offsets_[index] = 0.0;
-      waypoint_shift_world_directions_[index] = Point2D();
-      waypoint_shift_source_indices_[index] = waypoints_.size();
-      waypoint_shift_obstacle_centers_[index] = Point2D();
-      waypoint_shift_forbidden_radii_[index] = 0.0;
-    }
-  }
 
   logic3_frozen_base_offsets_ = waypoint_shift_offsets_;
   logic3_frozen_base_shift_directions_ = waypoint_shift_world_directions_;
@@ -8440,8 +8544,8 @@ void VisualLidarPathFollower::update_waypoint_shifts(
           previous_active_segment->last, segment.last);
         if (overlap_first <= overlap_last) {
           overlap_count = overlap_last - overlap_first + 1;
-          // 整数除法将不能四等分的余数交给后一个障碍物。
-          applied_first = overlap_first + overlap_count / 4;
+          // 整数除法将不能二等分的余数交给后一个障碍物。
+          applied_first = overlap_first + overlap_count / 2;
         }
       }
       std::size_t overwritten_count = 0;
@@ -8449,7 +8553,7 @@ void VisualLidarPathFollower::update_waypoint_shifts(
         if (observed_offsets_valid[index]) {
           ++overwritten_count;
         }
-        // 候选已按路线进度排序；后一个障碍物从重叠区1/4位置开始取得控制权。
+        // 候选已按路线进度排序；后一个障碍物从重叠区1/2位置开始取得控制权。
         observed_offsets[index] = candidate;
         observed_offsets_valid[index] = true;
         observed_world_directions[index] = segment.preferred_direction > 0 ?
@@ -8463,7 +8567,7 @@ void VisualLidarPathFollower::update_waypoint_shifts(
       if (debug_control_logs_) {
         RCLCPP_INFO(
           get_logger(),
-          "debug: 静态+动态方案四分之一覆盖：障碍点=%zu，原窗口=%zu-%zu，实际写入=%zu-%zu，"
+          "debug: 静态+动态方案二分之一覆盖：障碍点=%zu，原窗口=%zu-%zu，实际写入=%zu-%zu，"
           "向%s偏移%.3fm，重叠=%zu个，覆盖前障碍=%zu个。",
           segment.obstacle_waypoint + 1, segment.first + 1, segment.last + 1,
           applied_first + 1, segment.last + 1,
@@ -8863,10 +8967,11 @@ double VisualLidarPathFollower::estimate_channel_waypoint_spacing(
 }
 
 // 以当前map->base_link位置为A，以配置坐标为C，以原始waypoint_channel首点为B，
-// 按channel中位点距分别在AC、CB上插点。C是普通路径点，不停车也不锁点。
-// B处的轻微圆滑只修改这条“偏移前基准路线”；基准路线固化后正常回放冻结
-// 绿色静态簇，再把A→C→B（包含B）恢复为基准坐标；B之后保留原
-// waypoint_shift结果，整条组合路线直接执行，不在阶段边界替换。
+// 按channel中位点距分别在AC、CB上插点。C是普通路径点，不停车也不锁点；
+// 插点后分别圆滑C尖角和B入口角。两处圆滑只修改“偏移前基准路线”；
+  // 基准路线固化后先接上完整Task2路线，再在A→C→B→Task2组合路线
+  // 上统一回放冻结绿/橙簇。B附近障碍的before/after窗口可以自然跨越B，
+  // 整条组合路线直接执行，不在阶段边界替换。
 bool VisualLidarPathFollower::rebuild_channel_entry_route(
   const VisualLidarPathFollower::RobotPose & start_pose, const char * reason)
 {
@@ -8925,13 +9030,139 @@ bool VisualLidarPathFollower::rebuild_channel_entry_route(
   extended_route.insert(
     extended_route.end(), channel_route_template_.begin(), channel_route_template_.end());
 
-  // 阶段1（偏移前）：A→C与C→B分别保持直线，只把靠近B的末段改造成
-  // 等弧长三次Bezier。起点切线优先沿CB，终点切线沿channel首段；
-  // 路线仍精确经过B，但不会在B处突然折向。
+  // 用等弧长重新采样一段三次Bezier。first/last两个锚点保持原坐标，
+  // 只改写中间路径点，避免Bezier参数均匀但实际点距不均匀。
+  auto smooth_cubic_segment = [&extended_route](
+      std::size_t first, std::size_t last,
+      const Point2D & start_tangent, const Point2D & finish_tangent) {
+      if (first >= last || last >= extended_route.size()) {
+        return 0.0;
+      }
+      const Point2D start{extended_route[first].x, extended_route[first].y};
+      const Point2D finish{extended_route[last].x, extended_route[last].y};
+      const double chord_length = std::hypot(
+        finish.x - start.x, finish.y - start.y);
+      if (chord_length < 1.0e-9) {
+        return 0.0;
+      }
+      const double handle_length = chord_length / 3.0;
+      const Point2D control1{
+        start.x + handle_length * start_tangent.x,
+        start.y + handle_length * start_tangent.y};
+      const Point2D control2{
+        finish.x - handle_length * finish_tangent.x,
+        finish.y - handle_length * finish_tangent.y};
+      auto bezier_point = [&](double t) {
+          const double one_minus_t = 1.0 - t;
+          const double start_weight =
+            one_minus_t * one_minus_t * one_minus_t;
+          const double control1_weight =
+            3.0 * one_minus_t * one_minus_t * t;
+          const double control2_weight =
+            3.0 * one_minus_t * t * t;
+          const double finish_weight = t * t * t;
+          return Point2D{
+            start_weight * start.x + control1_weight * control1.x +
+            control2_weight * control2.x + finish_weight * finish.x,
+            start_weight * start.y + control1_weight * control1.y +
+            control2_weight * control2.y + finish_weight * finish.y};
+        };
+
+      const std::size_t segment_count = last - first;
+      const std::size_t dense_count = std::max<std::size_t>(
+        40, 8 * segment_count);
+      std::vector<Point2D> dense_curve;
+      std::vector<double> cumulative_lengths;
+      dense_curve.reserve(dense_count + 1);
+      cumulative_lengths.reserve(dense_count + 1);
+      dense_curve.push_back(bezier_point(0.0));
+      cumulative_lengths.push_back(0.0);
+      for (std::size_t index = 1; index <= dense_count; ++index) {
+        dense_curve.push_back(bezier_point(
+            static_cast<double>(index) / static_cast<double>(dense_count)));
+        cumulative_lengths.push_back(
+          cumulative_lengths.back() + std::hypot(
+            dense_curve[index].x - dense_curve[index - 1].x,
+            dense_curve[index].y - dense_curve[index - 1].y));
+      }
+      const double curve_length = cumulative_lengths.back();
+      if (curve_length < 1.0e-9) {
+        return 0.0;
+      }
+      for (std::size_t step = 1; step < segment_count; ++step) {
+        const double target_length = curve_length *
+          static_cast<double>(step) / static_cast<double>(segment_count);
+        const auto upper = std::lower_bound(
+          cumulative_lengths.begin(), cumulative_lengths.end(), target_length);
+        const std::size_t upper_index = static_cast<std::size_t>(
+          std::distance(cumulative_lengths.begin(), upper));
+        const std::size_t lower_index = upper_index > 0 ? upper_index - 1 : 0;
+        const double section_length =
+          cumulative_lengths[upper_index] - cumulative_lengths[lower_index];
+        const double ratio = section_length > 1.0e-12 ?
+          (target_length - cumulative_lengths[lower_index]) / section_length : 0.0;
+        auto & waypoint = extended_route[first + step];
+        waypoint.x = dense_curve[lower_index].x + ratio *
+          (dense_curve[upper_index].x - dense_curve[lower_index].x);
+        waypoint.y = dense_curve[lower_index].y + ratio *
+          (dense_curve[upper_index].y - dense_curve[lower_index].y);
+      }
+      return curve_length;
+    };
+
+  // 阶段1a（偏移前）：A→C和C→B完成直线插点后，只截取C点前后
+  // 各一小段做Bezier切角。C不锁点，因此圆滑曲线不强迫精确经过尖角C；
+  // 两侧锚点之外仍保持原始AC/CB直线。
+  std::size_t channel_via_smoothing_last_index = ac_point_count;
+  if (ac_point_count >= 2 && cb_point_count >= 4 &&
+    ac_distance > 1.0e-8 && cb_distance > 1.0e-8 &&
+    channel_via_corner_smoothing_length_ > spacing)
+  {
+    const Point2D ac_tangent{
+      (channel_via.x - channel_start.x) / ac_distance,
+      (channel_via.y - channel_start.y) / ac_distance};
+    const Point2D cb_tangent{
+      (channel_finish.x - channel_via.x) / cb_distance,
+      (channel_finish.y - channel_via.y) / cb_distance};
+    const double tangent_alignment = std::clamp(
+      ac_tangent.x * cb_tangent.x + ac_tangent.y * cb_tangent.y,
+      -1.0, 1.0);
+    if (tangent_alignment < 0.9995) {
+      const std::size_t requested_side_segments = std::max<std::size_t>(
+        2, static_cast<std::size_t>(std::llround(
+          channel_via_corner_smoothing_length_ / spacing)));
+      const std::size_t before_segments = std::min(
+        ac_point_count, requested_side_segments);
+      // 至少给后面的B入口圆滑保留两个CB线段，避免两套Bezier互相覆盖。
+      const std::size_t after_segments = std::min(
+        cb_point_count - 2, requested_side_segments);
+      if (before_segments >= 2 && after_segments >= 2) {
+        const std::size_t first = ac_point_count - before_segments;
+        const std::size_t last = ac_point_count + after_segments;
+        const double curve_length = smooth_cubic_segment(
+          first, last, ac_tangent, cb_tangent);
+        if (curve_length > 0.0) {
+          channel_entry_smoothing_first_index_ = first;
+          channel_via_smoothing_last_index = last;
+          RCLCPP_INFO(
+            get_logger(),
+            "A→C→B偏移前圆滑：C点前%zu段、后%zu段已生成等弧长Bezier，"
+            "曲线长=%.3fm，原尖角=%.1f°。",
+            before_segments, after_segments, curve_length,
+            std::acos(tangent_alignment) * 180.0 / M_PI);
+        }
+      }
+    }
+  }
+
+  // 阶段1b（偏移前）：C圆滑区之后的CB直线末段再圆滑到B。起点切线
+  // 沿CB，终点切线沿channel首段；路线仍精确经过B，不在B处突然折向。
+  // B圆滑的起点不得越过上面的C圆滑终点。
   const bool has_cb_entry_tangent = cb_distance > 1.0e-8;
   const Point2D entry_tangent_start = has_cb_entry_tangent ? channel_via : channel_start;
   const std::size_t entry_tail_point_count = has_cb_entry_tangent ?
-    cb_point_count : ac_point_count;
+    channel_entry_waypoint_index_ - channel_via_smoothing_last_index :
+    ac_point_count;
   if (entry_tail_point_count >= 2 &&
     channel_route_template_.size() >= 2 &&
     channel_entry_corner_smoothing_length_ > spacing)
@@ -8969,7 +9200,8 @@ bool VisualLidarPathFollower::rebuild_channel_entry_route(
               std::llround(requested_blend_length / spacing))));
         const std::size_t anchor_index =
           channel_entry_waypoint_index_ - blend_segments;
-        channel_entry_smoothing_first_index_ = anchor_index;
+        channel_entry_smoothing_first_index_ = std::min(
+          channel_entry_smoothing_first_index_, anchor_index);
         const Point2D start{
           extended_route[anchor_index].x, extended_route[anchor_index].y};
         const Point2D finish{channel_entry.x, channel_entry.y};
@@ -9036,7 +9268,7 @@ bool VisualLidarPathFollower::rebuild_channel_entry_route(
         RCLCPP_INFO(
           get_logger(),
           "A→C→B偏移前圆滑：在B前%.3fm内使用%zu段等弧长Bezier，"
-          "转角=%.1f°；冻结规划仍保护A→C→B不做静态偏移。",
+          "转角=%.1f°；随后与Task2拼成完整路线并统一执行静态偏移。",
           curve_length, blend_segments,
           std::acos(tangent_alignment) * 180.0 / M_PI);
       }
@@ -9044,7 +9276,7 @@ bool VisualLidarPathFollower::rebuild_channel_entry_route(
   }
   waypoints_ = std::move(extended_route);
 
-  // 阶段边界：从这里开始，original_waypoints_保存的就是已在B处圆滑的
+  // 阶段边界：从这里开始，original_waypoints_保存的就是已在C/B处圆滑的
   // 偏移前基准路线。后续只允许通用waypoint_shift读取该基准路线并偏移。
   reset_waypoint_shift_state();
   current_index_ = 0;
@@ -9158,7 +9390,7 @@ bool VisualLidarPathFollower::switch_route(const std::string & direction)
     "QR 选择%s路线；下一控制周期先从当前base_link经配置C点连接"
     "waypoint_channel首点B并等距插点，"
     "再按冻结静态坐标规划；每轮条件倒车结束后还会从新base_link重复一次；"
-    "A→C→B保护为零静态偏移并对全部障碍做动态避障，进入Task2后恢复绿圈掩码。",
+    "A→C→B→Task2按统一before/after窗口静态偏移，过渡段同时对全部障碍做动态避障。",
     route_name.c_str());
   if (debug_control_logs_) {
     RCLCPP_INFO(

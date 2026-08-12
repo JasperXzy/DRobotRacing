@@ -66,13 +66,13 @@ ekf_filter_node:
     
     # =========================================================================
     # Sensor 1: IMU
-    # Topic: /chassis/imu/data_raw
+    # Topic: /bmi088/imu/data (startup/manual gyro bias removed)
     # Type: sensor_msgs/Imu
     # =========================================================================
     
-    imu0: /chassis/imu/data_raw
+    imu0: /bmi088/imu/data
     
-    # The chassis driver calibrates and removes MPU6050 Z gyro bias before
+    # BMI088 startup calibration removes its three-axis gyro bias before
     # publishing. IMU wz is the only fused yaw-rate measurement.
     imu0_config: [false, false, false,    # Position
                   false, false, false,    # Orientation: do not fuse integrated yaw

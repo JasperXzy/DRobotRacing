@@ -16,12 +16,12 @@ cd /root/D_Robot/test/dev_ws
 unset AMENT_PREFIX_PATH COLCON_PREFIX_PATH CMAKE_PREFIX_PATH LD_LIBRARY_PATH PYTHONPATH
 source /opt/tros/humble/setup.bash
 colcon build --symlink-install --packages-select \
-  origincar_msg camera_driver chassis_driver lidar_driver lidar_location \
+  origincar_msg camera_driver chassis_driver bmi088_driver lidar_driver lidar_location \
   perception_detector qr_detector_cpp \
   vlm_tts_demo origincar_system
 ```
 
-## 2. 终端一：启动 lidar_location 总系统
+## 2. 终端一：启动 lidar_location 总系统（MPU6050 对比版）
 
 ```bash
 tmux new -s drobot
@@ -31,7 +31,24 @@ source /root/D_Robot/test/dev_ws/install/setup.bash
 fastdds shm clean
 export FASTDDS_BUILTIN_TRANSPORTS=UDPv4
 ros2 launch origincar_system test_bringup_lidar_location.launch.py \
-  start_foxglove:=true
+  start_foxglove:=false
+```
+
+该 lidar_location 启动文件默认让 EKF 使用 MPU6050 的
+`/chassis/imu/data_raw`。BMI088 驱动仍会同时启动并发布独立话题，便于录包对比，
+但 `/bmi088/imu/data` 不参与 EKF。
+
+需要把同一套 lidar_location 系统临时切回 BMI088 时：
+
+```bash
+unset AMENT_PREFIX_PATH COLCON_PREFIX_PATH CMAKE_PREFIX_PATH LD_LIBRARY_PATH PYTHONPATH
+source /opt/tros/humble/setup.bash
+source /root/D_Robot/test/dev_ws/install/setup.bash
+fastdds shm clean
+export FASTDDS_BUILTIN_TRANSPORTS=UDPv4
+ros2 launch origincar_system test_bringup_lidar_location.launch.py \
+  start_foxglove:=false \
+  imu_topic:=/bmi088/imu/data
 ```
 
 `lidar_location` 默认从
