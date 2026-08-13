@@ -118,7 +118,7 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'vlm_camera_topic',
-            default_value='/camera/image',
+            default_value='/camera/image_mjpeg_hbmem',
             description='Camera topic used by vlm_tts_demo.',
         ),
         DeclareLaunchArgument(

@@ -11,7 +11,7 @@ from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 from std_msgs.msg import String
 import yaml
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageColor, ImageDraw, ImageFont, ImageOps
 
 
 class RouteSnapshotRenderer(Node):
@@ -47,6 +47,7 @@ class RouteSnapshotRenderer(Node):
         valid_events = {
             'task1_frozen', 'task1_dynamic',
             'final_frozen', 'final_dynamic',
+            'task1_before_red', 'final_before_red',
         }
         if not valid_session or event not in valid_events:
             raise ValueError('invalid snapshot event/session')
@@ -68,14 +69,18 @@ class RouteSnapshotRenderer(Node):
         baseline = data.get('baseline', [])
         red = data.get('red', [])
         red_identity_radius = float(data.get('red_identity_radius', 0.25))
+        red_filter_radius = float(data.get('red_filter_radius', 0.50))
+        red_radius = float(data.get('red_radius', 0.35))
 
         self._render_route_snapshot(
             data, event, output_dir, base, world_to_pixel, pixels_per_meter,
-            original, baseline, red, red_identity_radius)
+            original, baseline, red, red_identity_radius, red_filter_radius,
+            red_radius)
 
     def _render_route_snapshot(
             self, data, event, output_dir, base, world_to_pixel, pixels_per_meter,
-            original, frozen, red, red_identity_radius):
+            original, frozen, red, red_identity_radius, red_filter_radius,
+            red_radius):
         green = data.get('green', [])
         try:
             orange_begin = int(data.get('orange_green_begin_index', len(green)))
@@ -84,12 +89,24 @@ class RouteSnapshotRenderer(Node):
         orange_begin = max(0, min(orange_begin, len(green)))
         departure_green = green[:orange_begin]
         post_departure_orange = green[orange_begin:]
-        green_radius = float(data.get('green_radius', 0.65))
+        green_radius = float(data.get('green_radius', 0.50))
         green_identity_radius = float(
             data.get('green_identity_radius', 0.25))
+        actual_route = data.get('actual_route', [])
+        actual_route_enabled = bool(data.get('actual_route_enabled', False))
+        actual_route_width = max(1, min(
+            30, int(data.get('actual_route_line_width', 5))))
+        try:
+            actual_route_color = ImageColor.getcolor(
+                str(data.get('actual_route_color', '#d020d0')), 'RGBA')
+        except (TypeError, ValueError):
+            actual_route_color = (208, 32, 208, 255)
+            self.get_logger().warning(
+                '实际路线颜色无效，改用默认颜色 #d020d0')
         frozen_revision = max(0, int(data.get('frozen_revision', 0)))
         if event == 'task1_frozen':
             image = base.copy()
+            self._draw_task3_slowdown_zone(image, data, world_to_pixel)
             self._draw_route(image, original, world_to_pixel, (75, 75, 75, 105), 3)
             self._draw_route(image, frozen, world_to_pixel, (15, 90, 215, 255), 6)
             self._draw_clusters(
@@ -103,7 +120,7 @@ class RouteSnapshotRenderer(Node):
             self._draw_title(
                 image,
                 f'Task1 frozen route / green at departure, orange learned after departure '
-                f'(mask/draw R={green_radius:.2f}m, '
+                f'(green/orange filter/draw R={green_radius:.2f}m, '
                 f'association R={green_identity_radius:.2f}m)')
             output_path = output_dir / '01_Task1_frozen_route.png'
             self._save_png(image, output_path)
@@ -112,6 +129,7 @@ class RouteSnapshotRenderer(Node):
 
         if event == 'final_frozen':
             image = base.copy()
+            self._draw_task3_slowdown_zone(image, data, world_to_pixel)
             self._draw_route(image, original, world_to_pixel, (75, 75, 75, 105), 3)
             self._draw_route(image, frozen, world_to_pixel, (15, 90, 215, 255), 6)
             self._draw_clusters(
@@ -127,7 +145,7 @@ class RouteSnapshotRenderer(Node):
                 image,
                 f'Final frozen route revision {frozen_revision} / '
                 f'green at departure, orange learned after departure '
-                f'(mask/draw R={green_radius:.2f}m, '
+                f'(green/orange filter/draw R={green_radius:.2f}m, '
                 f'association R={green_identity_radius:.2f}m)')
             output_path = (
                 output_dir / '03_Final_frozen_route.png'
@@ -139,8 +157,13 @@ class RouteSnapshotRenderer(Node):
             return
 
         image = base.copy()
+        self._draw_task3_slowdown_zone(image, data, world_to_pixel)
         self._draw_route(image, original, world_to_pixel, (75, 75, 75, 90), 3)
         self._draw_route(image, frozen, world_to_pixel, (15, 90, 215, 255), 6)
+        if actual_route_enabled and event == 'final_dynamic':
+            self._draw_route(
+                image, actual_route, world_to_pixel,
+                actual_route_color, actual_route_width)
         self._draw_clusters(
             image, departure_green, world_to_pixel, pixels_per_meter,
             green_radius, (20, 180, 65), True)
@@ -150,23 +173,36 @@ class RouteSnapshotRenderer(Node):
         if red:
             self._draw_clusters(
                 image, red, world_to_pixel, pixels_per_meter,
-                green_radius, (225, 35, 35), True)
+                red_radius, (225, 35, 35), True)
         self._draw_base_zone(image, data, world_to_pixel)
         self._draw_parking_zone(image, data, world_to_pixel)
         self._draw_snapshot_markers(image, data, world_to_pixel)
         self._draw_final_pose(image, data, world_to_pixel, pixels_per_meter)
-        task1_dynamic = event == 'task1_dynamic'
+        task1_dynamic = event in ('task1_dynamic', 'task1_before_red')
+        before_red = event in ('task1_before_red', 'final_before_red')
+        red_trigger_index = max(0, int(data.get('red_trigger_index', 0)))
         self._draw_title(
             image,
             f'{"Task1" if task1_dynamic else "Final"} dynamic route / '
+            f'{"actual base_link trace / " if event == "final_dynamic" and actual_route_enabled else ""}'
             f'green at departure, orange learned after departure, '
             f'red actual lidar avoidance '
-            f'(filter/all draw R={green_radius:.2f}m, '
+            f'(green/orange filter/draw R={green_radius:.2f}m, '
+            f'red draw/takeover R={red_radius:.2f}m, '
             f'green/orange identity R={green_identity_radius:.2f}m, '
-            f'red identity R={red_identity_radius:.2f}m)')
-        output_path = output_dir / (
-            '02_Task1_dynamic_route.png'
-            if task1_dynamic else '04_Final_dynamic_route.png')
+            f'red identity R={red_identity_radius:.2f}m, '
+            f'red dedup R={red_filter_radius:.2f}m)')
+        if before_red:
+            if red_trigger_index <= 0:
+                raise ValueError('invalid red trigger index')
+            output_path = output_dir / (
+                f'02_Task1_dynamic_route_before_red({red_trigger_index}).png'
+                if task1_dynamic else
+                f'04_Final_dynamic_route_before_red({red_trigger_index}).png')
+        else:
+            output_path = output_dir / (
+                '02_Task1_dynamic_route.png'
+                if task1_dynamic else '04_Final_dynamic_route.png')
         self._save_png(image, output_path)
         self.get_logger().debug(f'已生成动态路线图: {output_path}')
 
@@ -346,6 +382,63 @@ class RouteSnapshotRenderer(Node):
             (135, 35, 190, 245), (170, 75, 215, 42), label)
 
     @staticmethod
+    def _draw_task3_slowdown_zone(image, data, transform):
+        """Draw the unbounded x<max_x, y<start_y region clipped to the map canvas."""
+        zone = data.get('task3_slowdown_zone', {})
+        if not isinstance(zone, dict) or not bool(zone.get('enabled', False)):
+            return
+        try:
+            max_x = float(zone['max_x'])
+            start_y = float(zone['start_y'])
+            end_y = float(zone['end_y'])
+            start_speed = float(zone['start_speed'])
+            min_speed = float(zone['min_speed'])
+        except (KeyError, TypeError, ValueError):
+            return
+        if not all(math.isfinite(value) for value in (
+                max_x, start_y, end_y, start_speed, min_speed)):
+            return
+
+        # 当前比赛map不旋转；区域的负无穷边界以最终图片左边和下边裁剪。
+        limit_x, start_pixel_y = transform((max_x, start_y))
+        _, end_pixel_y = transform((max_x, end_y))
+        limit_x = max(0.0, min(float(image.width - 1), limit_x))
+        start_pixel_y = max(0.0, min(float(image.height - 1), start_pixel_y))
+        end_pixel_y = max(0.0, min(float(image.height - 1), end_pixel_y))
+
+        overlay = Image.new('RGBA', image.size, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
+        # 粉色半透明区域始终放在路线/障碍物下层，不遮挡蓝线和点云标记。
+        draw.rectangle(
+            (0, start_pixel_y, limit_x, image.height - 1),
+            fill=(255, 80, 170, 48), outline=(230, 45, 145, 235), width=4)
+        # y=end_y是达到最低速度的位置，用更深的粉色实线明确标出。
+        draw.line(
+            ((0, end_pixel_y), (limit_x, end_pixel_y)),
+            fill=(205, 25, 125, 235), width=4)
+
+        label = (
+            f'TASK3 SLOWDOWN x<{max_x:.2f}, y<{start_y:.2f}: '
+            f'{start_speed:.2f}->{min_speed:.2f}m/s @ y={end_y:.2f}')
+        font = ImageFont.load_default()
+        label_x = 8
+        label_y = min(float(image.height - 18), start_pixel_y + 8)
+        try:
+            box = draw.textbbox((label_x, label_y), label, font=font)
+        except (AttributeError, ValueError):
+            text_width, text_height = draw.textsize(label, font=font)
+            box = (
+                label_x, label_y,
+                label_x + text_width, label_y + text_height)
+        draw.rectangle(
+            (box[0] - 3, box[1] - 2, box[2] + 3, box[3] + 2),
+            fill=(255, 245, 250, 225))
+        draw.text(
+            (label_x, label_y), label,
+            fill=(180, 20, 105, 255), font=font)
+        image.alpha_composite(overlay)
+
+    @staticmethod
     def _draw_marker(image, marker, transform, color, text_color):
         if not isinstance(marker, dict):
             return
@@ -371,10 +464,59 @@ class RouteSnapshotRenderer(Node):
         image.alpha_composite(overlay)
 
     @staticmethod
+    def _draw_route_start_heading(image, marker, transform):
+        if not isinstance(marker, dict):
+            return
+        point = marker.get('point')
+        if not isinstance(point, list) or len(point) < 2:
+            return
+        try:
+            point_x = float(point[0])
+            point_y = float(point[1])
+            point_yaw = float(marker.get('yaw'))
+            heading_distance = float(marker.get('heading_distance', 0.30))
+        except (TypeError, ValueError):
+            return
+        if not all(math.isfinite(value) for value in (
+                point_x, point_y, point_yaw, heading_distance)):
+            return
+        heading_distance = max(0.01, heading_distance)
+
+        start_x, start_y = transform((point_x, point_y))
+        tip_x, tip_y = transform((
+            point_x + heading_distance * math.cos(point_yaw),
+            point_y + heading_distance * math.sin(point_yaw),
+        ))
+        vector_x = tip_x - start_x
+        vector_y = tip_y - start_y
+        vector_length = max(1.0, math.hypot(vector_x, vector_y))
+        unit_x = vector_x / vector_length
+        unit_y = vector_y / vector_length
+        perpendicular_x = -unit_y
+        perpendicular_y = unit_x
+        head_length = min(14.0, 0.30 * vector_length)
+        head_half_width = min(8.0, 0.16 * vector_length)
+        arrow_head = [
+            (tip_x, tip_y),
+            (tip_x - head_length * unit_x + head_half_width * perpendicular_x,
+             tip_y - head_length * unit_y + head_half_width * perpendicular_y),
+            (tip_x - head_length * unit_x - head_half_width * perpendicular_x,
+             tip_y - head_length * unit_y - head_half_width * perpendicular_y),
+        ]
+        overlay = Image.new('RGBA', image.size, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
+        color = (20, 100, 235, 255)
+        draw.line((start_x, start_y, tip_x, tip_y), fill=color, width=5)
+        draw.polygon(arrow_head, fill=color)
+        image.alpha_composite(overlay)
+
+    @staticmethod
     def _draw_snapshot_markers(image, data, transform):
         RouteSnapshotRenderer._draw_marker(
             image, data.get('qr_marker'), transform,
             (245, 135, 25, 255), (120, 60, 0, 255))
+        RouteSnapshotRenderer._draw_route_start_heading(
+            image, data.get('route_start_marker'), transform)
         RouteSnapshotRenderer._draw_marker(
             image, data.get('route_start_marker'), transform,
             (20, 100, 235, 255), (0, 45, 130, 255))

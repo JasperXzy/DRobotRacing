@@ -10,8 +10,9 @@ import urllib.request
 from pathlib import Path
 
 import rclpy
+from hbm_img_msgs.msg import HbmMsg1080P
 from rclpy.node import Node
-from sensor_msgs.msg import CompressedImage
+from rclpy.qos import qos_profile_sensor_data
 from std_msgs.msg import Int32, String
 
 
@@ -39,7 +40,7 @@ class VlmTtsDemoNode(Node):
         self.declare_parameter('infer_trigger_value', 0)
         self.declare_parameter('infer_on_capture', False)
         self.declare_parameter('defer_capture_write', False)
-        self.declare_parameter('camera_topic', '/camera/image')
+        self.declare_parameter('camera_topic', '/camera/image_mjpeg_hbmem')
         self.declare_parameter('captured_image_file', 'vlm_tts_demo_capture.jpg')
         self.declare_parameter('source_capture_file', '')
         self.declare_parameter(
@@ -124,10 +125,10 @@ class VlmTtsDemoNode(Node):
         self.result_pub = self.create_publisher(String, self.result_topic, 10)
         self.create_subscription(Int32, self.trigger_topic, self._on_trigger, 10)
         self.create_subscription(
-            CompressedImage,
+            HbmMsg1080P,
             self.camera_topic,
             self._on_camera_image,
-            10,
+            qos_profile_sensor_data,
         )
 
         self.get_logger().info(
@@ -295,8 +296,23 @@ class VlmTtsDemoNode(Node):
         self.get_logger().debug('Ignore trigger value %d.' % msg.data)
 
     def _on_camera_image(self, msg):
+        data_size = int(msg.data_size)
+        if data_size <= 0 or data_size > len(msg.data):
+            self.get_logger().warn(
+                'Ignore invalid MJPEG frame: data_size=%d, capacity=%d.'
+                % (data_size, len(msg.data)))
+            return
+
+        # HbmMsg1080P uses a fixed 6.2 MB shared-memory buffer.  Only data_size
+        # bytes belong to this MJPEG frame; copying the whole buffer would append
+        # zeros and unnecessarily load the VLM process.
+        image_data = msg.data[:data_size].tobytes()
+        if not image_data.startswith(b'\xff\xd8'):
+            self.get_logger().warn('Ignore HBM frame without a JPEG header.')
+            return
+
         with self._lock:
-            self._latest_image_data = bytes(msg.data)
+            self._latest_image_data = image_data
             should_capture = self._waiting_for_image
             if should_capture:
                 self._waiting_for_image = False

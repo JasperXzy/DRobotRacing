@@ -21,40 +21,49 @@ DEFAULT_CLOCKWISE_PREVIEW_OUTPUT = (
 DEFAULT_COUNTERCLOCKWISE_PREVIEW_OUTPUT = (
     PACKAGE_DIR / "map" / "waypoints_channel_counterclockwise_on_restriction_map.png"
 )
+DEFAULT_SCHEMATIC_BACKGROUND = (
+    PACKAGE_DIR / "map" / "waypoints_task1_on_schematic.png"
+)
+DEFAULT_CLOCKWISE_SCHEMATIC_PREVIEW_OUTPUT = (
+    PACKAGE_DIR / "map" / "waypoints_channel_clockwise_on_schematic.png"
+)
+DEFAULT_COUNTERCLOCKWISE_SCHEMATIC_PREVIEW_OUTPUT = (
+    PACKAGE_DIR / "map" / "waypoints_channel_counterclockwise_on_schematic.png"
+)
 
 Point = tuple[float, float]
 
-# channel 环线的原入口/出口交点，以及最终起终点。返程仍是 channel
-# 的自然延续，不是切换到另一套返程控制。和上方四个圆角一样，返程
-# 前先把交点两侧的直线各裁掉一小段，再在两条切线之间插入 Bezier。
+# channel 环线的原入口/出口交点，以及最终停车牵引点P。
 CHANNEL_LOOP_ENDPOINT: Point = (1.95, 1.80)
 # Task3路线的最终虚拟牵引点取蓝色基地/紫色停车矩形中心。
 # base_link一进入该矩形便会立即停车，通常不要求真正压到中心点；
 # 中心点只负责在尚未触发停车时维持正确的末段运动趋势。
-RETURN_TARGET: Point = (0.00, 0.075)
-RETURN_CORNER_TRIM = 0.25
-_RETURN_DISTANCE = math.hypot(
-    RETURN_TARGET[0] - CHANNEL_LOOP_ENDPOINT[0],
-    RETURN_TARGET[1] - CHANNEL_LOOP_ENDPOINT[1],
-)
-RETURN_CURVE_START: Point = (
-    CHANNEL_LOOP_ENDPOINT[0],
-    CHANNEL_LOOP_ENDPOINT[1] + RETURN_CORNER_TRIM,
-)
-RETURN_STRAIGHT_START: Point = (
-    CHANNEL_LOOP_ENDPOINT[0]
-    + (RETURN_TARGET[0] - CHANNEL_LOOP_ENDPOINT[0])
-    * RETURN_CORNER_TRIM
-    / _RETURN_DISTANCE,
-    CHANNEL_LOOP_ENDPOINT[1]
-    + (RETURN_TARGET[1] - CHANNEL_LOOP_ENDPOINT[1])
-    * RETURN_CORNER_TRIM
-    / _RETURN_DISTANCE,
-)
+RETURN_TARGET: Point = (0.00, 0.00)
+
+# 出通道到P的手动控制点，按实际行驶顺序填写。脚本会像
+# generate_task1_waypoints.py一样，把每个转角替换成零端曲率五次曲线，
+# 再对整条路线按TARGET_SPACING等距采样。第一个点必须与环线最后一段
+# 的终点相同；前两个点保持x相同，可确保车辆先沿通道方向竖直驶出。
+# 后续只需修改这里的中间点，就能直接调整大厅内的返程曲线形状。
+RETURN_CONTROL_POINTS: list[Point] = [
+    (1.95, 2.05),
+    CHANNEL_LOOP_ENDPOINT,
+    (1.85, 1.60),
+    (1.35, 1.20),
+    (1.00, 1.10),
+    (0.33, 0.75),
+    (0.18, 0.65),
+    (0.13, 0.60),
+    (0.08, 0.55),
+    (0.03, 0.45),
+    (0.00, 0.30),
+    RETURN_TARGET,
+]
+RETURN_CORNER_TRANSITION_LENGTH = 0.28
 
 # 顺、逆时针分别维护完整的有序几何，不能再由另一方向反向读取。
-# 两套路线目前保持原有中心线形状；后续可单独修改最后两段和最后一个
-# TRANSITION_HANDLE_RATIOS，调整各自“出通道后对线”的弧度。
+# 两套路线目前保持原有环线中心线形状；出通道后统一接入上面的
+# RETURN_CONTROL_POINTS，不再用一条长直线直接指向P。
 COUNTERCLOCKWISE_SEGMENTS: list[tuple[tuple[float, float], tuple[float, float]]] = [
     ((1.95, 1.80), (1.95, 2.50)),
     ((2.35, 2.95), (3.30, 2.95)),
@@ -62,8 +71,7 @@ COUNTERCLOCKWISE_SEGMENTS: list[tuple[tuple[float, float], tuple[float, float]]]
     ((3.30, 4.10), (0.45, 4.10)),
     ((0.20, 3.85), (0.20, 3.20)),
     ((0.45, 2.95), (1.55, 2.95)),
-    ((1.95, 2.50), RETURN_CURVE_START),
-    (RETURN_STRAIGHT_START, RETURN_TARGET),
+    ((1.95, 2.50), RETURN_CONTROL_POINTS[0]),
 ]
 
 CLOCKWISE_SEGMENTS: list[tuple[tuple[float, float], tuple[float, float]]] = [
@@ -73,8 +81,7 @@ CLOCKWISE_SEGMENTS: list[tuple[tuple[float, float], tuple[float, float]]] = [
     ((0.45, 4.10), (3.30, 4.10)),
     ((3.65, 3.85), (3.65, 3.20)),
     ((3.30, 2.95), (2.35, 2.95)),
-    ((1.95, 2.50), RETURN_CURVE_START),
-    (RETURN_STRAIGHT_START, RETURN_TARGET),
+    ((1.95, 2.50), RETURN_CONTROL_POINTS[0]),
 ]
 
 TARGET_SPACING = 0.02
@@ -85,8 +92,7 @@ COUNTERCLOCKWISE_TRANSITION_HANDLE_RATIOS = [
     0.3,
     0.3,
     0.3,
-    0.3,  # 出通道后对准直线
-    0.3,  # 绿圈处从竖直切线圆滑过渡到返程斜线
+    0.3,  # 环线圆滑接入竖直出通道段
 ]
 CLOCKWISE_TRANSITION_HANDLE_RATIOS = [
     0.3,  # 进入环线
@@ -94,8 +100,7 @@ CLOCKWISE_TRANSITION_HANDLE_RATIOS = [
     0.3,
     0.3,
     0.3,
-    0.3,  # 出通道后对准直线
-    0.3,  # 绿圈处从竖直切线圆滑过渡到返程斜线
+    0.3,  # 环线圆滑接入竖直出通道段
 ]
 
 
@@ -248,20 +253,138 @@ def sample_route(pieces: Sequence[Piece], spacing: float) -> list[Point]:
     return [point_at_distance(pieces, actual_spacing * i) for i in range(step_count + 1)]
 
 
-def first_sample_index_on_return_extension(
-    pieces: Sequence[Piece], points: Sequence[Point]
+def smooth_control_polyline(
+    control_points: Sequence[Point], corner_length: float, dense_spacing: float = 0.005
+) -> list[Point]:
+    """Round manual control-point corners with Task1's quintic C2 construction."""
+    if len(control_points) < 2:
+        raise ValueError("return route needs at least two control points")
+    if corner_length <= 0.0 or len(control_points) < 3:
+        return list(control_points)
+
+    incoming_cuts = [0.0] * len(control_points)
+    outgoing_cuts = [0.0] * len(control_points)
+    for index in range(1, len(control_points) - 1):
+        previous = control_points[index - 1]
+        corner = control_points[index]
+        following = control_points[index + 1]
+        incoming = sub(corner, previous)
+        outgoing = sub(following, corner)
+        incoming_length = math.hypot(*incoming)
+        outgoing_length = math.hypot(*outgoing)
+        if incoming_length <= 1e-9 or outgoing_length <= 1e-9:
+            continue
+        turn_cosine = max(
+            -1.0,
+            min(
+                1.0,
+                (incoming[0] * outgoing[0] + incoming[1] * outgoing[1])
+                / (incoming_length * outgoing_length),
+            ),
+        )
+        if math.acos(turn_cosine) < math.radians(1.0):
+            continue
+        incoming_cuts[index] = corner_length
+        outgoing_cuts[index] = corner_length
+
+    # 相邻圆角必须在共享控制线段上留下正向余量；短线段会自动等比例缩短圆角。
+    for index in range(len(control_points) - 1):
+        segment_length = distance(control_points[index], control_points[index + 1])
+        used_length = outgoing_cuts[index] + incoming_cuts[index + 1]
+        maximum_used_length = 0.85 * segment_length
+        if used_length > maximum_used_length and used_length > 1e-9:
+            scale = maximum_used_length / used_length
+            outgoing_cuts[index] *= scale
+            incoming_cuts[index + 1] *= scale
+
+    shaped_points = [control_points[0]]
+    for index in range(1, len(control_points) - 1):
+        previous = control_points[index - 1]
+        corner = control_points[index]
+        following = control_points[index + 1]
+        incoming_vector = sub(corner, previous)
+        outgoing_vector = sub(following, corner)
+        incoming_length = math.hypot(*incoming_vector)
+        outgoing_length = math.hypot(*outgoing_vector)
+        cut_in = incoming_cuts[index]
+        cut_out = outgoing_cuts[index]
+        if (
+            incoming_length <= 1e-9
+            or outgoing_length <= 1e-9
+            or cut_in <= 1e-9
+            or cut_out <= 1e-9
+        ):
+            shaped_points.append(corner)
+            continue
+
+        tangent_in = mul(incoming_vector, 1.0 / incoming_length)
+        tangent_out = mul(outgoing_vector, 1.0 / outgoing_length)
+        entry = sub(corner, mul(tangent_in, cut_in))
+        exit_point = add(corner, mul(tangent_out, cut_out))
+        delta = sub(exit_point, entry)
+        derivative_scale = math.hypot(*delta)
+        velocity_start = mul(tangent_in, derivative_scale)
+        velocity_finish = mul(tangent_out, derivative_scale)
+        coefficient3 = tuple(
+            10.0 * delta[axis]
+            - 6.0 * velocity_start[axis]
+            - 4.0 * velocity_finish[axis]
+            for axis in range(2)
+        )
+        coefficient4 = tuple(
+            -15.0 * delta[axis]
+            + 8.0 * velocity_start[axis]
+            + 7.0 * velocity_finish[axis]
+            for axis in range(2)
+        )
+        coefficient5 = tuple(
+            6.0 * delta[axis]
+            - 3.0 * velocity_start[axis]
+            - 3.0 * velocity_finish[axis]
+            for axis in range(2)
+        )
+
+        if distance(shaped_points[-1], entry) > 1e-9:
+            shaped_points.append(entry)
+        sample_count = max(8, math.ceil((cut_in + cut_out) / dense_spacing))
+        for sample_index in range(1, sample_count + 1):
+            t = sample_index / sample_count
+            shaped_points.append(
+                tuple(
+                    entry[axis]
+                    + velocity_start[axis] * t
+                    + coefficient3[axis] * t**3
+                    + coefficient4[axis] * t**4
+                    + coefficient5[axis] * t**5
+                    for axis in range(2)
+                )
+            )
+
+    if distance(shaped_points[-1], control_points[-1]) > 1e-9:
+        shaped_points.append(control_points[-1])
+    return shaped_points
+
+
+def polyline_pieces(points: Sequence[Point]) -> list[Piece]:
+    pieces: list[Piece] = []
+    for start, end in zip(points, points[1:]):
+        piece = line_piece(start, end)
+        if piece is not None:
+            pieces.append(piece)
+    return pieces
+
+
+def first_sample_index_at_distance(
+    pieces: Sequence[Piece], points: Sequence[Point], start_distance: float
 ) -> int:
-    """Return the first sampled waypoint on the final Bezier plus straight."""
-    if len(pieces) < 2 or len(points) < 2:
+    """Return the first equal-distance sample on or after a route boundary."""
+    if not pieces or len(points) < 2:
         raise ValueError("route needs at least two sampled points")
-    if pieces[-2].kind != "bezier" or pieces[-1].kind != "line":
-        raise ValueError("return extension must end with one Bezier and one line")
     total_length = sum(piece.length for piece in pieces)
     sampled_spacing = total_length / (len(points) - 1)
-    return_start_distance = total_length - pieces[-2].length - pieces[-1].length
     return min(
         len(points) - 1,
-        max(1, math.ceil((return_start_distance - 1e-9) / sampled_spacing)),
+        max(1, math.ceil((start_distance - 1e-9) / sampled_spacing)),
     )
 
 
@@ -289,11 +412,13 @@ def render_yaml(
     direction_label = "顺时针" if direction == "clockwise" else "逆时针"
     lines = [
         f"# channel {direction_label}独立航点，禁止通过反向读取另一方向生成。",
-        "# 由 scripts/generate_channel_waypoints.py 生成：8 条直线段 + 7 段独立贝塞尔平滑过渡。",
-        "# 最后一段Bezier在绿圈处圆滑接入返程直线，task3_start标记该过渡首点。",
+        "# 由 scripts/generate_channel_waypoints.py 生成：环线使用独立Bezier过渡，",
+        "# 出通道到P使用RETURN_CONTROL_POINTS手动设点和五次C2圆滑。",
+        "# task3_start标记RETURN_CONTROL_POINTS首点，即大厅返程曲线起点。",
         f"# 按 point_001..point_{len(points):03d} 的文件顺序行驶。",
-        f"# 修改轨迹时请改脚本里的 {direction.upper()}_SEGMENTS 和对应过渡系数。",
+        f"# 环线请改{direction.upper()}_SEGMENTS；大厅返程请改RETURN_CONTROL_POINTS。",
         f"# target_spacing: {fmt(spacing)} m",
+        f"# return_corner_transition_length: {fmt(RETURN_CORNER_TRANSITION_LENGTH)} m",
         f"route_direction: {direction}",
         "routes:",
         f"  {direction}:",
@@ -420,6 +545,73 @@ def render_map_preview(
     preview.save(output, format="PNG", optimize=True)
 
 
+def render_schematic_preview(
+    points: Sequence[Point],
+    map_yaml: Path,
+    background: Path,
+    output: Path,
+    direction: str,
+) -> None:
+    """Map channel waypoints onto the same schematic coordinate frame as Task1."""
+    try:
+        import yaml
+        from PIL import Image, ImageDraw
+    except ImportError as exc:
+        raise RuntimeError("PNG preview requires PyYAML and Pillow") from exc
+
+    metadata = yaml.safe_load(map_yaml.read_text(encoding="utf-8"))
+    map_image_path = Path(metadata["image"])
+    if not map_image_path.is_absolute():
+        map_image_path = map_yaml.parent / map_image_path
+
+    resolution = float(metadata["resolution"])
+    origin_x = float(metadata["origin"][0])
+    origin_y = float(metadata["origin"][1])
+    with Image.open(map_image_path) as map_image:
+        map_width, map_height = map_image.size
+    map_width_metres = map_width * resolution
+    map_height_metres = map_height * resolution
+
+    image = Image.open(background).convert("RGBA")
+    width, height = image.size
+
+    def world_to_pixel(point: Point) -> tuple[int, int]:
+        normalized_x = (point[0] - origin_x) / map_width_metres
+        normalized_y = (point[1] - origin_y) / map_height_metres
+        return (
+            round(normalized_x * (width - 1)),
+            round((1.0 - normalized_y) * (height - 1)),
+        )
+
+    pixels = [world_to_pixel(point) for point in points]
+    overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+    route_color = (
+        (245, 105, 20, 240)
+        if direction == "clockwise"
+        else (0, 125, 245, 240)
+    )
+    line_width = max(3, round(min(width, height) / 225))
+    waypoint_radius = max(1, round(line_width / 3))
+
+    if len(pixels) > 1:
+        draw.line(pixels, fill=route_color, width=line_width, joint="curve")
+    for pixel_x, pixel_y in pixels[::5]:
+        draw.ellipse(
+            (
+                pixel_x - waypoint_radius,
+                pixel_y - waypoint_radius,
+                pixel_x + waypoint_radius,
+                pixel_y + waypoint_radius,
+            ),
+            fill=route_color,
+        )
+
+    result = Image.alpha_composite(image, overlay).convert("RGB")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    result.save(output, format="PNG", optimize=True)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Generate independent clockwise/counterclockwise channel routes and previews."
@@ -461,11 +653,36 @@ def main() -> int:
         help="Counterclockwise PNG preview file to overwrite.",
     )
     parser.add_argument(
+        "--schematic-background",
+        type=Path,
+        default=DEFAULT_SCHEMATIC_BACKGROUND,
+        help="Task1 schematic preview used as the channel schematic background.",
+    )
+    parser.add_argument(
+        "--clockwise-schematic-preview-output",
+        type=Path,
+        default=DEFAULT_CLOCKWISE_SCHEMATIC_PREVIEW_OUTPUT,
+        help="Clockwise channel-on-schematic PNG file to overwrite.",
+    )
+    parser.add_argument(
+        "--counterclockwise-schematic-preview-output",
+        type=Path,
+        default=DEFAULT_COUNTERCLOCKWISE_SCHEMATIC_PREVIEW_OUTPUT,
+        help="Counterclockwise channel-on-schematic PNG file to overwrite.",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print both YAML documents instead of writing files.",
     )
     args = parser.parse_args()
+
+    if args.spacing <= 0.0 or not math.isfinite(args.spacing):
+        parser.error("--spacing must be a finite positive value")
+    if len(RETURN_CONTROL_POINTS) < 2:
+        parser.error("RETURN_CONTROL_POINTS needs at least two points")
+    if distance(RETURN_CONTROL_POINTS[-1], RETURN_TARGET) > 1e-9:
+        parser.error("RETURN_CONTROL_POINTS must end at RETURN_TARGET")
 
     route_jobs = [
         (
@@ -474,6 +691,7 @@ def main() -> int:
             CLOCKWISE_TRANSITION_HANDLE_RATIOS,
             args.clockwise_output,
             args.clockwise_preview_output,
+            args.clockwise_schematic_preview_output,
         ),
         (
             "counterclockwise",
@@ -481,13 +699,35 @@ def main() -> int:
             COUNTERCLOCKWISE_TRANSITION_HANDLE_RATIOS,
             args.counterclockwise_output,
             args.counterclockwise_preview_output,
+            args.counterclockwise_schematic_preview_output,
         ),
     ]
 
-    for direction, segments, transition_ratios, output, preview_output in route_jobs:
-        pieces = build_pieces(segments, transition_ratios)
+    for (
+        direction,
+        segments,
+        transition_ratios,
+        output,
+        preview_output,
+        schematic_preview_output,
+    ) in route_jobs:
+        if distance(segments[-1][1], RETURN_CONTROL_POINTS[0]) > 1e-9:
+            parser.error(
+                f"{direction} channel exit must equal RETURN_CONTROL_POINTS[0]"
+            )
+        channel_pieces = build_pieces(segments, transition_ratios)
+        return_polyline = smooth_control_polyline(
+            RETURN_CONTROL_POINTS, RETURN_CORNER_TRANSITION_LENGTH
+        )
+        return_pieces = polyline_pieces(return_polyline)
+        if not return_pieces:
+            parser.error("RETURN_CONTROL_POINTS produced an empty return route")
+        pieces = channel_pieces + return_pieces
         points = sample_route(pieces, args.spacing)
-        return_start_index = first_sample_index_on_return_extension(pieces, points)
+        return_start_distance = sum(piece.length for piece in channel_pieces)
+        return_start_index = first_sample_index_at_distance(
+            pieces, points, return_start_distance
+        )
         rendered = render_yaml(points, args.spacing, direction, return_start_index)
 
         if args.dry_run:
@@ -497,6 +737,13 @@ def main() -> int:
             output.parent.mkdir(parents=True, exist_ok=True)
             output.write_text(rendered, encoding="utf-8")
             render_map_preview(points, args.map_yaml, preview_output, direction)
+            render_schematic_preview(
+                points,
+                args.map_yaml,
+                args.schematic_background,
+                schematic_preview_output,
+                direction,
+            )
 
         min_spacing, max_spacing, avg_spacing = spacing_stats(points)
         total_length = sum(piece.length for piece in pieces)
@@ -508,6 +755,10 @@ def main() -> int:
         print(f"{direction} output: {output}", file=sys.stderr)
         if not args.dry_run:
             print(f"{direction} preview: {preview_output}", file=sys.stderr)
+            print(
+                f"{direction} schematic preview: {schematic_preview_output}",
+                file=sys.stderr,
+            )
     return 0
 
 

@@ -58,8 +58,8 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'camera_topic',
-            default_value='/camera/image',
-            description='Compressed camera image topic captured by this demo.',
+            default_value='/camera/image_mjpeg_hbmem',
+            description='30 FPS shared-memory MJPEG topic captured by this demo.',
         ),
         DeclareLaunchArgument(
             'captured_image_file',
