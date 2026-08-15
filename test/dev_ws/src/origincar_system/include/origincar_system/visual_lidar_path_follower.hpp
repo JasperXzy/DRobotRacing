@@ -84,6 +84,13 @@ private:
     FINISHED
   };
 
+  enum class EventStartContext
+  {
+    TRUSTED_DEPARTURE,
+    IMAGE_CAPTURE_RESUME,
+    POST_REVERSE_RESUME
+  };
+
   struct RobotPose
   {
     double x{0.0};
@@ -300,6 +307,19 @@ private:
   double start_speed_threshold_{0.03};
   double global_max_accel_{1.0};
   double global_max_decel_{1.0};
+  // 三类事件的初速度和加速度成对放置，分别独立可调。其他未分类的
+  // 静止冷启动仍使用上面的start_speed与global_max_accel。
+  double trusted_departure_start_speed_{0.12};
+  double trusted_departure_start_max_accel_{0.30};
+  double image_capture_start_speed_{0.12};
+  double image_capture_start_max_accel_{0.30};
+  double post_reverse_start_speed_{0.12};
+  double post_reverse_start_max_accel_{0.30};
+  // 节点初始等待的第一次起步就是基地可信发车起步。因为
+  // “可信发车确认”必须依赖车辆已经运动的里程计，所以要在首条
+  // 运动命令前预先武装，不能等freeze_logic3_route()后才生效。
+  bool event_start_accel_active_{true};
+  EventStartContext event_start_context_{EventStartContext::TRUSTED_DEPARTURE};
   bool linear_speed_limit_active_{false};
   int linear_speed_limit_direction_{0};
   double linear_speed_limit_magnitude_{0.0};
@@ -408,6 +428,11 @@ private:
   double logic3_motion_speed_threshold_{0.03};
   double logic3_motion_displacement_threshold_{0.01};
   int logic3_motion_confirm_messages_{2};
+  // READY阶段只在静止时预先计算Task1静态路线；两次完整规划之间限频，
+  // 让第一条前进命令直接使用最近一次已经完整算好的路线。
+  bool logic3_ready_preplan_enabled_{true};
+  double logic3_ready_preplan_min_center_change_{0.02};
+  double logic3_ready_preplan_min_interval_{0.50};
   bool logic3_start_zone_guard_enabled_{true};
   double logic3_start_zone_min_x_{-0.15};
   double logic3_start_zone_max_x_{0.15};
@@ -424,6 +449,9 @@ private:
   double logic3_runtime_channel_min_y_{-0.20};
   bool logic3_runtime_green_update_enabled_{true};
   bool logic3_runtime_orange_only_update_enabled_{true};
+  // 可信发车后，以雷达采样时刻base_link为圆心的近车候选排除半径。
+  // 圆内观测不累计确认、不更新永久绿/橙点，也不新增橙点。
+  double logic3_runtime_green_robot_exclusion_radius_{1.00};
   double logic3_runtime_green_min_match_score_{0.70};
   bool logic3_runtime_green_motion_gate_enabled_{true};
   double logic3_runtime_green_max_steering_span_{0.08};
@@ -823,6 +851,14 @@ private:
   double channel_lidar_route_heading_{0.0};
   Point2D channel_lidar_route_trigger_obstacle_map_point_;
   bool channel_lidar_route_trigger_obstacle_valid_{false};
+  // 一次动态避障只跟踪false->true瞬间锁定的固定地图目标。若首次红点
+  // 关联到绿/橙永久ID，中心锁定为该ID中心；否则锁定首次红点坐标。
+  // 动作期间其他点不能接力续命，所有非锁定绿/橙点继续正常掩码。
+  Point2D channel_lidar_locked_target_map_point_;
+  bool channel_lidar_locked_target_valid_{false};
+  bool channel_lidar_locked_target_is_permanent_{false};
+  bool channel_lidar_locked_target_is_task1_clearance_fallback_{false};
+  std::size_t channel_lidar_locked_target_permanent_index_{0};
   int channel_lidar_logged_direction_{0};
   bool logic3_motion_candidate_{false};
   bool logic3_start_zone_motion_pending_{false};
@@ -846,6 +882,24 @@ private:
   std::vector<Logic3RuntimeGreenTrack> logic3_runtime_green_tracks_;
   Logic3PlanningSnapshot logic3_motion_pending_snapshot_;
   Logic3PlanningSnapshot logic3_last_complete_ready_snapshot_;
+  Logic3PlanningSnapshot logic3_ready_preplanned_snapshot_;
+  bool logic3_ready_preplan_valid_{false};
+  bool logic3_ready_preplanning_active_{false};
+  bool logic3_ready_preplan_last_at_valid_{false};
+  std::chrono::steady_clock::time_point logic3_ready_preplan_last_at_;
+  std::vector<bool> logic3_ready_preplanned_route_clearance_failed_;
+  // 新规划先存入候选缓冲；只有规划后又收到一帧静止里程计才提交。
+  // 若先检测到发车，则丢弃候选并继续使用上一次完整预规划路线。
+  bool logic3_ready_preplan_candidate_pending_{false};
+  std::uint64_t logic3_ready_preplan_candidate_odom_sequence_{0};
+  Logic3PlanningSnapshot logic3_ready_preplan_candidate_snapshot_;
+  std::vector<Waypoint> logic3_ready_preplan_candidate_waypoints_;
+  std::vector<double> logic3_ready_preplan_candidate_offsets_;
+  std::vector<Point2D> logic3_ready_preplan_candidate_shift_directions_;
+  std::vector<std::size_t> logic3_ready_preplan_candidate_source_indices_;
+  std::vector<Point2D> logic3_ready_preplan_candidate_obstacle_centers_;
+  std::vector<double> logic3_ready_preplan_candidate_forbidden_radii_;
+  std::vector<bool> logic3_ready_preplan_candidate_clearance_failed_;
   std::vector<ScanPointCluster> logic3_green_clusters_;
   // 每个永久点的不可变身份锚点：发车绿点使用READY坐标，
   // 发车后橙点使用首次确认坐标。规划/绘图仍使用可更新的cluster.center。
@@ -854,8 +908,8 @@ private:
   // 绿/橙身份、绘图和对后续红点候选的雷达掩码始终保留。
   std::vector<bool> logic3_green_dynamic_takeover_;
   // circle_envelope最终硬修复后仍未达到target_clearance的永久点。
-  // 仅这些ID临时解除绿/橙雷达掩码，保留当前最外推路线并交给实时雷达，
-  // 不停车，也不回退到original_waypoints_。
+  // 仅允许这些ID启动“静态净距失败专用兜底”；动作一旦启动便恢复其余
+  // 绿/橙掩码并只跟踪首次锁定ID，不能由其他障碍接力续命。
   std::vector<bool> logic3_green_route_clearance_failed_;
   // [0, orange_begin)保持可信发车时冻结的绿色身份；发车后由高分跨帧
   // 逻辑新增的永久身份画成橙色，规划仍统一使用logic3_green_clusters_。
@@ -984,6 +1038,9 @@ private:
   void apply_qr_code_speed_limit(geometry_msgs::msg::Twist & cmd);
   void apply_turn_speed_limit(geometry_msgs::msg::Twist & cmd) const;
   void reset_linear_speed_limit();
+  void arm_event_start_acceleration(EventStartContext context);
+  double active_event_start_speed() const;
+  double active_event_start_max_accel() const;
   void apply_global_linear_speed_limit(geometry_msgs::msg::Twist & cmd);
   bool apply_unified_stop_brake(geometry_msgs::msg::Twist & cmd);
   void publish_translation_stop(double angular_command);
@@ -1015,7 +1072,8 @@ private:
   std::vector<ScanPointCluster> collect_non_static_scan_clusters_map(
     const RobotPose & robot_pose, int minimum_cluster_points,
     bool use_logic3_static_restriction_map,
-    bool filter_logic3_green_mask = false) const;
+    bool filter_logic3_green_mask = false,
+    RobotPose * observation_pose_out = nullptr) const;
   bool fit_cone_circle(LidarCluster & cluster) const;
   std::vector<LidarCluster> collect_cone_clusters(const RobotPose & robot_pose) const;
   bool latest_lidar_scan_is_fresh() const;
@@ -1049,7 +1107,9 @@ private:
     bool filter_logic3_green_mask = false,
     bool filter_logic3_runtime_map = false,
     bool restrict_to_qr_reverse_front_trapezoid = false,
-    bool restrict_to_qr_reverse_arc = false) const;
+    bool restrict_to_qr_reverse_arc = false,
+    const Point2D * locked_target_map_point = nullptr,
+    double locked_target_radius = 0.0) const;
   bool apply_qr_reverse_maneuver(
     const RobotPose & robot_pose, geometry_msgs::msg::Twist & cmd);
   void update_qr_channel_approach_phase(const RobotPose & robot_pose);
@@ -1086,6 +1146,11 @@ private:
     const std::vector<Logic3StaticObstacle> & obstacles);
   void logic3_odom_callback(const nav_msgs::msg::Odometry::ConstSharedPtr msg);
   void freeze_logic3_route();
+  bool logic3_ready_snapshot_needs_preplan(
+    const Logic3PlanningSnapshot & snapshot) const;
+  void preplan_logic3_ready_route(const Logic3PlanningSnapshot & snapshot);
+  void resolve_logic3_ready_preplan_candidate(bool moving);
+  void commit_logic3_current_route_as_frozen(const std::string & snapshot_event);
   void apply_logic3_frozen_clusters_to_current_route(
     const std::string & snapshot_event);
   void start_logic3_actual_route(const RobotPose & pose);

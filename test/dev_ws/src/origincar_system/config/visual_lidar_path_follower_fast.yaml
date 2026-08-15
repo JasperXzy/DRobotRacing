@@ -14,10 +14,16 @@ visual_lidar_path_follower:
 
     # 全阶段公共控制
     control_frequency: 50.0  # [全阶段共享] 控制循环频率，单位 Hz
-    enable_start_acceleration_limit: true  # [静止冷启动] true时从静止发车直接给start_speed，并等待实测轮速离开静止阈值；不控制后续全局加减速开关
-    start_speed: 0.40  # [静止冷启动] 实测轮速仍为0时直接发布的起步线速度绝对上限，前进/倒车共用，单位m/s
-    start_speed_threshold: 0.10  # [静止冷启动] 实测纵向轮速绝对值不大于该值时认为底盘仍静止，单位m/s
-    global_max_accel: 0.30  # [全局线速度] 最终发布速度绝对值允许的最大上升斜率，单位m/s^2；0表示关闭加速侧限制并直接采用目标值
+    enable_start_acceleration_limit: true  # [静止冷启动] true时从静止发车直接给当前事件的start_speed，并等待实测轮速离开静止阈值；不控制后续全局加减速开关
+    start_speed: 0.40  # [其他静止冷启动] 未命中下方三类事件时的起步线速度绝对上限，例如开始执行倒车本身，单位m/s
+    start_speed_threshold: 0.15  # [静止冷启动] 实测纵向轮速绝对值不大于该值时认为底盘仍静止，单位m/s
+    trusted_departure_start_speed: 0.40  # [可信发车基地起步] 实测轮速仍处于静止阈值时直接发布的初速度绝对上限，单位m/s
+    trusted_departure_start_max_accel: 0.40  # [可信发车基地起步] 确认车辆开始运动后升到本次请求速度的最大加速度，单位m/s^2；0表示直接达到目标
+    image_capture_start_speed: 0.50  # [图生文停车后起步] 实测轮速仍处于静止阈值时直接发布的初速度绝对上限，单位m/s
+    image_capture_start_max_accel: 2.0  # [图生文停车后起步] 确认车辆开始运动后升到本次请求速度的最大加速度，单位m/s^2；0表示直接达到目标
+    post_reverse_start_speed: 0.30  # [二维码倒车后正向起步] 实测轮速仍处于静止阈值时直接发布的初速度绝对上限，单位m/s
+    post_reverse_start_max_accel: 0.40 # [二维码倒车后正向起步] 确认车辆开始运动后升到本次请求速度的最大加速度，单位m/s^2；0表示直接达到目标
+    global_max_accel: 0.30  # [全局线速度] 普通运行及其他未分类冷启动确认运动后的最大上升斜率，单位m/s^2；不控制上方三类事件起步；0表示直接采用目标值
     global_max_decel: 1.00  # [全局线速度] 最终发布速度绝对值允许的最大下降斜率，单位m/s^2；0表示关闭减速侧限制并直接采用目标值；显式停车/反相制动不受此参数影响
     lookahead_base: 0.40  # [正向动态前瞻] v=0时的基础前瞻距离，单位m
     lookahead_speed_gain: 0.05  # [正向动态前瞻] L=base+gain*|实测纵向轮速|中的增益，单位s
@@ -222,6 +228,9 @@ visual_lidar_path_follower:
     logic3_motion_speed_threshold: 0.03  # [可信发车] 可信发车所需的最小里程计线速度，单位m/s
     logic3_motion_displacement_threshold: 0.01  # [可信发车] 可信发车累计位移阈值，单位m
     logic3_motion_confirm_messages: 2  # [可信发车] 可信发车需连续满足运动条件的里程计消息数
+    logic3_ready_preplan_enabled: true  # [发车前READY预规划] 静止时提前计算并缓存Task1静态偏移路线，使第一条前进命令直接使用完整路线
+    logic3_ready_preplan_min_center_change: 0.02  # [发车前READY预规划] ID数量不变时，任一可靠中心相对上次完整预规划移动达到该值才需要重算，单位m
+    logic3_ready_preplan_min_interval: 0.50  # [发车前READY预规划] 两次完整静态路线规划的最小间隔，单位s；冷却期间只保留最新READY快照
     # 实测基地约x=[-0.15,0.15]、y=[-0.05,0.20]；四周再扩12cm。
     # base_link在扩展区x=[-0.27,0.27]、y=[-0.17,0.32]内时禁止判定可信发车。
     logic3_start_zone_guard_enabled: true  # [可信发车] 是否启用起点保护区，防止里程计零漂误判可信发车
@@ -242,6 +251,7 @@ visual_lidar_path_follower:
     logic3_match_diagnostics_topic: /lidar_location/match_diagnostics  # [运行绿/橙点] 与/scan同时间戳；x=匹配分数，y=实际采用的平移修正(m)，z=实际采用的map->odom航向修正(rad)
     logic3_runtime_green_update_enabled: true  # [运行绿/橙点] 是否允许高分帧新增/修正永久点并重算路线
     logic3_runtime_orange_only_update_enabled: true  # [运行绿/橙点] true=冻结可信发车READY绿点坐标及既有静态偏移，只允许新增/更新橙点；false=绿点和橙点都可更新
+    logic3_runtime_green_robot_exclusion_radius: 1.00  # [运行绿/橙点近车排除] 可信发车后，以雷达采样时刻base_link为圆心，候选中心距离不大于该值时不累计、不更新、不新增；<=0关闭，单位m
     logic3_runtime_green_min_match_score: 0.70  # [运行绿/橙点] Fast实跑配置：整帧分数达到该值才接收
     logic3_runtime_green_motion_gate_enabled: true  # [运行绿/橙点] 统一启用发布速度、转向突变及地图平移/航向突修正门槛
     logic3_runtime_green_max_steering_span: 1000.0  # [运行绿/橙点] 一圈雷达期间最终/cmd_vel.angular.z最大值-最小值上限，单位rad；不限制固定转角大小
@@ -266,7 +276,7 @@ visual_lidar_path_follower:
     logic3_runtime_channel_min_y: -0.20  # [实际避障红点] 仅记录命中点map.y不低于该值的实际避障行为
     logic3_red_takeover_radius: 0.35  # [实际避障红点] 每次完整避障动作原样记录一个红点；该值仅用于触发瞬间关联绿/橙ID并恢复其静态路径，同时作为红圈绘图半径，单位m；红点历史不参与实时雷达过滤，也不做绘图去重
     task1_qr_timeout_seconds: 1000.0  # [Task1] 大厅二维码识别超时时间；从可信发车确认时刻开始计时，超时后默认按顺时针路线继续，单位s
-    task1_timeout_qr_text: "4399"  # [Task1] 计时超时或末点等待结束时缓存的兜底二维码；进入过渡并生成Final冻结路线后按真实二维码方式播报
+    task1_timeout_qr_text: "4397"  # [Task1] 计时超时或末点等待结束时缓存的兜底二维码；进入过渡并生成Final冻结路线后按真实二维码方式播报
     task1_endpoint_qr_wait_seconds: 0.25  # [Task1] Task1末点直接零速停车（不反相制动）等待二维码；期间扫到即执行，超时则默认顺时针
     task1_endpoint_arrival_radius: 0.18  # [Task1] Task1末点(4.10,1.60)专用精准到达半径；禁止投影和前瞻提前完成
     task1_transition_min_x: 2.40  # [Task1] 二维码可提前缓存；base_link.x大于等于该值才允许Task1进入过渡

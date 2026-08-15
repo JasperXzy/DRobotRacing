@@ -36,7 +36,7 @@ source /root/D_Robot/test/dev_ws/install/setup.bash
 fastdds shm clean
 export FASTDDS_BUILTIN_TRANSPORTS=UDPv4
 ros2 launch origincar_system visual_lidar_path_follower_fast.launch.xml \
-  task1_profile:=low \
+  task1_profile:=high \
   task3_profile:=fast
 ```
 
