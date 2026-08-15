@@ -33,6 +33,12 @@ install(TARGETS
 install(DIRECTORY launch config foxglove map DESTINATION share/${PROJECT_NAME})
 
 install(PROGRAMS
+  scripts/generate_channel_waypoints.py
+  scripts/generate_route_profile.py
+  scripts/generate_task1_high.py
+  scripts/generate_task1_low.py
+  scripts/generate_task3_fast.py
+  scripts/generate_task3_slow.py
   scripts/generate_task1_waypoints.py
   scripts/open_foxglove.sh
   scripts/route_snapshot_renderer.py

@@ -17,6 +17,8 @@ def generate_launch_description():
         'vlm_api.env',
     ])
     playback_device = LaunchConfiguration('playback_device')
+    vlm_tts_topic = LaunchConfiguration('vlm_tts_topic')
+    vlm_tts_speed = LaunchConfiguration('vlm_tts_speed')
     trigger_value = LaunchConfiguration('trigger_value')
     infer_trigger_value = LaunchConfiguration('infer_trigger_value')
     infer_on_capture = LaunchConfiguration('infer_on_capture')
@@ -35,7 +37,17 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'playback_device',
             default_value='plughw:0,0',
-            description='ALSA playback device used by hobot_tts.',
+            description='ALSA playback device used by the shared TTS player.',
+        ),
+        DeclareLaunchArgument(
+            'vlm_tts_topic',
+            default_value='/vlm_tts_text',
+            description='Dedicated topic for accelerated VLM speech.',
+        ),
+        DeclareLaunchArgument(
+            'vlm_tts_speed',
+            default_value='1.25',
+            description='Pitch-preserving playback speed used only by VLM speech.',
         ),
         DeclareLaunchArgument(
             'trigger_value',
@@ -180,15 +192,17 @@ def generate_launch_description():
         ),
 
         Node(
-            package='hobot_tts',
-            executable='hobot_tts',
-            name='hobot_tts_node',
+            package='dual_rate_tts',
+            executable='dual_rate_tts_node',
+            name='dual_rate_tts_node',
             output='screen',
             respawn=True,
             respawn_delay=3.0,
             parameters=[{
                 'playback_device': playback_device,
-                'topic_sub': '/tts_text',
+                'normal_topic': '/tts_text',
+                'fast_topic': vlm_tts_topic,
+                'fast_speed': ParameterValue(vlm_tts_speed, value_type=float),
             }],
             condition=IfCondition(launch_tts),
         ),
@@ -208,6 +222,7 @@ def generate_launch_description():
                 'captured_image_file': captured_image_file,
                 'source_capture_file': source_capture_file,
                 'task_output_root': task_output_root,
+                'tts_topic': vlm_tts_topic,
                 'ding_enable': ParameterValue(ding_enable, value_type=bool),
                 'start_notice': LaunchConfiguration('start_notice'),
                 'error_notice': LaunchConfiguration('error_notice'),

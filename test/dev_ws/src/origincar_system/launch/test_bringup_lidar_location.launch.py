@@ -41,6 +41,7 @@ def generate_launch_description():
     perception_detector_params_file = LaunchConfiguration('perception_detector_params_file')
     vlm_trigger_value = LaunchConfiguration('vlm_trigger_value')
     vlm_camera_topic = LaunchConfiguration('vlm_camera_topic')
+    vlm_tts_speed = LaunchConfiguration('vlm_tts_speed')
     qr_stop_on_detect = LaunchConfiguration('qr_stop_on_detect')
     start_foxglove = LaunchConfiguration('start_foxglove')
 
@@ -146,6 +147,11 @@ def generate_launch_description():
             'vlm_camera_topic',
             default_value='/camera/image_mjpeg_hbmem',
             description='Camera topic used by vlm_tts_demo.',
+        ),
+        DeclareLaunchArgument(
+            'vlm_tts_speed',
+            default_value='1.25',
+            description='Pitch-preserving playback speed used only by VLM speech.',
         ),
         DeclareLaunchArgument(
             'qr_stop_on_detect',
@@ -338,6 +344,7 @@ def generate_launch_description():
             'launch_tts': 'true',
             'camera_topic': vlm_camera_topic,
             'trigger_value': vlm_trigger_value,
+            'vlm_tts_speed': vlm_tts_speed,
             'infer_on_capture': 'false',
             'defer_capture_write': 'true',
         }.items(),

@@ -6,14 +6,22 @@
     name="waypoints_file"
     default="$(find-pkg-share origincar_system)/config/waypoints_qr.yaml"/>
   <arg
+    name="task1_profile"
+    default="low"
+    description="Task1 route: low or high"/>
+  <arg
+    name="task3_profile"
+    default="slow"
+    description="Task3 route: fast or slow"/>
+  <arg
     name="task1_waypoints_file"
-    default="$(find-pkg-share origincar_system)/config/waypoints_task1.yaml"/>
+    default="$(find-pkg-share origincar_system)/config/waypoints_task1_$(var task1_profile).yaml"/>
   <arg
     name="route_waypoints_clockwise_file"
-    default="$(find-pkg-share origincar_system)/config/waypoints_channel_clockwise.yaml"/>
+    default="$(find-pkg-share origincar_system)/config/waypoints_channel_clockwise_$(var task3_profile).yaml"/>
   <arg
     name="route_waypoints_counterclockwise_file"
-    default="$(find-pkg-share origincar_system)/config/waypoints_channel_counterclockwise.yaml"/>
+    default="$(find-pkg-share origincar_system)/config/waypoints_channel_counterclockwise_$(var task3_profile).yaml"/>
 
   <node
     pkg="origincar_system"

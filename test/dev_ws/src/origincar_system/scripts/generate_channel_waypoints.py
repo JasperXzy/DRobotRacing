@@ -33,14 +33,11 @@ DEFAULT_COUNTERCLOCKWISE_SCHEMATIC_PREVIEW_OUTPUT = (
 
 Point = tuple[float, float]
 
-# channel 环线的原入口/出口交点，以及最终停车牵引点P。
+# channel 环线的原入口/出口交点，以及Task3正常规划路线的原末点。
 CHANNEL_LOOP_ENDPOINT: Point = (1.95, 1.80)
-# Task3路线的最终虚拟牵引点取紫色曲边停车区包围框中心。
-# base_link一进入该矩形便会立即停车，通常不要求真正压到中心点；
-# 中心点只负责在尚未触发停车时维持正确的末段运动趋势。
-RETURN_TARGET: Point = (0.00, -0.20)
+RETURN_ROUTE_ENDPOINT: Point = (0.00, 0.00)
 
-# 出通道到P的手动控制点，按实际行驶顺序填写。脚本会像
+# 出通道到Task3原路线末点的手动控制点，按实际行驶顺序填写。脚本会像
 # generate_task1_waypoints.py一样，把每个转角替换成零端曲率五次曲线，
 # 再对整条路线按TARGET_SPACING等距采样。第一个点必须与环线最后一段
 # 的终点相同；前两个点保持x相同，可确保车辆先沿通道方向竖直驶出。
@@ -57,13 +54,13 @@ RETURN_CONTROL_POINTS: list[Point] = [
     (0.08, 0.55),
     (0.03, 0.45),
     (0.00, 0.30),
-    RETURN_TARGET,
+    RETURN_ROUTE_ENDPOINT,
 ]
 RETURN_CORNER_TRANSITION_LENGTH = 0.28
 
 # 顺、逆时针分别维护完整的有序几何，不能再由另一方向反向读取。
 # 两套路线目前保持原有环线中心线形状；出通道后统一接入上面的
-# RETURN_CONTROL_POINTS，不再用一条长直线直接指向P。
+# RETURN_CONTROL_POINTS，不再用一条长直线直接连接原路线末点。
 COUNTERCLOCKWISE_SEGMENTS: list[tuple[tuple[float, float], tuple[float, float]]] = [
     ((1.95, 1.80), (1.95, 2.50)),
     ((2.35, 2.95), (3.30, 2.95)),
@@ -407,22 +404,39 @@ def fmt(value: float) -> str:
 
 
 def render_yaml(
-    points: Sequence[Point], spacing: float, direction: str, return_start_index: int
+    points: Sequence[Point],
+    spacing: float,
+    direction: str,
+    return_start_index: int,
+    return_corner_transition_length: float = RETURN_CORNER_TRANSITION_LENGTH,
+    generator_name: str = "generate_channel_waypoints.py",
+    task3_control_points_name: str = "RETURN_CONTROL_POINTS",
+    task3_profile: str | None = None,
 ) -> str:
     direction_label = "顺时针" if direction == "clockwise" else "逆时针"
     lines = [
         f"# channel {direction_label}独立航点，禁止通过反向读取另一方向生成。",
-        "# 由 scripts/generate_channel_waypoints.py 生成：环线使用独立Bezier过渡，",
-        "# 出通道到P使用RETURN_CONTROL_POINTS手动设点和五次C2圆滑。",
-        "# task3_start标记RETURN_CONTROL_POINTS首点，即大厅返程曲线起点。",
+        f"# 由 scripts/{generator_name} 生成：环线使用独立Bezier过渡，",
+        "# 出通道到Task3原路线末点使用"
+        f"{task3_control_points_name}手动设点和五次C2圆滑。",
+        f"# task3_start标记{task3_control_points_name}首点，即大厅返程曲线起点。",
         f"# 按 point_001..point_{len(points):03d} 的文件顺序行驶。",
-        f"# 环线请改{direction.upper()}_SEGMENTS；大厅返程请改RETURN_CONTROL_POINTS。",
+        "# Task2环线请改generate_channel_waypoints.py的"
+        f"{direction.upper()}_SEGMENTS；Task3请改{generator_name}的"
+        f"{task3_control_points_name}。",
         f"# target_spacing: {fmt(spacing)} m",
-        f"# return_corner_transition_length: {fmt(RETURN_CORNER_TRANSITION_LENGTH)} m",
-        f"route_direction: {direction}",
-        "routes:",
-        f"  {direction}:",
+        "# return_corner_transition_length: "
+        f"{fmt(return_corner_transition_length)} m",
     ]
+    if task3_profile is not None:
+        lines.append(f"task3_profile: {task3_profile}")
+    lines.extend(
+        [
+            f"route_direction: {direction}",
+            "routes:",
+            f"  {direction}:",
+        ]
+    )
 
     for index, point in enumerate(points):
         waypoint_lines = [
@@ -681,8 +695,8 @@ def main() -> int:
         parser.error("--spacing must be a finite positive value")
     if len(RETURN_CONTROL_POINTS) < 2:
         parser.error("RETURN_CONTROL_POINTS needs at least two points")
-    if distance(RETURN_CONTROL_POINTS[-1], RETURN_TARGET) > 1e-9:
-        parser.error("RETURN_CONTROL_POINTS must end at RETURN_TARGET")
+    if distance(RETURN_CONTROL_POINTS[-1], RETURN_ROUTE_ENDPOINT) > 1e-9:
+        parser.error("RETURN_CONTROL_POINTS must end at RETURN_ROUTE_ENDPOINT")
 
     route_jobs = [
         (

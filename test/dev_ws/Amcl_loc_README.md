@@ -49,16 +49,36 @@ ros2 topic echo /amcl_pose
 unset AMENT_PREFIX_PATH COLCON_PREFIX_PATH CMAKE_PREFIX_PATH LD_LIBRARY_PATH PYTHONPATH
 source /opt/tros/humble/setup.bash
 source /root/D_Robot/test/dev_ws/install/setup.bash
-ros2 launch origincar_system visual_lidar_path_follower.launch.xml
+ros2 launch origincar_system visual_lidar_path_follower.launch.xml \
+  task1_profile:=low \
+  task3_profile:=slow
 ```
 
-Task1 当前 map 控制点为
-`(0,0) → (0.60,0.60) → (3.30,0.65) → (4.10,3.60)`。修改
-`src/origincar_system/scripts/generate_task1_waypoints.py` 后可重新生成：
+`task1_profile` 可选 `low` 或 `high`，`task3_profile` 可选
+`fast` 或 `slow`，两者彼此独立，共有四种组合。例如 Task1 选
+`low`、Task3 选 `fast`：
 
 ```bash
-python3 /root/D_Robot/test/dev_ws/src/origincar_system/scripts/generate_task1_waypoints.py
+ros2 launch origincar_system visual_lidar_path_follower.launch.xml \
+  task1_profile:=low \
+  task3_profile:=fast
 ```
+
+顺/逆时针 Task2 通道几何仍共用，`task3_profile` 只切换通道后的 Task3
+返程路线。
+
+两个 Task1 和两个 Task3 分别使用独立生成脚本：
+
+```bash
+python3 /root/D_Robot/test/dev_ws/src/origincar_system/scripts/generate_task1_low.py
+python3 /root/D_Robot/test/dev_ws/src/origincar_system/scripts/generate_task1_high.py
+python3 /root/D_Robot/test/dev_ws/src/origincar_system/scripts/generate_task3_fast.py
+python3 /root/D_Robot/test/dev_ws/src/origincar_system/scripts/generate_task3_slow.py
+```
+
+Task1 脚本只改 `TASK1_CONTROL_POINTS`；Task3 脚本只改
+`TASK3_CONTROL_POINTS`。`low` 和 `slow` 是当前路线；`high` 暂时复制
+`low` 等待调整；`fast` 从通道出口直接连回发车起点。
 
 必须在打开物理底盘开关前启动本终端，使绿色静态候选先形成READY快照。
 Task1、二维码过渡、Task2和Task3均由该节点控制，不再启动第三个

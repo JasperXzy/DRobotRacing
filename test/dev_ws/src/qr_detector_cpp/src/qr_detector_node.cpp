@@ -17,6 +17,8 @@
 #include <limits>
 #include <memory>
 #include <string>
+#include <thread>
+#include <vector>
 
 class QRDetectorNode : public rclcpp::Node
 {
@@ -114,6 +116,17 @@ public:
             image_topic_.c_str(), zbar_density_, process_interval_);
     }
 
+    ~QRDetectorNode() override
+    {
+        // 写图完全脱离二维码识别/发布回调；节点退出前再统一等待，既不阻塞
+        // 控制消息，也保证Task1结束紧接着关闭检测节点时图片不会写到一半。
+        for (auto& writer : qr_frame_writers_) {
+            if (writer.joinable()) {
+                writer.join();
+            }
+        }
+    }
+
 private:
     static int64_t stamp_to_nanoseconds(const builtin_interfaces::msg::Time& stamp)
     {
@@ -162,9 +175,10 @@ private:
         }
     }
 
-    std::filesystem::path current_output_directory() const
+    static std::filesystem::path current_output_directory(
+        const std::string& output_root_text)
     {
-        const std::filesystem::path output_root(qr_frame_output_root_);
+        const std::filesystem::path output_root(output_root_text);
         std::error_code error;
         std::filesystem::create_directories(output_root, error);
         if (error) {
@@ -253,31 +267,39 @@ private:
             }
         }
 
-        const auto output_directory = current_output_directory();
-        if (output_directory.empty()) {
-            RCLCPP_ERROR(this->get_logger(),
-                "Cannot create QR camera frame output directory: %s",
-                qr_frame_output_root_.c_str());
-            return;
-        }
-
         std::string format = matched_frame->format;
         std::transform(format.begin(), format.end(), format.begin(), [](unsigned char character) {
             return static_cast<char>(std::tolower(character));
         });
-        const std::string extension = format.find("png") != std::string::npos ? ".png" : ".jpg";
-        const std::filesystem::path output_path =
-            output_directory / ("05_QR_camera" + extension);
-
-        std::ofstream output(output_path, std::ios::binary | std::ios::trunc);
-        output.write(
-            reinterpret_cast<const char*>(matched_frame->data.data()),
-            static_cast<std::streamsize>(matched_frame->data.size()));
-        output.close();
-        if (!output) {
-            RCLCPP_ERROR(this->get_logger(),
-                "Failed to save QR camera frame: %s", output_path.c_str());
-        }
+        const std::string output_root = qr_frame_output_root_;
+        std::vector<std::uint8_t> image_data = matched_frame->data;
+        qr_frame_writers_.emplace_back(
+            [output_root, format = std::move(format),
+             image_data = std::move(image_data)]() mutable {
+                const auto output_directory =
+                    QRDetectorNode::current_output_directory(output_root);
+                if (output_directory.empty()) {
+                    RCLCPP_ERROR(
+                        rclcpp::get_logger("qr_detector_frame_writer"),
+                        "Cannot create QR camera frame output directory: %s",
+                        output_root.c_str());
+                    return;
+                }
+                const std::string extension =
+                    format.find("png") != std::string::npos ? ".png" : ".jpg";
+                const std::filesystem::path output_path =
+                    output_directory / ("05_QR_camera" + extension);
+                std::ofstream output(output_path, std::ios::binary | std::ios::trunc);
+                output.write(
+                    reinterpret_cast<const char*>(image_data.data()),
+                    static_cast<std::streamsize>(image_data.size()));
+                output.close();
+                if (!output) {
+                    RCLCPP_ERROR(
+                        rclcpp::get_logger("qr_detector_frame_writer"),
+                        "Failed to save QR camera frame: %s", output_path.c_str());
+                }
+            });
     }
 
     void image_callback(const sensor_msgs::msg::Image::SharedPtr msg)
@@ -362,9 +384,11 @@ private:
                 if (symbol->get_type() != zbar::ZBAR_QRCODE) continue;
 
                 std::string barcode_data = symbol->get_data();
+                // 控制消息优先：磁盘写图可能阻塞数十至数百毫秒，不能让车辆
+                // 在等待日志或05_QR_camera落盘期间继续执行上一条正向速度命令。
+                publish_qr_result(barcode_data, current_time);
                 RCLCPP_INFO(this->get_logger(), "QR code detected: %s", barcode_data.c_str());
                 save_detected_camera_frame(msg->header.stamp);
-                publish_qr_result(barcode_data, current_time);
                 last_process_time_ = current_time;
                 return;
             }
@@ -489,6 +513,7 @@ private:
     double qr_frame_match_tolerance_ = 0.20;
     double small_roi_upscale_factor_ = 2.0;
     std::deque<sensor_msgs::msg::CompressedImage::ConstSharedPtr> camera_frames_;
+    std::vector<std::thread> qr_frame_writers_;
     zbar::ImageScanner scanner_;
 };
 

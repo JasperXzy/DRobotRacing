@@ -14,6 +14,7 @@ find_package(cv_bridge REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(PkgConfig REQUIRED)  # 添加pkg-config支持
 find_package(origincar_msg REQUIRED)
+find_package(Threads REQUIRED)
 
 pkg_check_modules(ZBAR REQUIRED zbar)  # 使用pkg-config查找zbar
 
@@ -23,7 +24,7 @@ target_include_directories(qr_detector_node PUBLIC
   ${ZBAR_INCLUDE_DIRS}  # 添加ZBar头文件目录
 )
 ament_target_dependencies(qr_detector_node rclcpp sensor_msgs std_msgs cv_bridge OpenCV origincar_msg)
-target_link_libraries(qr_detector_node ${ZBAR_LIBRARIES})  # 链接ZBar库
+target_link_libraries(qr_detector_node ${ZBAR_LIBRARIES} Threads::Threads)  # 链接ZBar和异步写图线程
 
 install(TARGETS
   qr_detector_node

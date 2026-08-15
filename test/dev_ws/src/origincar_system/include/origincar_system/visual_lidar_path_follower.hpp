@@ -56,7 +56,10 @@ private:
   enum class QrEscapeState
   {
     IDLE,
+    PRE_REVERSE_BRAKE,
+    WAITING_FOR_PRE_REVERSE_SCAN,
     PENDING,
+    BACKING_ARMED,
     BACKING_RIGHT,
     POST_STOP,
     WAITING_FOR_POST_STOP_SCAN
@@ -307,6 +310,9 @@ private:
   double lookahead_max_{0.70};
   double latest_chassis_linear_speed_{0.0};
   bool latest_chassis_linear_speed_valid_{false};
+  // 每收到一帧/chassis/odom就递增。中途反相制动只接受启动后的新轮速，
+  // 防止拿制动前缓存速度误判为已经停稳或已经反向。
+  std::uint64_t chassis_odom_sequence_{0};
   double pass_radius_{0.35};
   double route_projection_max_distance_{1.00};
   double route_projection_search_backward_distance_{0.30};
@@ -359,8 +365,8 @@ private:
   // 路线生成方式与tracking_controller_mode独立：legacy_offset完整保留
   // 旧逐点偏移；circle_envelope把允许静态偏移的障碍统一画成圆滑路线。
   std::string route_deformation_mode_{"legacy_offset"};
-  double circle_envelope_target_clearance_{0.41};
-  double circle_envelope_numeric_margin_{0.01};
+  double circle_envelope_target_clearance_{0.35};
+  double circle_envelope_numeric_margin_{0.07};
   double circle_envelope_min_transition_length_{0.90};
   double circle_envelope_max_transition_length_{1.80};
   double circle_envelope_extension_step_{0.05};
@@ -433,10 +439,15 @@ private:
   double logic3_runtime_green_match_radius_{0.25};
   // 已关联ID的新中心相对READY/橙点首次确认固定锚点的最大更新半径。
   double logic3_runtime_green_anchor_update_radius_{0.20};
+  // 绿色与橙色共用永久ID库；true时坐标更新只受身份、固定锚点半径和
+  // 写入距离约束，不再因跨越原始路线或最新无偏移ACB而被拒绝。
+  bool logic3_runtime_green_allow_route_crossing_{true};
   int logic3_runtime_green_average_samples_{3};
   // 已有永久点相对当前库坐标至少移动这么远才真正写入永久库。
   double logic3_runtime_green_update_min_distance_{0.02};
   double logic3_runtime_green_replan_min_distance_{0.02};
+  // 橙点坐标仍逐帧更新，但密集变化只合并为最新一次路线重算。
+  double logic3_runtime_green_replan_min_interval_{0.20};
   int logic3_runtime_green_candidate_release_scans_{8};
   int logic3_static_cluster_min_points_{1};
   int logic3_static_restriction_inflation_cells_{0};
@@ -472,7 +483,7 @@ private:
 
   double task1_qr_timeout_seconds_{10.0};
   std::string task1_timeout_qr_text_{"4399"};
-  double task1_endpoint_qr_wait_seconds_{1.0};
+  double task1_endpoint_qr_wait_seconds_{1.5};
   double task1_endpoint_arrival_radius_{0.18};
   double task1_transition_min_x_{3.50};
   StageControlProfile task1_profile_;
@@ -515,7 +526,7 @@ private:
   double qr_reverse_angular_speed_max_{0.70};
   double qr_reverse_angular_ramp_start_x_{1.10};
   double qr_reverse_angular_ramp_end_x_{4.50};
-  double qr_reverse_post_stop_seconds_{0.00};
+  double qr_reverse_post_stop_seconds_{0.50};
   int qr_reverse_max_count_{0};
 
   // A→C→B进场坐标、结束判定与入口基准路线圆滑。A端切线直接使用
@@ -532,8 +543,8 @@ private:
   // 整段A→C使用五次Bezier：A端切线沿base_link.yaw，C端切线沿CB，
   // 两端曲率均为0；两个控制柄以AC弦长为基准。
   bool channel_ac_curve_enabled_{true};
-  double channel_ac_curve_start_handle_ratio_{0.203};
-  double channel_ac_curve_finish_handle_ratio_{0.073};
+  double channel_ac_curve_start_handle_ratio_{0.368};
+  double channel_ac_curve_finish_handle_ratio_{0.243};
   double channel_ac_curve_max_curvature_{10.5};
   double channel_entry_corner_smoothing_length_{0.30};
   // 只在二维码倒车完成后的A->C->B重规划回放永久点期间临时启用。
@@ -577,12 +588,10 @@ private:
   double return_stop_zone_left_curve_control_x_{-0.20};
   double return_stop_zone_left_curve_control_y_{-0.10};
   double return_stop_confirm_seconds_{0.0};
-  // Task3返程减速区：首次进入x<max_x且y<start_y后锁定，沿y减小方向
-  // 线性降低正向速度上限，在end_y及其下方保持min_speed。
+  // Task3返程减速区：以路线外保底牵引点为圆心，首次进入圆内后锁定；
+  // 距圆心越近，正向速度上限越低，中心达到min_speed。
   bool task3_return_slowdown_enabled_{true};
-  double task3_return_slowdown_max_x_{0.50};
-  double task3_return_slowdown_start_y_{0.70};
-  double task3_return_slowdown_end_y_{0.20};
+  double task3_return_slowdown_radius_{0.70};
   double task3_return_slowdown_min_speed_{0.50};
   bool task3_return_slowdown_active_{false};
   double task3_return_slowdown_speed_limit_{0.0};
@@ -591,16 +600,24 @@ private:
   double return_brake_reverse_speed_{0.30};
   int return_brake_reverse_cycles_{10};
   int temporary_stop_brake_reverse_cycles_{5};
+  double temporary_stop_brake_release_speed_threshold_{0.03};
   int return_brake_zero_cycles_{15};
   bool stop_brake_sequence_active_{false};
   int stop_brake_reverse_cycles_remaining_{0};
   int stop_brake_zero_cycles_remaining_{0};
   double stop_brake_linear_command_{0.0};
+  int stop_brake_motion_direction_{0};
+  std::uint64_t stop_brake_start_odom_sequence_{0};
   double last_published_motion_linear_command_{0.0};
+  double last_published_angular_command_{0.0};
   bool stop_brake_armed_{false};
-  // Task3路线走完后持续追踪的虚拟牵引点取紫色曲边停车区包围框中心。
-  double return_target_x_{0.0};
-  double return_target_y_{0.01};
+  // 不属于waypoints_、不参与静态规划。只有Task3原路线末点真正到达且
+  // 尚未进入紫色区时，才直接追踪该保底点。
+  double task3_terminal_target_x_{0.0};
+  double task3_terminal_target_y_{0.0};
+  double task3_terminal_route_end_radius_{0.10};
+  bool task3_terminal_homing_active_{false};
+  bool task3_terminal_homing_used_{false};
   double return_obstacle_split_y_{0.50};
   std::string return_visual_detection_topic_{"/racing_obstacle_detection"};
   double return_visual_detection_timeout_{0.50};
@@ -702,7 +719,12 @@ private:
   std::deque<Logic3CommandSample> logic3_command_history_;
   Logic3RuntimeGreenGateLogStats logic3_runtime_green_gate_log_stats_;
   QrEscapeState qr_escape_state_{QrEscapeState::IDLE};
+  std::uint64_t qr_pre_reverse_scan_sequence_{0};
+  std::int64_t qr_pre_reverse_time_nanoseconds_{0};
   bool qr_channel_approach_active_{false};
+  // 强制倒车请求先进入BACKING_ARMED并计入轮次；只有新雷达/TF、后方及
+  // XY硬保护和轮式里程计全部允许后才置true并首次发布负速度。
+  bool qr_reverse_negative_command_published_{false};
   bool channel_entry_route_rebuild_pending_{false};
   bool channel_entry_route_rebuild_after_reverse_{false};
   std::size_t channel_entry_waypoint_index_{0};
@@ -779,6 +801,7 @@ private:
   bool qr_reverse_odom_fault_{false};
   bool qr_reverse_waiting_for_odom_{false};
   bool qr_reverse_rearm_after_post_stop_{false};
+  double qr_reverse_hold_angular_command_{0.0};
   std::chrono::steady_clock::time_point qr_reverse_post_stop_started_at_;
   bool channel_lidar_waiting_for_inputs_{false};
   bool channel_lidar_waiting_for_post_reverse_scan_{false};
@@ -830,6 +853,10 @@ private:
   // 实际雷达避障首次命中永久点后，该身份本次发车内不再参与静态偏移；
   // 绿/橙身份、绘图和对后续红点候选的雷达掩码始终保留。
   std::vector<bool> logic3_green_dynamic_takeover_;
+  // circle_envelope最终硬修复后仍未达到target_clearance的永久点。
+  // 仅这些ID临时解除绿/橙雷达掩码，保留当前最外推路线并交给实时雷达，
+  // 不停车，也不回退到original_waypoints_。
+  std::vector<bool> logic3_green_route_clearance_failed_;
   // [0, orange_begin)保持可信发车时冻结的绿色身份；发车后由高分跨帧
   // 逻辑新增的永久身份画成橙色，规划仍统一使用logic3_green_clusters_。
   std::size_t logic3_orange_green_begin_index_{0};
@@ -847,8 +874,17 @@ private:
   bool logic3_static_state1_active_{false};
   bool logic3_static_ready_{false};
   bool logic3_green_route_replan_pending_{false};
+  std::chrono::steady_clock::time_point logic3_last_runtime_route_replan_at_;
+  bool logic3_last_runtime_route_replan_at_valid_{false};
+  double logic3_last_route_replan_duration_ms_{0.0};
   std::size_t logic3_task1_before_red_snapshot_count_{0};
   std::size_t logic3_final_before_red_snapshot_count_{0};
+  // Task1收口图独立于before_red事件排队，避免延迟绘图期间首次红点事件
+  // 覆盖02_Task1_dynamic_route快照。
+  bool task1_dynamic_snapshot_pending_{false};
+  // 红色避障触发图先锁存事件；本周期的避障速度发布后再序列化快照，
+  // 避免画图数据准备挡在首条安全控制命令之前。
+  std::string pending_control_snapshot_event_;
   bool logic3_static_collection_change_time_valid_{false};
   double logic3_static_collection_last_change_seconds_{0.0};
   std::uint64_t logic3_static_next_identity_id_{1};
@@ -902,6 +938,8 @@ private:
   void control_once();
   bool stop_if_route_finished(const RobotPose & pose);
   bool handle_task3_start(const RobotPose & pose);
+  void start_task3_terminal_homing(const RobotPose & pose);
+  void control_task3_terminal_homing(const RobotPose & pose);
   void start_return_to_start();
   void control_return_to_start(const RobotPose & pose);
   void finish_return_to_start(const RobotPose & pose, const char * reason);
@@ -948,6 +986,8 @@ private:
   void reset_linear_speed_limit();
   void apply_global_linear_speed_limit(geometry_msgs::msg::Twist & cmd);
   bool apply_unified_stop_brake(geometry_msgs::msg::Twist & cmd);
+  void publish_translation_stop(double angular_command);
+  void publish_translation_stop_without_reverse_brake(double angular_command);
   void publish_velocity_command(geometry_msgs::msg::Twist cmd);
 
   geometry_msgs::msg::Twist compute_tracking_command(

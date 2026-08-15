@@ -217,6 +217,21 @@ class RouteSnapshotRenderer(Node):
             self.get_logger().debug(f'已生成Task1冻结路线图: {output_path}')
             return
 
+        if event == 'final_transition_marker':
+            # Task1→Task2正式入口只生成轻量事件图。此时尚未执行A→C→B、
+            # circle_envelope或任何Task2静态规划；只显示扫码点以及入口时
+            # 车辆的位置和朝向，不能用即将被倒车改变的临时路线误导观察。
+            image = base.copy()
+            self._draw_snapshot_markers(image, data, world_to_pixel)
+            self._draw_title(
+                image,
+                'Task1->Task2 transition / QR scan and vehicle pose before forced reverse')
+            output_path = output_dir / '03_Final_frozen_route.png'
+            self._save_png(image, output_path)
+            self.get_logger().debug(
+                f'已生成Task1->Task2入口标记图（未规划路线）: {output_path}')
+            return
+
         if event == 'final_frozen':
             image = base.copy()
             self._draw_task3_slowdown_zone(image, data, world_to_pixel)
@@ -549,46 +564,52 @@ class RouteSnapshotRenderer(Node):
 
     @staticmethod
     def _draw_task3_slowdown_zone(image, data, transform):
-        """Draw the unbounded x<max_x, y<start_y region clipped to the map canvas."""
+        """Draw the circular Task3 slowdown zone around the fallback target."""
         zone = data.get('task3_slowdown_zone', {})
         if not isinstance(zone, dict) or not bool(zone.get('enabled', False)):
             return
         try:
-            max_x = float(zone['max_x'])
-            start_y = float(zone['start_y'])
-            end_y = float(zone['end_y'])
+            center_x = float(zone['center_x'])
+            center_y = float(zone['center_y'])
+            radius = float(zone['radius'])
             start_speed = float(zone['start_speed'])
             min_speed = float(zone['min_speed'])
         except (KeyError, TypeError, ValueError):
             return
         if not all(math.isfinite(value) for value in (
-                max_x, start_y, end_y, start_speed, min_speed)):
+                center_x, center_y, radius, start_speed, min_speed)) or radius <= 0.0:
             return
 
-        # 当前比赛map不旋转；区域的负无穷边界以最终图片左边和下边裁剪。
-        limit_x, start_pixel_y = transform((max_x, start_y))
-        _, end_pixel_y = transform((max_x, end_y))
-        limit_x = max(0.0, min(float(image.width - 1), limit_x))
-        start_pixel_y = max(0.0, min(float(image.height - 1), start_pixel_y))
-        end_pixel_y = max(0.0, min(float(image.height - 1), end_pixel_y))
+        center_pixel_x, center_pixel_y = transform((center_x, center_y))
+        edge_pixel_x, edge_pixel_y = transform((center_x + radius, center_y))
+        radius_pixels = math.hypot(
+            edge_pixel_x - center_pixel_x,
+            edge_pixel_y - center_pixel_y)
+        if radius_pixels <= 0.0:
+            return
 
         overlay = Image.new('RGBA', image.size, (0, 0, 0, 0))
         draw = ImageDraw.Draw(overlay)
-        # 粉色半透明区域始终放在路线/障碍物下层，不遮挡蓝线和点云标记。
-        draw.rectangle(
-            (0, start_pixel_y, limit_x, image.height - 1),
-            fill=(255, 80, 170, 48), outline=(230, 45, 145, 235), width=4)
-        # y=end_y是达到最低速度的位置，用更深的粉色实线明确标出。
-        draw.line(
-            ((0, end_pixel_y), (limit_x, end_pixel_y)),
-            fill=(205, 25, 125, 235), width=4)
+        # 粉色圆始终放在路线/障碍物下层，不遮挡蓝线和点云标记。
+        bounds = (
+            center_pixel_x - radius_pixels, center_pixel_y - radius_pixels,
+            center_pixel_x + radius_pixels, center_pixel_y + radius_pixels)
+        draw.ellipse(
+            bounds, fill=(255, 80, 170, 48),
+            outline=(230, 45, 145, 235), width=4)
+        draw.ellipse(
+            (center_pixel_x - 5, center_pixel_y - 5,
+             center_pixel_x + 5, center_pixel_y + 5),
+            fill=(205, 25, 125, 245), outline=(255, 255, 255, 255), width=2)
 
         label = (
-            f'TASK3 SLOWDOWN x<{max_x:.2f}, y<{start_y:.2f}: '
-            f'{start_speed:.2f}->{min_speed:.2f}m/s @ y={end_y:.2f}')
+            f'TASK3 SLOWDOWN center=({center_x:.2f},{center_y:.2f}), '
+            f'R={radius:.2f}m: {start_speed:.2f}->{min_speed:.2f}m/s')
         font = ImageFont.load_default()
-        label_x = 8
-        label_y = min(float(image.height - 18), start_pixel_y + 8)
+        label_x = max(8.0, min(
+            float(image.width - 280), center_pixel_x - radius_pixels))
+        label_y = max(4.0, min(
+            float(image.height - 18), center_pixel_y - radius_pixels + 8))
         try:
             box = draw.textbbox((label_x, label_y), label, font=font)
         except (AttributeError, ValueError):
@@ -689,6 +710,9 @@ class RouteSnapshotRenderer(Node):
         RouteSnapshotRenderer._draw_marker(
             image, data.get('route_start_marker'), transform,
             (20, 100, 235, 255), (0, 45, 130, 255))
+        RouteSnapshotRenderer._draw_marker(
+            image, data.get('task3_terminal_target_marker'), transform,
+            (220, 20, 145, 255), (135, 0, 85, 255))
 
     @staticmethod
     def _draw_final_pose(image, data, transform, pixels_per_meter):

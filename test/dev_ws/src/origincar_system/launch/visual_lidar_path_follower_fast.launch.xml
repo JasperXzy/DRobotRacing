@@ -1,9 +1,19 @@
 <launch>
   <!-- 快速版：复用标准启动流程，仅切换追点参数文件。 -->
+  <arg
+    name="task1_profile"
+    default="low"
+    description="Task1 route: low or high"/>
+  <arg
+    name="task3_profile"
+    default="slow"
+    description="Task3 route: fast or slow"/>
   <include
     file="$(find-pkg-share origincar_system)/launch/visual_lidar_path_follower.launch.xml">
     <arg
       name="params_file"
       value="$(find-pkg-share origincar_system)/config/visual_lidar_path_follower_fast.yaml"/>
+    <arg name="task1_profile" value="$(var task1_profile)"/>
+    <arg name="task3_profile" value="$(var task3_profile)"/>
   </include>
 </launch>
