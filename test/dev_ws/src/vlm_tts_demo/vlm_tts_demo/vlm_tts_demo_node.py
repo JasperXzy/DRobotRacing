@@ -63,6 +63,7 @@ class VlmTtsDemoNode(Node):
         self.declare_parameter('api_timeout', 15.0)
         self.declare_parameter('api_max_tokens', 120)
         self.declare_parameter('api_temperature', 0.2)
+        self.declare_parameter('api_enable_thinking', False)
         self.declare_parameter('api_image_detail', 'auto')
         self.declare_parameter('api_image_mime_type', 'image/jpeg')
         self.declare_parameter('no_auth', False)
@@ -108,6 +109,8 @@ class VlmTtsDemoNode(Node):
         self.api_timeout = self.get_parameter('api_timeout').value
         self.api_max_tokens = self.get_parameter('api_max_tokens').value
         self.api_temperature = self.get_parameter('api_temperature').value
+        self.api_enable_thinking = self.get_parameter(
+            'api_enable_thinking').value
         self.api_image_detail = self.get_parameter('api_image_detail').value
         self.api_image_mime_type = self.get_parameter('api_image_mime_type').value
         self.no_auth = self.get_parameter('no_auth').value
@@ -133,7 +136,7 @@ class VlmTtsDemoNode(Node):
 
         self.get_logger().info(
             'API VLM TTS ready: camera=%s, trigger=%s:%d capture, infer=%d, '
-            'defer_write=%s, model=%s'
+            'defer_write=%s, model=%s, thinking=%s'
             % (
                 self.camera_topic,
                 self.trigger_topic,
@@ -141,6 +144,7 @@ class VlmTtsDemoNode(Node):
                 self.infer_trigger_value,
                 self.defer_capture_write,
                 self.api_model,
+                self.api_enable_thinking,
             )
         )
 
@@ -446,6 +450,7 @@ class VlmTtsDemoNode(Node):
             ],
             'max_tokens': self.api_max_tokens,
             'temperature': self.api_temperature,
+            'enable_thinking': self.api_enable_thinking,
         }
 
         headers = {'Content-Type': 'application/json'}

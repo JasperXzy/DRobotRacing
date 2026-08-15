@@ -28,6 +28,7 @@ def generate_launch_description():
     source_capture_file = LaunchConfiguration('source_capture_file')
     task_output_root = LaunchConfiguration('task_output_root')
     ding_enable = LaunchConfiguration('ding_enable')
+    api_enable_thinking = LaunchConfiguration('api_enable_thinking')
     no_auth = LaunchConfiguration('no_auth')
 
     return LaunchDescription([
@@ -152,6 +153,11 @@ def generate_launch_description():
             description='API sampling temperature.',
         ),
         DeclareLaunchArgument(
+            'api_enable_thinking',
+            default_value='false',
+            description='Enable model thinking mode when supported.',
+        ),
+        DeclareLaunchArgument(
             'api_image_detail',
             default_value='auto',
             description='Vision API image detail hint: low, high or auto.',
@@ -218,6 +224,8 @@ def generate_launch_description():
                     LaunchConfiguration('api_max_tokens'), value_type=int),
                 'api_temperature': ParameterValue(
                     LaunchConfiguration('api_temperature'), value_type=float),
+                'api_enable_thinking': ParameterValue(
+                    api_enable_thinking, value_type=bool),
                 'api_image_detail': LaunchConfiguration('api_image_detail'),
                 'no_auth': ParameterValue(no_auth, value_type=bool),
             }],

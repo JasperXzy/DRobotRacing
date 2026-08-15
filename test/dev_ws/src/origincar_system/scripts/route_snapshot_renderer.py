@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render the four-stage route snapshots received as compact JSON events."""
+"""Render route snapshots and the image-to-text capture point from JSON events."""
 
 import json
 import math
@@ -48,6 +48,7 @@ class RouteSnapshotRenderer(Node):
             'task1_frozen', 'task1_dynamic',
             'final_frozen', 'final_dynamic',
             'task1_before_red', 'final_before_red',
+            'image_capture',
         }
         if not valid_session or event not in valid_events:
             raise ValueError('invalid snapshot event/session')
@@ -68,19 +69,15 @@ class RouteSnapshotRenderer(Node):
         original = data.get('original', [])
         baseline = data.get('baseline', [])
         red = data.get('red', [])
-        red_identity_radius = float(data.get('red_identity_radius', 0.25))
-        red_filter_radius = float(data.get('red_filter_radius', 0.50))
         red_radius = float(data.get('red_radius', 0.35))
 
         self._render_route_snapshot(
             data, event, output_dir, base, world_to_pixel, pixels_per_meter,
-            original, baseline, red, red_identity_radius, red_filter_radius,
-            red_radius)
+            original, baseline, red, red_radius)
 
     def _render_route_snapshot(
             self, data, event, output_dir, base, world_to_pixel, pixels_per_meter,
-            original, frozen, red, red_identity_radius, red_filter_radius,
-            red_radius):
+            original, frozen, red, red_radius):
         green = data.get('green', [])
         try:
             orange_begin = int(data.get('orange_green_begin_index', len(green)))
@@ -89,7 +86,7 @@ class RouteSnapshotRenderer(Node):
         orange_begin = max(0, min(orange_begin, len(green)))
         departure_green = green[:orange_begin]
         post_departure_orange = green[orange_begin:]
-        green_radius = float(data.get('green_radius', 0.50))
+        green_radius = float(data.get('green_radius', 0.55))
         green_identity_radius = float(
             data.get('green_identity_radius', 0.25))
         actual_route = data.get('actual_route', [])
@@ -104,6 +101,99 @@ class RouteSnapshotRenderer(Node):
             self.get_logger().warning(
                 '实际路线颜色无效，改用默认颜色 #d020d0')
         frozen_revision = max(0, int(data.get('frozen_revision', 0)))
+        if event == 'image_capture':
+            marker = data.get('image_capture_marker')
+            if not isinstance(marker, dict):
+                raise ValueError('missing image_capture_marker')
+            point = marker.get('point')
+            if not isinstance(point, list) or len(point) < 2:
+                raise ValueError('invalid image_capture_marker.point')
+            point_x = float(point[0])
+            point_y = float(point[1])
+            point_yaw = float(marker.get('yaw', 0.0))
+            if not all(math.isfinite(value) for value in (
+                    point_x, point_y, point_yaw)):
+                raise ValueError('non-finite image capture point')
+            stop_marker = data.get('image_capture_stop_marker')
+            stop_x = None
+            stop_y = None
+            stop_yaw = None
+            if isinstance(stop_marker, dict):
+                stop_point = stop_marker.get('point')
+                if isinstance(stop_point, list) and len(stop_point) >= 2:
+                    try:
+                        stop_x = float(stop_point[0])
+                        stop_y = float(stop_point[1])
+                        stop_yaw = float(stop_marker.get('yaw', 0.0))
+                    except (TypeError, ValueError):
+                        stop_x = stop_y = stop_yaw = None
+                    if stop_x is not None and not all(math.isfinite(value) for value in (
+                            stop_x, stop_y, stop_yaw)):
+                        stop_x = stop_y = stop_yaw = None
+            stop_to_capture_distance = None
+            if stop_x is not None:
+                stop_to_capture_distance = math.hypot(
+                    point_x - stop_x, point_y - stop_y)
+
+            image = base.copy()
+            self._draw_image_capture_corridor(
+                image, data, world_to_pixel)
+            self._draw_route(
+                image, original, world_to_pixel, (75, 75, 75, 105), 3)
+            self._draw_route(
+                image, frozen, world_to_pixel, (15, 90, 215, 255), 6)
+            self._draw_base_zone(image, data, world_to_pixel)
+            self._draw_parking_zone(image, data, world_to_pixel)
+            if stop_x is not None:
+                self._draw_route(
+                    image, [[stop_x, stop_y], [point_x, point_y]],
+                    world_to_pixel, (185, 35, 115, 230), 3)
+                self._draw_marker(
+                    image, stop_marker, world_to_pixel,
+                    (185, 35, 115, 255), (110, 10, 65, 255),
+                    radius=13, label_offset=(12, 3))
+            self._draw_marker(
+                image, marker, world_to_pixel,
+                (245, 140, 20, 255), (120, 60, 0, 255),
+                radius=8, label_offset=(12, -18))
+            title = (
+                f'TuShengWen capture=({point_x:.3f},{point_y:.3f}), '
+                f'yaw={point_yaw:.3f}rad')
+            if stop_x is not None:
+                title = (
+                    f'TuShengWen stop=({stop_x:.3f},{stop_y:.3f}) -> '
+                    f'capture=({point_x:.3f},{point_y:.3f}), '
+                    f'drift={stop_to_capture_distance:.3f}m')
+            self._draw_title(
+                image, title)
+            output_path = output_dir / 'TuShengWen.png'
+            self._save_png(image, output_path)
+            coordinate_path = output_dir / 'TuShengWen.json'
+            coordinate_path.write_text(
+                json.dumps({
+                    'frame_id': 'map',
+                    'session': str(data.get('session', '')),
+                    'x': point_x,
+                    'y': point_y,
+                    'yaw': point_yaw,
+                    'stop': ({
+                        'x': stop_x,
+                        'y': stop_y,
+                        'yaw': stop_yaw,
+                    } if stop_x is not None else None),
+                    'capture': {
+                        'x': point_x,
+                        'y': point_y,
+                        'yaw': point_yaw,
+                    },
+                    'stop_to_capture_distance': stop_to_capture_distance,
+                    'corridor': data.get('image_capture_corridor'),
+                }, ensure_ascii=False, indent=2) + '\n',
+                encoding='utf-8')
+            self.get_logger().info(
+                f'已生成图生文拍照点: {output_path}，坐标: {coordinate_path}')
+            return
+
         if event == 'task1_frozen':
             image = base.copy()
             self._draw_task3_slowdown_zone(image, data, world_to_pixel)
@@ -190,8 +280,7 @@ class RouteSnapshotRenderer(Node):
             f'(green/orange filter/draw R={green_radius:.2f}m, '
             f'red draw/takeover R={red_radius:.2f}m, '
             f'green/orange identity R={green_identity_radius:.2f}m, '
-            f'red identity R={red_identity_radius:.2f}m, '
-            f'red dedup R={red_filter_radius:.2f}m)')
+            f'red one point per lidar avoidance action, no history dedup)')
         if before_red:
             if red_trigger_index <= 0:
                 raise ValueError('invalid red trigger index')
@@ -325,14 +414,15 @@ class RouteSnapshotRenderer(Node):
         return values
 
     @staticmethod
-    def _draw_zone(image, transform, bounds, outline, fill, label):
+    def _draw_zone(image, transform, bounds, outline, fill, label, corners=None):
         if bounds is None:
             return
         min_x, max_x, min_y, max_y = bounds
-        corners = [
-            (min_x, min_y), (max_x, min_y),
-            (max_x, max_y), (min_x, max_y),
-        ]
+        if corners is None:
+            corners = [
+                (min_x, min_y), (max_x, min_y),
+                (max_x, max_y), (min_x, max_y),
+            ]
         pixels = [transform(point) for point in corners]
         overlay = Image.new('RGBA', image.size, (0, 0, 0, 0))
         draw = ImageDraw.Draw(overlay)
@@ -341,16 +431,22 @@ class RouteSnapshotRenderer(Node):
         font = ImageFont.load_default()
         label_x, label_y = pixels[3]
         try:
-            box = draw.textbbox((label_x + 7, label_y - 18), label, font=font)
+            size_box = draw.textbbox((0, 0), label, font=font)
+            text_width = size_box[2] - size_box[0]
+            text_height = size_box[3] - size_box[1]
         except (AttributeError, ValueError):
             text_width, text_height = draw.textsize(label, font=font)
-            box = (
-                label_x + 7, label_y - 18,
-                label_x + 7 + text_width, label_y - 18 + text_height)
+        text_x = min(
+            max(6.0, label_x + 7.0),
+            max(6.0, float(image.width) - text_width - 6.0))
+        text_y = min(
+            max(6.0, label_y - 18.0),
+            max(6.0, float(image.height) - text_height - 6.0))
+        box = (text_x, text_y, text_x + text_width, text_y + text_height)
         draw.rectangle(
             (box[0] - 3, box[1] - 2, box[2] + 3, box[3] + 2),
             fill=(255, 255, 255, 220))
-        draw.text((label_x + 7, label_y - 18), label, fill=outline, font=font)
+        draw.text((text_x, text_y), label, fill=outline, font=font)
         image.alpha_composite(overlay)
 
     @staticmethod
@@ -367,19 +463,89 @@ class RouteSnapshotRenderer(Node):
             (25, 105, 225, 245), (45, 125, 235, 28), label)
 
     @staticmethod
+    def _draw_image_capture_corridor(image, data, transform):
+        zone = data.get('image_capture_corridor', {})
+        if not isinstance(zone, dict) or not bool(zone.get('enabled', False)):
+            return
+        bounds = RouteSnapshotRenderer._zone_bounds(zone)
+        if bounds is None:
+            return
+        min_x, max_x, min_y, max_y = bounds
+        direction = str(zone.get('direction', 'unknown'))
+        try:
+            speed = float(zone.get('speed', 0.0))
+        except (TypeError, ValueError):
+            speed = 0.0
+        if not math.isfinite(speed):
+            speed = 0.0
+        label = (
+            f'IMAGE CAPTURE {direction} '
+            f'x=[{min_x:.2f},{max_x:.2f}], '
+            f'y=[{min_y:.2f},{max_y:.2f}], speed={speed:.2f}m/s')
+        RouteSnapshotRenderer._draw_zone(
+            image, transform, bounds,
+            (225, 105, 5, 255), (255, 155, 30, 45), label)
+
+    @staticmethod
     def _draw_parking_zone(image, data, transform):
         zone = data.get('parking_zone', {})
         bounds = RouteSnapshotRenderer._zone_bounds(zone)
         if bounds is None:
             return
         min_x, max_x, min_y, max_y = bounds
+        try:
+            top_min_x = float(zone.get('top_min_x', min_x))
+            top_max_x = float(zone.get('top_max_x', max_x))
+            right_top_y = float(zone.get('right_top_y', max_y))
+            curve_control_x = float(zone.get(
+                'left_curve_control_x', 0.5 * (min_x + top_min_x)))
+            curve_control_y = float(zone.get('left_curve_control_y', min_y))
+        except (TypeError, ValueError):
+            top_min_x = min_x
+            top_max_x = max_x
+            right_top_y = max_y
+            curve_control_x = min_x
+            curve_control_y = min_y
+        if not math.isfinite(top_min_x):
+            top_min_x = min_x
+        if not math.isfinite(top_max_x):
+            top_max_x = max_x
+        if not math.isfinite(right_top_y):
+            right_top_y = max_y
+        if not math.isfinite(curve_control_x):
+            curve_control_x = 0.5 * (min_x + top_min_x)
+        if not math.isfinite(curve_control_y):
+            curve_control_y = min_y
+        top_min_x = min(max(top_min_x, min_x), max_x)
+        top_max_x = min(max(top_max_x, top_min_x), max_x)
+        right_top_y = min(max(right_top_y, min_y), max_y)
+        curve_control_x = min(max(curve_control_x, min_x), top_min_x)
+        curve_control_y = min(max(curve_control_y, min_y), max_y)
+        curve_points = []
+        for step in range(1, 24):
+            t = step / 24.0
+            one_minus_t = 1.0 - t
+            curve_points.append((
+                one_minus_t * one_minus_t * top_min_x +
+                2.0 * one_minus_t * t * curve_control_x +
+                t * t * min_x,
+                one_minus_t * one_minus_t * max_y +
+                2.0 * one_minus_t * t * curve_control_y +
+                t * t * min_y,
+            ))
         confirm_seconds = max(0.0, float(zone.get('confirm_seconds', 0.0)))
         label = (
-            f'PARKING x=[{min_x:.2f},{max_x:.2f}], '
+            f'PARKING curved bottom=[{min_x:.2f},{max_x:.2f}]@{min_y:.2f}, '
+            f'top=[{top_min_x:.2f},{top_max_x:.2f}]@{max_y:.2f}, '
             f'y=[{min_y:.2f},{max_y:.2f}], hold={confirm_seconds:.2f}s')
         RouteSnapshotRenderer._draw_zone(
             image, transform, bounds,
-            (135, 35, 190, 245), (170, 75, 215, 42), label)
+            (135, 35, 190, 245), (170, 75, 215, 42), label,
+            [
+                (min_x, min_y), (max_x, min_y),
+                (max_x, right_top_y), (top_max_x, max_y),
+                (top_min_x, max_y),
+            ] + curve_points)
 
     @staticmethod
     def _draw_task3_slowdown_zone(image, data, transform):
@@ -439,7 +605,9 @@ class RouteSnapshotRenderer(Node):
         image.alpha_composite(overlay)
 
     @staticmethod
-    def _draw_marker(image, marker, transform, color, text_color):
+    def _draw_marker(
+            image, marker, transform, color, text_color,
+            radius=9, label_offset=(12, -15)):
         if not isinstance(marker, dict):
             return
         point = marker.get('point')
@@ -453,14 +621,15 @@ class RouteSnapshotRenderer(Node):
         x, y = transform((point_x, point_y))
         overlay = Image.new('RGBA', image.size, (0, 0, 0, 0))
         draw = ImageDraw.Draw(overlay)
-        radius = 9
         draw.ellipse(
             (x - radius, y - radius, x + radius, y + radius),
             fill=color, outline=(255, 255, 255, 255), width=3)
         label = str(marker.get('label', 'EVENT'))
         text = f'{label} ({point_x:.2f},{point_y:.2f})'
         font = ImageFont.load_default()
-        draw.text((x + 12, y - 15), text, fill=text_color, font=font)
+        draw.text(
+            (x + label_offset[0], y + label_offset[1]),
+            text, fill=text_color, font=font)
         image.alpha_composite(overlay)
 
     @staticmethod

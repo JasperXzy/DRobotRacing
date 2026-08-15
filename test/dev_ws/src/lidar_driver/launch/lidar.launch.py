@@ -30,12 +30,12 @@ def generate_launch_description():
                                 )
 
     # Static TF: base_link -> laser
-    # x=0.05, y=0.0, z=0.05
+    # x=0.035, y=0.0, z=0.05
     tf_laser_node = Node(
         package='tf2_ros',
         executable='static_transform_publisher',
         name='base_link_to_laser',
-        arguments=['0.05', '0.0', '0.05', '0.0', '0.0', '0.0', 'base_link', 'laser']
+        arguments=['0.035', '0.0', '0.05', '0.0', '0.0', '0.0', 'base_link', 'laser']
     )
 
     return LaunchDescription([

@@ -89,7 +89,7 @@ sleep 2
 
 ## 6. 调整音量
 ```bash
-amixer -c 0 sset PCM 50% unmute
+amixer -c 0 sset PCM 100% unmute
 ```
 
 #### 终端1

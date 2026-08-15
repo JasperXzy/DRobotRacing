@@ -35,10 +35,10 @@ Point = tuple[float, float]
 
 # channel 环线的原入口/出口交点，以及最终停车牵引点P。
 CHANNEL_LOOP_ENDPOINT: Point = (1.95, 1.80)
-# Task3路线的最终虚拟牵引点取蓝色基地/紫色停车矩形中心。
+# Task3路线的最终虚拟牵引点取紫色曲边停车区包围框中心。
 # base_link一进入该矩形便会立即停车，通常不要求真正压到中心点；
 # 中心点只负责在尚未触发停车时维持正确的末段运动趋势。
-RETURN_TARGET: Point = (0.00, 0.00)
+RETURN_TARGET: Point = (0.00, -0.20)
 
 # 出通道到P的手动控制点，按实际行驶顺序填写。脚本会像
 # generate_task1_waypoints.py一样，把每个转角替换成零端曲率五次曲线，
