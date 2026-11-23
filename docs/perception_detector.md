@@ -1,9 +1,9 @@
 # perception_detector 设计说明
 
-本文档描述目标 ROS2 包 `perception_detector` 的职责、输入输出、参数、推理流程、YOLO26 后处理、二维码 ROI 发布策略和推荐代码结构。目标是按本文档可以直接开始实现包：
+本文档描述目标 ROS2 包 `perception_detector` 的职责、输入输出、参数、推理流程、YOLO26 后处理、二维码 ROI 发布策略和推荐代码结构。本文档对应旧 Nav2 工作空间的设计。比赛版位于 [dev_ws/src/perception_detector](../dev_ws/src/perception_detector)。旧版源码路径如下。
 
 ```text
-dev_ws/src/perception/perception_detector
+dev_ws/nav_legacy/src/perception/perception_detector
 ```
 
 ## 1. 包职责
@@ -63,7 +63,7 @@ perception_detector/
 配置文件放在工作空间统一配置目录：
 
 ```text
-dev_ws/config/perception/perception_detector.yaml
+dev_ws/nav_legacy/config/perception/perception_detector.yaml
 ```
 
 不要把参数放进包内 `config/`，这样和已有 `qr_detector.yaml` 保持一致。
@@ -193,7 +193,7 @@ perception_detector_node:
     source_height: 1080
 
     # Model
-    model_path: /root/D_Robot/dev_ws/models/yolo26_detect_nashe_640x640_nv12.hbm
+    model_path: /root/D_Robot/dev_ws/nav_legacy/models/yolo26_detect_nashe_640x640_nv12.hbm
     model_input_width: 640
     model_input_height: 640
     preprocess_type: letterbox       # letterbox or resize
@@ -909,7 +909,7 @@ def generate_launch_description():
             executable='perception_detector_node',
             name='perception_detector_node',
             output='screen',
-            parameters=['/root/D_Robot/dev_ws/config/perception/perception_detector.yaml'],
+            parameters=['/root/D_Robot/dev_ws/nav_legacy/config/perception/perception_detector.yaml'],
             arguments=['--ros-args', '--log-level', 'info'],
         )
     ])
@@ -1013,7 +1013,7 @@ private:
 ### 18.1 模型检查
 
 ```bash
-hrt_model_exec model_info --model_file /root/D_Robot/dev_ws/models/yolo26_detect_nashe_640x640_nv12.hbm
+hrt_model_exec model_info --model_file /root/D_Robot/dev_ws/nav_legacy/models/yolo26_detect_nashe_640x640_nv12.hbm
 ```
 
 检查：
@@ -1043,7 +1043,7 @@ ros2 topic hz /camera/image_hbmem
 ```bash
 ros2 run perception_detector perception_detector_node \
   --ros-args \
-  --params-file /root/D_Robot/dev_ws/config/perception/perception_detector.yaml
+  --params-file /root/D_Robot/dev_ws/nav_legacy/config/perception/perception_detector.yaml
 ```
 
 另一个终端：
@@ -1058,7 +1058,7 @@ ros2 topic hz /camera/qr_roi/image
 ```bash
 ros2 run qr_detector_cpp qr_detector_node \
   --ros-args \
-  --params-file /root/D_Robot/dev_ws/config/perception/qr_detector.yaml
+  --params-file /root/D_Robot/dev_ws/nav_legacy/config/perception/qr_detector.yaml
 ```
 
 观察：

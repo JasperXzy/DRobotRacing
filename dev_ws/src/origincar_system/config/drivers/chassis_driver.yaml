@@ -1,0 +1,26 @@
+# Parameter configuration for Chassis Driver
+/chassis_driver_node:
+  ros__parameters:
+    usart_port_name: "/dev/ttyACM0"
+    serial_baud_rate: 115200
+    cmd_vel: "/cmd_vel"
+    akm_cmd_vel: "none"
+    odom_frame_id: "odom"
+    robot_frame_id: "base_link"
+    gyro_frame_id: "gyro_link"
+
+    # Calibration of the accumulated raw pose only. These values do not scale
+    # the twist published to /chassis/odom, so the EKF velocity inputs remain unchanged.
+    linear_position_scale: 1.0
+    lateral_position_scale: 1.0
+    positive_angular_scale: 1.1958  # Left turn calibration
+    negative_angular_scale: 1.1578  # Right turn calibration
+
+    # Calibrate MPU6050 Z gyro bias while wheel odometry confirms the chassis is
+    # stationary. At roughly 50 Hz, 150 samples take about three seconds.
+    gyro_bias_compensation_enabled: true
+    gyro_bias_calibration_samples: 150
+    gyro_bias_sample_limit: 0.02
+    gyro_stationary_linear_threshold: 0.005
+    gyro_stationary_angular_threshold: 0.005
+    gyro_bias_update_alpha: 0.002
