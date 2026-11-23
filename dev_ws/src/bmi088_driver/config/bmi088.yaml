@@ -1,0 +1,44 @@
+/**:
+  ros__parameters:
+    # RDK S100 SPI0 chip-select 0 = BMI088 accelerometer CS1.
+    accel_device: /dev/spidev0.0
+    # RDK S100 SPI0 chip-select 1 = BMI088 gyroscope CS2.
+    gyro_device: /dev/spidev0.1
+    spi_speed_hz: 5000000
+
+    # Low-noise settings suitable for a wheeled robot.
+    accel_range_g: 3
+    accel_odr_hz: 200
+    accel_bandwidth: osr4
+    gyro_range_dps: 500
+    gyro_odr_hz: 200
+    gyro_bandwidth_hz: 64
+    publish_rate_hz: 100.0
+    temperature_rate_hz: 1.0
+    diagnostic_rate_hz: 1.0
+
+    frame_id: bmi088_link
+    raw_topic: imu/data_raw
+    calibrated_topic: imu/data
+    temperature_topic: temperature
+    diagnostics_topic: diagnostics
+
+    # output[i] = axis_sign[i] * sensor_input[axis_map[i]]
+    # Identity mapping publishes the axes printed on the BMI088 board.
+    axis_map: [0, 1, 2]
+    axis_sign: [1, 1, 1]
+
+    # /imu/data_raw is never bias corrected. /imu/data subtracts this bias.
+    calibrate_on_startup: true
+    calibration_samples: 300
+    calibration_gyro_limit_rps: 0.05
+    calibration_accel_tolerance_mps2: 0.8
+    initial_gyro_bias_rps: [0.0, 0.0, 0.0]
+
+    angular_velocity_stddev: 0.003
+    linear_acceleration_stddev: 0.12
+    temperature_stddev: 1.0
+
+    max_consecutive_errors: 5
+    reconnect_interval_sec: 2.0
+    mock_mode: false

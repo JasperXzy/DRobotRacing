@@ -46,6 +46,7 @@ public:
     RacingControlNode(const std::string& node_name,
                         const rclcpp::NodeOptions &options = rclcpp::NodeOptions());
     ~RacingControlNode() override;
+    void SuspendAndStop();
 private:
     rclcpp::Subscription<ai_msgs::msg::PerceptionTargets>::SharedPtr point_subscriber_;
     rclcpp::Subscription<ai_msgs::msg::PerceptionTargets>::SharedPtr target_subscriber_;
@@ -61,6 +62,13 @@ private:
     void ObstaclesAvoiding(const ai_msgs::msg::Target& obstacle, 
                        float speed_modifier);
     void MessageProcess(void);
+    void PublishStopCommand();
+    int ScaleDetectionX(int x) const;
+    int ScaleDetectionY(int y) const;
+    int TargetCenterX(const ai_msgs::msg::Target& target) const;
+    int TargetCenterY(const ai_msgs::msg::Target& target) const;
+    int TargetBottomY(const ai_msgs::msg::Target& target) const;
+    int TargetHeight(const ai_msgs::msg::Target& target) const;
     bool hasValidTrackLine(const ai_msgs::msg::PerceptionTargets::SharedPtr& line_msg) const; //检查赛道线消息是否有效且置信度足够高
     std::optional<ai_msgs::msg::Target> findFollowableParkingSign(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const; //查找一个置信度足够高、适合用于跟随的停车标志
     std::optional<ai_msgs::msg::Target> findFollowableQrCode(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const;
@@ -71,8 +79,13 @@ private:
     std::optional<ai_msgs::msg::Target> findCautionObstacleOnRecoverySide(const ai_msgs::msg::PerceptionTargets::SharedPtr& targets_msg) const; // 查找回线时同侧的谨慎区障碍物
     bool isTrackLineCentered(const ai_msgs::msg::PerceptionTargets::SharedPtr& line_msg) const; //检查赛道线是否位于图像中心区域
     std::string pub_control_topic_ = "cmd_vel";
+    bool debug_control_logs_ = false;
+    bool clear_detection_cache_on_resume_ = false;
+    bool drive_straight_without_initial_line_ = false;
+    bool enable_parking_before_path_ = true;
+    bool enable_qr_after_path_ = true;
     std::mutex point_target_mutex_;
-    bool process_stop_ = false;
+    std::atomic<bool> process_stop_{false};
     std::shared_ptr<std::thread> msg_process_;
     
     // 巡线参数
@@ -119,9 +132,11 @@ private:
     // 最新消息存储
     ai_msgs::msg::PerceptionTargets::SharedPtr latest_point_msg_;
     ai_msgs::msg::PerceptionTargets::SharedPtr latest_targets_msg_;
+    std::atomic<bool> waiting_for_fresh_line_{true};
 
     // 挂起/恢复状态标志
     std::atomic<bool> is_suspended_{false};
+    std::atomic<bool> path_handoff_completed_{false};
 };
 
 #endif  // VISUAL_CONTROL_H_

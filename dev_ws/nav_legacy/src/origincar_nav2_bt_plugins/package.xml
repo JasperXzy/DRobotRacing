@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>origincar_nav2_bt_plugins</name>
+  <version>0.0.0</version>
+  <description>Custom Nav2 behavior tree plugins for Origincar racing routes.</description>
+  <maintainer email="robot@example.com">origincar</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>behaviortree_cpp_v3</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>rclcpp</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

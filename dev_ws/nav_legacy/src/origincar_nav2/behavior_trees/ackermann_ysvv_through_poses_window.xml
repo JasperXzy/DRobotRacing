@@ -1,0 +1,24 @@
+<!--
+  YSVV rolling-window tree.
+  Goal pruning and obstacle interval filtering are owned by the sender node.
+  This tree intentionally computes each accepted batch once so passed goals
+  cannot be reintroduced during periodic replanning.
+-->
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <Sequence name="NavigateYsvvWindow">
+      <RecoveryNode number_of_retries="1" name="ComputeYsvvWindowPath">
+        <ComputePathThroughPoses goals="{goals}" path="{path}" planner_id="GridBased"/>
+        <ClearEntireCostmap name="ClearGlobalCostmap-Context"
+                            service_name="global_costmap/clear_entirely_global_costmap"/>
+      </RecoveryNode>
+      <SmoothPath unsmoothed_path="{path}" smoothed_path="{path}"
+                  max_smoothing_duration="1.0"/>
+      <RecoveryNode number_of_retries="1" name="FollowYsvvWindowPath">
+        <FollowPath path="{path}" controller_id="FollowPath"/>
+        <ClearEntireCostmap name="ClearLocalCostmap-Context"
+                            service_name="local_costmap/clear_entirely_local_costmap"/>
+      </RecoveryNode>
+    </Sequence>
+  </BehaviorTree>
+</root>

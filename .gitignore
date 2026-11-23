@@ -28,8 +28,10 @@ venv/
 
 # Local demo captures
 test/api_vlm_tts_demo/api_vlm_tts_capture.jpg
-dev_ws/src/drivers/vlm_tts_demo/captures/*.jpg
-
+dev_ws/nav_legacy/src/drivers/vlm_tts_demo/captures/*.jpg
+dev_ws/src/vlm_tts_demo/captures/*.jpg
+dev_ws/src/origincar_system/path/
+test/dev_ws/src/origincar_system/path/
 # C / C++ build outputs
 *.o
 *.obj
@@ -46,6 +48,8 @@ cmake_install.cmake
 *.log
 dev_ws/frames_*.gv
 dev_ws/frames_*.pdf
+dev_ws/nav_legacy/frames_*.gv
+dev_ws/nav_legacy/frames_*.pdf
 rosbag2_*/
 *.db3
 *.bag
@@ -61,3 +65,11 @@ Thumbs.db
 costmap_converter/
 *.gguf
 *.hbm
+test/final/
+
+
+test/zhy_car
+
+test/dev_ws/simulation_logs 
+
+test/dev_ws/debug_log

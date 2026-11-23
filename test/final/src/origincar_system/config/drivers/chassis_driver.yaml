@@ -1,0 +1,17 @@
+# Parameter configuration for Chassis Driver
+/chassis_driver_node:
+  ros__parameters:
+    usart_port_name: "/dev/ttyACM0"
+    serial_baud_rate: 115200
+    cmd_vel: "/cmd_vel"
+    akm_cmd_vel: "none"
+    odom_frame_id: "odom"
+    robot_frame_id: "base_link"
+    gyro_frame_id: "gyro_link"
+
+    # Calibration of the accumulated raw pose only. These values do not scale
+    # the twist published to /chassis/odom, so the EKF velocity inputs remain unchanged.
+    linear_position_scale: 1.0
+    lateral_position_scale: 1.0
+    positive_angular_scale: 1.1958  # Left turn calibration
+    negative_angular_scale: 1.1578  # Right turn calibration

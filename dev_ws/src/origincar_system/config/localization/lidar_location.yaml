@@ -1,0 +1,56 @@
+lidar_location:
+  ros__parameters:
+    use_sim_time: false
+
+    # 与现有 EKF、雷达静态 TF 和 waypoint_shift 的 frame 完全一致。
+    global_frame: map
+    odom_frame: odom
+    base_frame: base_link
+    laser_frame: laser
+
+    # 保持 AMCL 的外部接口名称，其他节点无需修改。
+    map_topic: /map
+    scan_topic: /scan
+    initial_pose_topic: /initialpose
+    pose_topic: /amcl_pose
+
+    tf_broadcast: true
+    tf_publish_rate: 30.0
+    transform_tolerance: 0.3
+    tf_lookup_timeout: 0.2
+
+    # 使用EKF的历史 odom->base_link 起止位姿，将一圈内各束激光统一
+    # 到末束时刻。静止或TF不完整时自动使用刚性扫描。
+    deskew_enabled: false
+    deskew_min_translation: 0.002
+    deskew_min_rotation_deg: 0.05
+    deskew_max_scan_duration: 0.2
+    publish_deskewed_cloud: false
+
+    # 默认从地图原点、相对map正X轴逆时针0启动；也可以在
+    # RViz/Foxglove向 /initialpose 发布新初始位姿。
+    set_initial_pose: true
+    reset_pose_on_map: false
+    initial_pose:
+      x: 0.0
+      y: 0.0
+      yaw: 0.0
+
+    # 扫描匹配参数。
+    occupied_threshold: 65
+    likelihood_field_radius: 1.25
+    linear_search_step: 0.0       # 0 表示自动使用地图分辨率
+    angular_search_step_deg: 1.0
+    max_iterations: 80
+    max_beams: 180
+    min_valid_beams: 20
+    min_match_score: 0.01
+    match_diagnostics_topic: /lidar_location/match_diagnostics  # 与/scan同时间戳：x=匹配分数，y=实际平移修正(m)，z=实际map->odom航向修正(rad)
+    match_score_terminal_rate: 1.0  # 终端1每秒输出一次最新匹配度；设为0可关闭
+    min_laser_range: 0.1
+    max_laser_range: 7.1
+
+    covariance:
+      x: 0.05
+      y: 0.05
+      yaw: 0.03
