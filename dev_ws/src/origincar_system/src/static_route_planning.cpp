@@ -4,12 +4,20 @@
 #include <chrono>
 #include <cmath>
 #include <limits>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "rcutils/error_handling.h"
 #include "rcutils/logging.h"
+
+void VisualLidarPathFollower::reset_waypoint_shifts()
+{
+  const std::size_t route_size = waypoints_.size();
+  waypoint_shifts_.assign(route_size, origincar_system::WaypointShift{0.0, {}, route_size, {}, 0.0});
+  waypoint_shift_confirmations_.assign(route_size, WaypointShiftConfirmation{});
+}
 
 void VisualLidarPathFollower::reset_waypoint_shift_state()
 {
@@ -27,20 +35,8 @@ void VisualLidarPathFollower::reset_waypoint_shift_state()
   // 保留航点文件原本的Task3末点。路线外(0,0)保底点不写入waypoints_，
   // 不参与下面的静态偏移、circle_envelope或路径PID缓存。
   original_waypoints_ = waypoints_;
-  waypoint_shift_offsets_.assign(waypoints_.size(), 0.0);
-  waypoint_shift_pending_offsets_.assign(waypoints_.size(), 0.0);
-  waypoint_shift_pending_counts_.assign(waypoints_.size(), 0);
-  waypoint_shift_missing_counts_.assign(waypoints_.size(), 0);
-  waypoint_shift_dynamic_directions_.assign(waypoints_.size(), 0);
-  waypoint_shift_world_directions_.assign(waypoints_.size(), Point2D());
-  waypoint_shift_source_indices_.assign(waypoints_.size(), waypoints_.size());
-  waypoint_shift_obstacle_centers_.assign(waypoints_.size(), Point2D());
-  waypoint_shift_forbidden_radii_.assign(waypoints_.size(), 0.0);
-  logic3_frozen_base_offsets_.clear();
-  logic3_frozen_base_shift_directions_.clear();
-  logic3_frozen_base_source_indices_.clear();
-  logic3_frozen_base_obstacle_centers_.clear();
-  logic3_frozen_base_forbidden_radii_.clear();
+  reset_waypoint_shifts();
+  logic3_frozen_base_shifts_.clear();
   logic3_runtime_green_tracks_.clear();
   if (!channel_lidar_obstacle_active_) {
     channel_lidar_avoid_direction_ = 0;
@@ -117,15 +113,8 @@ void VisualLidarPathFollower::preplan_logic3_ready_route(
   auto saved_dynamic_takeover = std::move(logic3_green_dynamic_takeover_);
   auto saved_clearance_failed = std::move(logic3_green_route_clearance_failed_);
   auto saved_waypoints = std::move(waypoints_);
-  auto saved_offsets = std::move(waypoint_shift_offsets_);
-  auto saved_pending_offsets = std::move(waypoint_shift_pending_offsets_);
-  auto saved_pending_counts = std::move(waypoint_shift_pending_counts_);
-  auto saved_missing_counts = std::move(waypoint_shift_missing_counts_);
-  auto saved_dynamic_directions = std::move(waypoint_shift_dynamic_directions_);
-  auto saved_shift_directions = std::move(waypoint_shift_world_directions_);
-  auto saved_source_indices = std::move(waypoint_shift_source_indices_);
-  auto saved_obstacle_centers = std::move(waypoint_shift_obstacle_centers_);
-  auto saved_forbidden_radii = std::move(waypoint_shift_forbidden_radii_);
+  auto saved_shifts = std::move(waypoint_shifts_);
+  auto saved_confirmations = std::move(waypoint_shift_confirmations_);
   const bool saved_replay = logic3_replay_frozen_clusters_;
   const bool saved_force_full_route = logic3_force_full_route_;
   const bool saved_force_confirm = logic3_force_confirm_;
@@ -140,15 +129,7 @@ void VisualLidarPathFollower::preplan_logic3_ready_route(
   logic3_green_route_clearance_failed_.assign(logic3_green_clusters_.size(), false);
 
   waypoints_ = original_waypoints_;
-  waypoint_shift_offsets_.assign(waypoints_.size(), 0.0);
-  waypoint_shift_pending_offsets_.assign(waypoints_.size(), 0.0);
-  waypoint_shift_pending_counts_.assign(waypoints_.size(), 0);
-  waypoint_shift_missing_counts_.assign(waypoints_.size(), 0);
-  waypoint_shift_dynamic_directions_.assign(waypoints_.size(), 0);
-  waypoint_shift_world_directions_.assign(waypoints_.size(), Point2D());
-  waypoint_shift_source_indices_.assign(waypoints_.size(), waypoints_.size());
-  waypoint_shift_obstacle_centers_.assign(waypoints_.size(), Point2D());
-  waypoint_shift_forbidden_radii_.assign(waypoints_.size(), 0.0);
+  reset_waypoint_shifts();
 
   logic3_ready_preplanning_active_ = true;
   logic3_replay_frozen_clusters_ = true;
@@ -156,15 +137,7 @@ void VisualLidarPathFollower::preplan_logic3_ready_route(
   logic3_force_confirm_ = true;
   update_waypoint_shifts(RobotPose(), 0);
   logic3_ready_preplan_candidate_waypoints_ = std::move(waypoints_);
-  logic3_ready_preplan_candidate_offsets_ = std::move(waypoint_shift_offsets_);
-  logic3_ready_preplan_candidate_shift_directions_ =
-    std::move(waypoint_shift_world_directions_);
-  logic3_ready_preplan_candidate_source_indices_ =
-    std::move(waypoint_shift_source_indices_);
-  logic3_ready_preplan_candidate_obstacle_centers_ =
-    std::move(waypoint_shift_obstacle_centers_);
-  logic3_ready_preplan_candidate_forbidden_radii_ =
-    std::move(waypoint_shift_forbidden_radii_);
+  logic3_ready_preplan_candidate_shifts_ = std::move(waypoint_shifts_);
   logic3_ready_preplan_candidate_clearance_failed_ =
     logic3_green_route_clearance_failed_;
   logic3_replay_frozen_clusters_ = saved_replay;
@@ -177,15 +150,8 @@ void VisualLidarPathFollower::preplan_logic3_ready_route(
   logic3_green_dynamic_takeover_ = std::move(saved_dynamic_takeover);
   logic3_green_route_clearance_failed_ = std::move(saved_clearance_failed);
   waypoints_ = std::move(saved_waypoints);
-  waypoint_shift_offsets_ = std::move(saved_offsets);
-  waypoint_shift_pending_offsets_ = std::move(saved_pending_offsets);
-  waypoint_shift_pending_counts_ = std::move(saved_pending_counts);
-  waypoint_shift_missing_counts_ = std::move(saved_missing_counts);
-  waypoint_shift_dynamic_directions_ = std::move(saved_dynamic_directions);
-  waypoint_shift_world_directions_ = std::move(saved_shift_directions);
-  waypoint_shift_source_indices_ = std::move(saved_source_indices);
-  waypoint_shift_obstacle_centers_ = std::move(saved_obstacle_centers);
-  waypoint_shift_forbidden_radii_ = std::move(saved_forbidden_radii);
+  waypoint_shifts_ = std::move(saved_shifts);
+  waypoint_shift_confirmations_ = std::move(saved_confirmations);
   rebuild_path_pid_route_cache();
   reset_path_pid_state();
 
@@ -207,11 +173,7 @@ void VisualLidarPathFollower::resolve_logic3_ready_preplan_candidate(bool moving
       logic3_ready_preplan_candidate_pending_ = false;
       logic3_ready_preplan_candidate_snapshot_ = Logic3PlanningSnapshot();
       logic3_ready_preplan_candidate_waypoints_.clear();
-      logic3_ready_preplan_candidate_offsets_.clear();
-      logic3_ready_preplan_candidate_shift_directions_.clear();
-      logic3_ready_preplan_candidate_source_indices_.clear();
-      logic3_ready_preplan_candidate_obstacle_centers_.clear();
-      logic3_ready_preplan_candidate_forbidden_radii_.clear();
+      logic3_ready_preplan_candidate_shifts_.clear();
       logic3_ready_preplan_candidate_clearance_failed_.clear();
     };
 
@@ -227,19 +189,8 @@ void VisualLidarPathFollower::resolve_logic3_ready_preplan_candidate(bool moving
   }
 
   waypoints_ = std::move(logic3_ready_preplan_candidate_waypoints_);
-  waypoint_shift_offsets_ = std::move(logic3_ready_preplan_candidate_offsets_);
-  waypoint_shift_pending_offsets_.assign(waypoints_.size(), 0.0);
-  waypoint_shift_pending_counts_.assign(waypoints_.size(), 0);
-  waypoint_shift_missing_counts_.assign(waypoints_.size(), 0);
-  waypoint_shift_dynamic_directions_.assign(waypoints_.size(), 0);
-  waypoint_shift_world_directions_ =
-    std::move(logic3_ready_preplan_candidate_shift_directions_);
-  waypoint_shift_source_indices_ =
-    std::move(logic3_ready_preplan_candidate_source_indices_);
-  waypoint_shift_obstacle_centers_ =
-    std::move(logic3_ready_preplan_candidate_obstacle_centers_);
-  waypoint_shift_forbidden_radii_ =
-    std::move(logic3_ready_preplan_candidate_forbidden_radii_);
+  waypoint_shifts_ = std::move(logic3_ready_preplan_candidate_shifts_);
+  waypoint_shift_confirmations_.assign(waypoints_.size(), WaypointShiftConfirmation{});
   logic3_ready_preplanned_route_clearance_failed_ =
     std::move(logic3_ready_preplan_candidate_clearance_failed_);
   logic3_ready_preplanned_snapshot_ = logic3_ready_preplan_candidate_snapshot_;
@@ -269,15 +220,7 @@ void VisualLidarPathFollower::rebuild_logic3_route_from_green_clusters(
   // 每次都从当前阶段的原始路线重算。未被动态接管的永久点继续贡献静态
   // 偏移；接管点仍留在点库和图片中，但本次发车不再影响静态路线。
   waypoints_ = original_waypoints_;
-  waypoint_shift_offsets_.assign(waypoints_.size(), 0.0);
-  waypoint_shift_pending_offsets_.assign(waypoints_.size(), 0.0);
-  waypoint_shift_pending_counts_.assign(waypoints_.size(), 0);
-  waypoint_shift_missing_counts_.assign(waypoints_.size(), 0);
-  waypoint_shift_dynamic_directions_.assign(waypoints_.size(), 0);
-  waypoint_shift_world_directions_.assign(waypoints_.size(), Point2D());
-  waypoint_shift_source_indices_.assign(waypoints_.size(), waypoints_.size());
-  waypoint_shift_obstacle_centers_.assign(waypoints_.size(), Point2D());
-  waypoint_shift_forbidden_radii_.assign(waypoints_.size(), 0.0);
+  reset_waypoint_shifts();
 
   logic3_replay_frozen_clusters_ = true;
   logic3_force_full_route_ = true;
@@ -287,11 +230,7 @@ void VisualLidarPathFollower::rebuild_logic3_route_from_green_clusters(
   logic3_force_full_route_ = false;
   logic3_replay_frozen_clusters_ = false;
 
-  logic3_frozen_base_offsets_ = waypoint_shift_offsets_;
-  logic3_frozen_base_shift_directions_ = waypoint_shift_world_directions_;
-  logic3_frozen_base_source_indices_ = waypoint_shift_source_indices_;
-  logic3_frozen_base_obstacle_centers_ = waypoint_shift_obstacle_centers_;
-  logic3_frozen_base_forbidden_radii_ = waypoint_shift_forbidden_radii_;
+  logic3_frozen_base_shifts_ = waypoint_shifts_;
   logic3_green_last_planned_centers_.clear();
   logic3_green_last_planned_centers_.reserve(logic3_green_clusters_.size());
   for (const auto & green_cluster : logic3_green_clusters_) {
@@ -455,11 +394,7 @@ void VisualLidarPathFollower::freeze_logic3_route()
 void VisualLidarPathFollower::commit_logic3_current_route_as_frozen(
   const std::string & snapshot_event)
 {
-  logic3_frozen_base_offsets_ = waypoint_shift_offsets_;
-  logic3_frozen_base_shift_directions_ = waypoint_shift_world_directions_;
-  logic3_frozen_base_source_indices_ = waypoint_shift_source_indices_;
-  logic3_frozen_base_obstacle_centers_ = waypoint_shift_obstacle_centers_;
-  logic3_frozen_base_forbidden_radii_ = waypoint_shift_forbidden_radii_;
+  logic3_frozen_base_shifts_ = waypoint_shifts_;
   logic3_green_last_planned_centers_.clear();
   logic3_green_last_planned_centers_.reserve(logic3_green_clusters_.size());
   for (const auto & green_cluster : logic3_green_clusters_) {
@@ -468,12 +403,9 @@ void VisualLidarPathFollower::commit_logic3_current_route_as_frozen(
   logic3_green_route_replan_pending_ = false;
   // 静态回放只留下当前永久绿点集合的基础偏移；清空规划确认计数。
   // 运行中新增/修正绿点时会从原始路线和完整绿色集合重新计算。
-  std::fill(waypoint_shift_pending_offsets_.begin(), waypoint_shift_pending_offsets_.end(), 0.0);
-  std::fill(waypoint_shift_pending_counts_.begin(), waypoint_shift_pending_counts_.end(), 0);
-  std::fill(waypoint_shift_missing_counts_.begin(), waypoint_shift_missing_counts_.end(), 0);
   std::fill(
-    waypoint_shift_dynamic_directions_.begin(),
-    waypoint_shift_dynamic_directions_.end(), 0);
+    waypoint_shift_confirmations_.begin(), waypoint_shift_confirmations_.end(),
+    WaypointShiftConfirmation{});
   logic3_baseline_original_route_ = original_waypoints_;
   logic3_baseline_route_ = waypoints_;
   logic3_visualization_route_ = waypoints_;
@@ -504,15 +436,7 @@ void VisualLidarPathFollower::apply_logic3_frozen_clusters_to_current_route(
   // 没有可复用预规划版本时，也必须从当前阶段原始路线重新开始，避免
   // READY旧候选或上一次静态偏移残留到本次冻结结果。
   waypoints_ = original_waypoints_;
-  waypoint_shift_offsets_.assign(waypoints_.size(), 0.0);
-  waypoint_shift_pending_offsets_.assign(waypoints_.size(), 0.0);
-  waypoint_shift_pending_counts_.assign(waypoints_.size(), 0);
-  waypoint_shift_missing_counts_.assign(waypoints_.size(), 0);
-  waypoint_shift_dynamic_directions_.assign(waypoints_.size(), 0);
-  waypoint_shift_world_directions_.assign(waypoints_.size(), Point2D());
-  waypoint_shift_source_indices_.assign(waypoints_.size(), waypoints_.size());
-  waypoint_shift_obstacle_centers_.assign(waypoints_.size(), Point2D());
-  waypoint_shift_forbidden_radii_.assign(waypoints_.size(), 0.0);
+  reset_waypoint_shifts();
   logic3_green_route_clearance_failed_.assign(logic3_green_clusters_.size(), false);
   logic3_replay_frozen_clusters_ = true;
   logic3_force_full_route_ = true;
@@ -553,15 +477,8 @@ void VisualLidarPathFollower::update_waypoint_shifts(
     runtime_green_score_pending || runtime_green_diagnostics_pending ||
     static_green_score_pending ||
     original_waypoints_.size() != waypoints_.size() ||
-    waypoint_shift_offsets_.size() != waypoints_.size() ||
-    waypoint_shift_pending_offsets_.size() != waypoints_.size() ||
-    waypoint_shift_pending_counts_.size() != waypoints_.size() ||
-    waypoint_shift_missing_counts_.size() != waypoints_.size() ||
-    waypoint_shift_dynamic_directions_.size() != waypoints_.size() ||
-    waypoint_shift_world_directions_.size() != waypoints_.size() ||
-    waypoint_shift_source_indices_.size() != waypoints_.size() ||
-    waypoint_shift_obstacle_centers_.size() != waypoints_.size() ||
-    waypoint_shift_forbidden_radii_.size() != waypoints_.size() || waypoints_.empty())
+    waypoint_shifts_.size() != waypoints_.size() ||
+    waypoint_shift_confirmations_.size() != waypoints_.size() || waypoints_.empty())
   {
     return;
   }
@@ -1173,14 +1090,7 @@ void VisualLidarPathFollower::update_waypoint_shifts(
       return lhs.last < rhs.last;
     });
 
-  std::vector<double> observed_offsets(waypoints_.size(), 0.0);
-  std::vector<bool> observed_offsets_valid(waypoints_.size(), false);
-  std::vector<Point2D> observed_world_directions(waypoints_.size(), Point2D());
-  std::vector<std::size_t> observed_source_indices(
-    waypoints_.size(), waypoints_.size());
-  std::vector<Point2D> observed_obstacle_centers(waypoints_.size(), Point2D());
-  std::vector<double> observed_forbidden_radii(waypoints_.size(), 0.0);
-  std::vector<bool> observed_geometry_metadata_valid(waypoints_.size(), false);
+  std::vector<std::optional<origincar_system::WaypointShift>> observations(waypoints_.size());
   if (route_deformation_mode_ == "circle_envelope") {
     for (const auto & segment : candidate_segments) {
       if (segment.preferred_direction == 0) {
@@ -1195,20 +1105,20 @@ void VisualLidarPathFollower::update_waypoint_shifts(
       // 通常每个障碍物都有不同锚点。极少数锚点重合时，只借用其影响窗内
       // 最近的空元数据槽；source仍保存真实投影锚点，不合并障碍物身份。
       std::size_t metadata_index = segment.obstacle_waypoint;
-      if (observed_geometry_metadata_valid[metadata_index]) {
+      if (observations[metadata_index]) {
         bool found_slot = false;
         const std::size_t maximum_distance = std::max(
           metadata_index - segment.first, segment.last - metadata_index);
         for (std::size_t distance = 1; distance <= maximum_distance; ++distance) {
           if (metadata_index >= segment.first + distance &&
-            !observed_geometry_metadata_valid[metadata_index - distance])
+            !observations[metadata_index - distance])
           {
             metadata_index -= distance;
             found_slot = true;
             break;
           }
           if (metadata_index + distance <= segment.last &&
-            !observed_geometry_metadata_valid[metadata_index + distance])
+            !observations[metadata_index + distance])
           {
             metadata_index += distance;
             found_slot = true;
@@ -1228,16 +1138,11 @@ void VisualLidarPathFollower::update_waypoint_shifts(
         }
       }
 
-      observed_offsets[metadata_index] =
-        static_cast<double>(segment.preferred_direction) * required_offset;
-      observed_offsets_valid[metadata_index] = true;
-      observed_world_directions[metadata_index] =
+      observations[metadata_index] = origincar_system::WaypointShift{
+        static_cast<double>(segment.preferred_direction) * required_offset,
         segment.preferred_direction > 0 ?
-        segment.left_normal : Point2D{-segment.left_normal.x, -segment.left_normal.y};
-      observed_source_indices[metadata_index] = segment.obstacle_waypoint;
-      observed_obstacle_centers[metadata_index] = segment.obstacle_center;
-      observed_forbidden_radii[metadata_index] = segment.forbidden_radius;
-      observed_geometry_metadata_valid[metadata_index] = true;
+        segment.left_normal : Point2D{-segment.left_normal.x, -segment.left_normal.y},
+        segment.obstacle_waypoint, segment.obstacle_center, segment.forbidden_radius};
       if (debug_control_logs_ && !logic3_ready_preplanning_active_) {
         RCLCPP_INFO(
           get_logger(),
@@ -1276,18 +1181,14 @@ void VisualLidarPathFollower::update_waypoint_shifts(
       }
       std::size_t overwritten_count = 0;
       for (std::size_t index = applied_first; index <= segment.last; ++index) {
-        if (observed_offsets_valid[index]) {
+        if (observations[index]) {
           ++overwritten_count;
         }
         // 候选已按路线进度排序；后一个障碍物从重叠区1/2位置开始取得控制权。
-        observed_offsets[index] = candidate;
-        observed_offsets_valid[index] = true;
-        observed_world_directions[index] = segment.preferred_direction > 0 ?
-          segment.left_normal : Point2D{-segment.left_normal.x, -segment.left_normal.y};
-        observed_source_indices[index] = segment.obstacle_waypoint;
-        observed_obstacle_centers[index] = segment.obstacle_center;
-        observed_forbidden_radii[index] = segment.forbidden_radius;
-        observed_geometry_metadata_valid[index] = true;
+        observations[index] = origincar_system::WaypointShift{
+          candidate, segment.preferred_direction > 0 ?
+          segment.left_normal : Point2D{-segment.left_normal.x, -segment.left_normal.y},
+          segment.obstacle_waypoint, segment.obstacle_center, segment.forbidden_radius};
       }
       previous_active_segment = &segment;
       if (debug_control_logs_ && !logic3_ready_preplanning_active_) {
@@ -1305,133 +1206,27 @@ void VisualLidarPathFollower::update_waypoint_shifts(
 
   // 延长路线的第0点就是本次规划瞬间的base_link位置A。静态障碍可以
   // 改造其后的连接段，但A必须固定，不能被首个绿色簇横移。
-  if (channel_entry_waypoint_index_ > 0 && !observed_offsets_valid.empty()) {
-    observed_offsets_valid.front() = false;
-    observed_geometry_metadata_valid.front() = false;
-    observed_offsets.front() = 0.0;
-    observed_obstacle_centers.front() = Point2D();
-    observed_forbidden_radii.front() = 0.0;
+  if (channel_entry_waypoint_index_ > 0 && !observations.empty()) {
+    observations.front().reset();
   }
   bool route_changed = false;
-  auto observed_geometry_changed = [&](std::size_t index) {
-      if (!observed_geometry_metadata_valid[index]) {
-        return false;
-      }
-      if (waypoint_shift_source_indices_[index] >= waypoints_.size()) {
-        return true;
-      }
-      const std::size_t source_delta = waypoint_shift_source_indices_[index] >
-        observed_source_indices[index] ?
-        waypoint_shift_source_indices_[index] - observed_source_indices[index] :
-        observed_source_indices[index] - waypoint_shift_source_indices_[index];
-      const auto & current_direction = waypoint_shift_world_directions_[index];
-      const auto & observed_direction = observed_world_directions[index];
-      const double direction_alignment =
-        current_direction.x * observed_direction.x +
-        current_direction.y * observed_direction.y;
-      const double center_change = std::hypot(
-        waypoint_shift_obstacle_centers_[index].x -
-        observed_obstacle_centers[index].x,
-        waypoint_shift_obstacle_centers_[index].y -
-        observed_obstacle_centers[index].y);
-      const double radius_change = std::abs(
-        waypoint_shift_forbidden_radii_[index] -
-        observed_forbidden_radii[index]);
-      // 0.02m航点下允许来源点在2点内轻微抖动；方向变化约2.6度以上才重建。
-      const double geometry_change_threshold = std::max(
-        0.005, 0.5 * waypoint_shift_min_change_);
-      return source_delta > 2 || direction_alignment < 0.999 ||
-             center_change >= geometry_change_threshold ||
-             radius_change >= geometry_change_threshold;
-    };
-
   std::size_t confirmed_count = 0;
   std::size_t released_count = 0;
+  const bool has_frozen_base = logic3_planning_pose_anchored_ &&
+    logic3_frozen_base_shifts_.size() == waypoints_.size();
+  const origincar_system::WaypointShiftConfirmationSettings settings{
+    logic3_force_confirm_ ? 1 : waypoint_shift_confirm_scans_, waypoint_shift_release_scans_,
+    waypoint_shift_min_change_, waypoints_.size()};
   for (std::size_t index = first_index; index <= managed_last_index; ++index) {
-    if (observed_offsets_valid[index]) {
-      const double candidate = observed_offsets[index];
-      waypoint_shift_missing_counts_[index] = 0;
-
-      const bool same_direction =
-        waypoint_shift_pending_counts_[index] > 0 &&
-        waypoint_shift_pending_offsets_[index] * candidate > 0.0;
-
-      if (!same_direction) {
-        waypoint_shift_pending_offsets_[index] = candidate;
-        waypoint_shift_pending_counts_[index] = 1;
-      } else {
-        waypoint_shift_pending_offsets_[index] = candidate;
-        ++waypoint_shift_pending_counts_[index];
-      }
-
-      const int required_confirm_scans = logic3_force_confirm_ ?
-        1 : waypoint_shift_confirm_scans_;
-      if (waypoint_shift_pending_counts_[index] >= required_confirm_scans) {
-        const double confirmed_offset = waypoint_shift_pending_offsets_[index];
-        if (std::abs(confirmed_offset - waypoint_shift_offsets_[index]) >=
-          waypoint_shift_min_change_)
-        {
-          waypoint_shift_offsets_[index] = confirmed_offset;
-          if (observed_geometry_metadata_valid[index]) {
-            waypoint_shift_world_directions_[index] = observed_world_directions[index];
-            waypoint_shift_source_indices_[index] = observed_source_indices[index];
-            waypoint_shift_obstacle_centers_[index] = observed_obstacle_centers[index];
-            waypoint_shift_forbidden_radii_[index] = observed_forbidden_radii[index];
-          }
-          route_changed = true;
-          ++confirmed_count;
-        } else if (std::abs(waypoint_shift_offsets_[index]) > 1e-9 &&
-          observed_geometry_changed(index))
-        {
-          waypoint_shift_world_directions_[index] = observed_world_directions[index];
-          waypoint_shift_source_indices_[index] = observed_source_indices[index];
-          waypoint_shift_obstacle_centers_[index] = observed_obstacle_centers[index];
-          waypoint_shift_forbidden_radii_[index] = observed_forbidden_radii[index];
-          route_changed = true;
-        }
-      }
-      continue;
-    }
-
-    waypoint_shift_pending_offsets_[index] = 0.0;
-    waypoint_shift_pending_counts_[index] = 0;
-    ++waypoint_shift_missing_counts_[index];
-    const double base_offset = logic3_planning_pose_anchored_ &&
-      logic3_frozen_base_offsets_.size() == waypoint_shift_offsets_.size() ?
-      logic3_frozen_base_offsets_[index] : 0.0;
-    if (waypoint_shift_missing_counts_[index] >= waypoint_shift_release_scans_) {
-      waypoint_shift_dynamic_directions_[index] = 0;
-      Point2D base_direction;
-      std::size_t base_source = waypoints_.size();
-      Point2D base_center;
-      double base_radius = 0.0;
-      if (std::abs(base_offset) > 1e-9 &&
-        logic3_frozen_base_shift_directions_.size() == waypoints_.size() &&
-        logic3_frozen_base_source_indices_.size() == waypoints_.size() &&
-        logic3_frozen_base_obstacle_centers_.size() == waypoints_.size() &&
-        logic3_frozen_base_forbidden_radii_.size() == waypoints_.size())
-      {
-        base_direction = logic3_frozen_base_shift_directions_[index];
-        base_source = logic3_frozen_base_source_indices_[index];
-        base_center = logic3_frozen_base_obstacle_centers_[index];
-        base_radius = logic3_frozen_base_forbidden_radii_[index];
-      }
-      const bool release_changed =
-        std::abs(waypoint_shift_offsets_[index] - base_offset) > 1e-9 ||
-        waypoint_shift_source_indices_[index] != base_source ||
-        std::hypot(
-          waypoint_shift_obstacle_centers_[index].x - base_center.x,
-          waypoint_shift_obstacle_centers_[index].y - base_center.y) > 1e-9 ||
-        std::abs(waypoint_shift_forbidden_radii_[index] - base_radius) > 1e-9;
-      if (release_changed) {
-        waypoint_shift_offsets_[index] = base_offset;
-        waypoint_shift_world_directions_[index] = base_direction;
-        waypoint_shift_source_indices_[index] = base_source;
-        waypoint_shift_obstacle_centers_[index] = base_center;
-        waypoint_shift_forbidden_radii_[index] = base_radius;
-        route_changed = true;
-        ++released_count;
-      }
+    const auto * frozen = has_frozen_base ? &logic3_frozen_base_shifts_[index] : nullptr;
+    const auto update = origincar_system::update_waypoint_shift(
+      waypoint_shifts_[index], waypoint_shift_confirmations_[index], observations[index],
+      frozen, settings);
+    using origincar_system::WaypointShiftUpdate;
+    if (update != WaypointShiftUpdate::NONE) {
+      route_changed = true;
+      confirmed_count += (update == WaypointShiftUpdate::CONFIRMED);
+      released_count += (update == WaypointShiftUpdate::RELEASED);
     }
   }
 

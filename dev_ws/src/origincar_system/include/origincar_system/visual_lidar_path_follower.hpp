@@ -15,6 +15,8 @@
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
+#include "origincar_system/route_geometry.hpp"
+#include "origincar_system/waypoint_shift_confirmation.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/laser_scan.hpp"
 #include "std_msgs/msg/float32.hpp"
@@ -24,16 +26,7 @@
 #include "tf2_ros/transform_listener.h"
 #include "visualization_msgs/msg/marker_array.hpp"
 
-struct Waypoint
-{
-  std::string name;
-  double x{0.0};
-  double y{0.0};
-  bool reverse{false};
-  bool task3_start{false};
-  double pass_radius{0.0};
-  double reverse_pass_radius{0.0};
-};
+using origincar_system::Waypoint;
 
 class VisualLidarPathFollower : public rclcpp::Node
 {
@@ -98,11 +91,8 @@ private:
     double yaw{0.0};
   };
 
-  struct Point2D
-  {
-    double x{0.0};
-    double y{0.0};
-  };
+  using Point2D = origincar_system::Point2D;
+  using WaypointShiftConfirmation = origincar_system::WaypointShiftConfirmation;
 
   struct RouteProjection
   {
@@ -694,15 +684,8 @@ private:
   std::vector<Waypoint> logic3_clockwise_update_guard_route_;
   std::vector<Waypoint> logic3_counterclockwise_update_guard_route_;
   std::vector<Waypoint> logic3_latest_channel_entry_update_guard_route_;
-  std::vector<double> waypoint_shift_offsets_;
-  std::vector<double> waypoint_shift_pending_offsets_;
-  std::vector<int> waypoint_shift_pending_counts_;
-  std::vector<int> waypoint_shift_missing_counts_;
-  std::vector<int> waypoint_shift_dynamic_directions_;
-  std::vector<Point2D> waypoint_shift_world_directions_;
-  std::vector<std::size_t> waypoint_shift_source_indices_;
-  std::vector<Point2D> waypoint_shift_obstacle_centers_;
-  std::vector<double> waypoint_shift_forbidden_radii_;
+  std::vector<origincar_system::WaypointShift> waypoint_shifts_;
+  std::vector<WaypointShiftConfirmation> waypoint_shift_confirmations_;
   std::size_t current_index_{0};
   bool first_waypoint_reached_{false};
   bool waiting_for_qr_start_{false};
@@ -894,11 +877,7 @@ private:
   std::uint64_t logic3_ready_preplan_candidate_odom_sequence_{0};
   Logic3PlanningSnapshot logic3_ready_preplan_candidate_snapshot_;
   std::vector<Waypoint> logic3_ready_preplan_candidate_waypoints_;
-  std::vector<double> logic3_ready_preplan_candidate_offsets_;
-  std::vector<Point2D> logic3_ready_preplan_candidate_shift_directions_;
-  std::vector<std::size_t> logic3_ready_preplan_candidate_source_indices_;
-  std::vector<Point2D> logic3_ready_preplan_candidate_obstacle_centers_;
-  std::vector<double> logic3_ready_preplan_candidate_forbidden_radii_;
+  std::vector<origincar_system::WaypointShift> logic3_ready_preplan_candidate_shifts_;
   std::vector<bool> logic3_ready_preplan_candidate_clearance_failed_;
   std::vector<ScanPointCluster> logic3_green_clusters_;
   // 每个永久点的不可变身份锚点：发车绿点使用READY坐标，
@@ -917,11 +896,7 @@ private:
   bool logic3_orange_green_boundary_locked_{false};
   // 仅用于累计判断路线是否需要重算；长度与永久集合始终同步。
   std::vector<Point2D> logic3_green_last_planned_centers_;
-  std::vector<double> logic3_frozen_base_offsets_;
-  std::vector<Point2D> logic3_frozen_base_shift_directions_;
-  std::vector<std::size_t> logic3_frozen_base_source_indices_;
-  std::vector<Point2D> logic3_frozen_base_obstacle_centers_;
-  std::vector<double> logic3_frozen_base_forbidden_radii_;
+  std::vector<origincar_system::WaypointShift> logic3_frozen_base_shifts_;
   bool logic3_replay_frozen_clusters_{false};
   bool logic3_force_full_route_{false};
   bool logic3_force_confirm_{false};
@@ -1128,6 +1103,7 @@ private:
     int last_avoid_direction, int & avoid_direction,
     double & route_heading, double & signed_lateral_distance) const;
   void reset_waypoint_shift_state();
+  void reset_waypoint_shifts();
   void update_waypoint_shifts(
     const RobotPose & robot_pose, std::size_t target_waypoint_index);
   int logic3_runtime_green_required_confirm_scans(std::size_t point_count) const;

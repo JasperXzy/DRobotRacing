@@ -1,6 +1,25 @@
 # 比赛工作空间
 
-`dev_ws/src` 使用 `d41f8ea` 的完整比赛包。原版在 [`test/dev_ws`](../test/dev_ws)，可以独立编译和启动，用于 A/B 对照和回退。
+`dev_ws/src` 是基于 `d41f8ea` 的比赛工作空间。原版在 [`test/dev_ws`](../test/dev_ws)，可以独立编译和启动，用于 A/B 对照和回退。
+
+## 主控结构
+
+| 模块 | 职责 |
+| --- | --- |
+| `visual_lidar_path_follower.cpp`、`control_loop.cpp` | 装配 ROS 接口并按原版顺序执行控制周期。 |
+| `race_mission.cpp`、`channel_transition.cpp`、`control_output.cpp` | 管理任务阶段、扫码进场、速度和制动。 |
+| `route_tracking.cpp`、`follower_localization.cpp` | 计算跟踪指令，处理 TF、轮速里程计和定位诊断。 |
+| `static_route_planning.cpp`、`route_shaping.cpp` | 管理原始路线、候选路线、冻结路线和已确认的航点偏移。 |
+| `circle_envelope.cpp`、`circle_envelope_candidate.cpp`、`waypoint_shift_confirmation.cpp` | 提供独立于 ROS 的静态绕障、候选曲线和偏移确认计算。 |
+| `lidar_avoidance.cpp`、`obstacle_tracking.cpp`、`route_diagnostics.cpp` | 处理实时雷达、障碍状态与路线快照。 |
+
+AMCL、激光定位和各自的里程计调试入口共用 `origincar_system/bringup.py`。控制节点使用原版的单线程执行顺序，静态重规划在调用时同步完成。
+
+编译 `origincar_system` 后，可以从本工作空间运行核心单测。
+
+```bash
+ctest --test-dir build/origincar_system -R '^(circle_envelope|waypoint_shift_confirmation)$' --output-on-failure
+```
 
 ## S100 编译与启动
 

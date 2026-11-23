@@ -19,6 +19,15 @@ find_package(tf2_ros REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
+add_library(origincar_route_planning STATIC
+  src/route_geometry.cpp
+  src/circle_envelope.cpp
+  src/circle_envelope_candidate.cpp
+  src/waypoint_shift_confirmation.cpp
+)
+target_compile_features(origincar_route_planning PUBLIC cxx_std_17)
+target_include_directories(origincar_route_planning PUBLIC include)
+
 add_executable(visual_lidar_path_follower
   src/visual_lidar_path_follower.cpp
   src/control_loop.cpp
@@ -39,7 +48,7 @@ target_include_directories(visual_lidar_path_follower PRIVATE include)
 ament_target_dependencies(
   visual_lidar_path_follower
   ai_msgs geometry_msgs nav_msgs rclcpp rcutils sensor_msgs std_msgs tf2 tf2_ros visualization_msgs)
-target_link_libraries(visual_lidar_path_follower yaml-cpp)
+target_link_libraries(visual_lidar_path_follower origincar_route_planning yaml-cpp)
 
 install(TARGETS
   visual_lidar_path_follower
@@ -63,6 +72,14 @@ install(PROGRAMS
 )
 
 if(BUILD_TESTING)
+  add_executable(test_circle_envelope test/test_circle_envelope.cpp)
+  target_link_libraries(test_circle_envelope PRIVATE origincar_route_planning)
+  add_test(NAME circle_envelope COMMAND test_circle_envelope)
+
+  add_executable(test_waypoint_shift_confirmation test/test_waypoint_shift_confirmation.cpp)
+  target_link_libraries(test_waypoint_shift_confirmation PRIVATE origincar_route_planning)
+  add_test(NAME waypoint_shift_confirmation COMMAND test_waypoint_shift_confirmation)
+
   find_package(ament_lint_auto REQUIRED)
   set(ament_cmake_copyright_FOUND TRUE)
   set(ament_cmake_cpplint_FOUND TRUE)
