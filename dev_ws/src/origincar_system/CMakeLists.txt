@@ -6,6 +6,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_python REQUIRED)
 find_package(ai_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
@@ -46,6 +47,7 @@ install(TARGETS
 )
 
 install(DIRECTORY launch config foxglove map DESTINATION share/${PROJECT_NAME})
+ament_python_install_package(${PROJECT_NAME})
 
 install(PROGRAMS
   scripts/generate_channel_waypoints.py

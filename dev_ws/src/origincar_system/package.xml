@@ -8,6 +8,7 @@
   <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
   <depend>ai_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
@@ -21,6 +22,9 @@
   <depend>yaml-cpp</depend>
 
   <!-- Runtime packages launched by the lidar_location/AMCL test bringups. -->
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>launch_xml</exec_depend>
   <exec_depend>camera_driver</exec_depend>
   <exec_depend>bmi088_driver</exec_depend>
   <exec_depend>chassis_driver</exec_depend>
