@@ -989,6 +989,13 @@ private:
   void set_task_phase(TaskPhase phase);
   void apply_stage_profile(const StageControlProfile & profile);
 
+  void read_parameters();
+  void read_tracking_parameters();
+  void read_static_planning_parameters();
+  void read_channel_transition_parameters();
+  void read_stage_parameters();
+  void normalize_parameters();
+
   void control_once();
   bool stop_if_route_finished(const RobotPose & pose);
   bool handle_task3_start(const RobotPose & pose);

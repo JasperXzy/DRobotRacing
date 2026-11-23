@@ -18,7 +18,22 @@ find_package(tf2_ros REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
-add_executable(visual_lidar_path_follower src/visual_lidar_path_follower.cpp)
+add_executable(visual_lidar_path_follower
+  src/visual_lidar_path_follower.cpp
+  src/control_loop.cpp
+  src/control_output.cpp
+  src/follower_parameters.cpp
+  src/follower_localization.cpp
+  src/race_mission.cpp
+  src/channel_transition.cpp
+  src/route_tracking.cpp
+  src/static_route_planning.cpp
+  src/route_shaping.cpp
+  src/lidar_avoidance.cpp
+  src/obstacle_tracking.cpp
+  src/route_diagnostics.cpp
+)
+target_compile_features(visual_lidar_path_follower PRIVATE cxx_std_17)
 target_include_directories(visual_lidar_path_follower PRIVATE include)
 ament_target_dependencies(
   visual_lidar_path_follower
